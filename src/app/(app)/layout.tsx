@@ -34,9 +34,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/invoices", label: "GST Invoices", show: true },
     { href: "/supplier-bills", label: "Supplier Bills", show: true },
     { href: "/payments", label: "Payments", show: true },
+    {
+      href: "/cash-bank",
+      label: "Cash & Bank",
+      show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
+    },
+    { href: "/expenses", label: "Expenses", show: true },
+    {
+      href: "/transfers",
+      label: "Fund Transfers",
+      show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
+    },
+    {
+      href: "/journal-vouchers",
+      label: "Journal Vouchers",
+      show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
+    },
     { href: "/reports", label: "Reports", show: owner || user.roles.includes("accounts") || user.roles.includes("auditor") },
     { href: "/setup/company", label: "Company", show: owner },
     { href: "/setup/warehouses", label: "Warehouses", show: owner || user.roles.includes("store") },
+    { href: "/setup/bank-accounts", label: "Bank Accounts", show: owner || user.roles.includes("accounts") },
+    { href: "/setup/petty-cash-funds", label: "Petty Cash Funds", show: owner || user.roles.includes("accounts") },
+    { href: "/setup/expense-heads", label: "Expense Heads", show: owner },
     { href: "/setup/users", label: "Users & Roles", show: owner },
     { href: "/setup/chart-of-accounts", label: "Chart of Accounts", show: owner || user.roles.includes("accounts") },
     { href: "/setup/import", label: "Import Wizard", show: owner || user.roles.includes("accounts") },
@@ -53,7 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 6 — Customer 360 &amp; Reports</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 9 — Cash, Bank &amp; Expenses</p>
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5">

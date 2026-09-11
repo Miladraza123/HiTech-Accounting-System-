@@ -116,6 +116,39 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string | null
+          bank_name: string | null
+          branch: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          account_name: string
+          account_number?: string | null
+          bank_name?: string | null
+          branch?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          account_name?: string
+          account_number?: string | null
+          bank_name?: string | null
+          branch?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
       chart_of_accounts: {
         Row: {
           account_type: string
@@ -223,6 +256,127 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "provinces"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      contra_transfers: {
+        Row: {
+          amount: number
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          from_bank_account_id: string | null
+          from_petty_cash_fund_id: string | null
+          from_type: string
+          id: string
+          journal_entry_id: string | null
+          notes: string | null
+          status: string
+          to_bank_account_id: string | null
+          to_petty_cash_fund_id: string | null
+          to_type: string
+          transfer_date: string
+          transfer_no: string
+        }
+        Insert: {
+          amount: number
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_bank_account_id?: string | null
+          from_petty_cash_fund_id?: string | null
+          from_type: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          status?: string
+          to_bank_account_id?: string | null
+          to_petty_cash_fund_id?: string | null
+          to_type: string
+          transfer_date?: string
+          transfer_no: string
+        }
+        Update: {
+          amount?: number
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_bank_account_id?: string | null
+          from_petty_cash_fund_id?: string | null
+          from_type?: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          status?: string
+          to_bank_account_id?: string | null
+          to_petty_cash_fund_id?: string | null
+          to_type?: string
+          transfer_date?: string
+          transfer_no?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contra_transfers_from_bank_account_id_fkey"
+            columns: ["from_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_account_balances"
+            referencedColumns: ["bank_account_id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_from_bank_account_id_fkey"
+            columns: ["from_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_from_petty_cash_fund_id_fkey"
+            columns: ["from_petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_fund_balances"
+            referencedColumns: ["petty_cash_fund_id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_from_petty_cash_fund_id_fkey"
+            columns: ["from_petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_funds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_to_bank_account_id_fkey"
+            columns: ["to_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_account_balances"
+            referencedColumns: ["bank_account_id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_to_bank_account_id_fkey"
+            columns: ["to_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_to_petty_cash_fund_id_fkey"
+            columns: ["to_petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_fund_balances"
+            referencedColumns: ["petty_cash_fund_id"]
+          },
+          {
+            foreignKeyName: "contra_transfers_to_petty_cash_fund_id_fkey"
+            columns: ["to_petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_funds"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -381,6 +535,158 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_heads: {
+        Row: {
+          account_code: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          account_code: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          account_code?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_heads_account_code_fkey"
+            columns: ["account_code"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "expense_heads_account_code_fkey"
+            columns: ["account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          description: string | null
+          expense_date: string
+          expense_head_id: string
+          expense_no: string
+          id: string
+          job_id: string | null
+          payment_source: string
+          petty_cash_fund_id: string | null
+          responsible_user_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          expense_date?: string
+          expense_head_id: string
+          expense_no: string
+          id?: string
+          job_id?: string | null
+          payment_source: string
+          petty_cash_fund_id?: string | null
+          responsible_user_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          expense_date?: string
+          expense_head_id?: string
+          expense_no?: string
+          id?: string
+          job_id?: string | null
+          payment_source?: string
+          petty_cash_fund_id?: string | null
+          responsible_user_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_account_balances"
+            referencedColumns: ["bank_account_id"]
+          },
+          {
+            foreignKeyName: "expenses_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_expense_head_id_fkey"
+            columns: ["expense_head_id"]
+            isOneToOne: false
+            referencedRelation: "expense_heads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_petty_cash_fund_id_fkey"
+            columns: ["petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_fund_balances"
+            referencedColumns: ["petty_cash_fund_id"]
+          },
+          {
+            foreignKeyName: "expenses_petty_cash_fund_id_fkey"
+            columns: ["petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_funds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1043,30 +1349,36 @@ export type Database = {
       journal_lines: {
         Row: {
           account_id: string
+          bank_account_id: string | null
           credit: number
           debit: number
           id: string
           journal_entry_id: string
           memo: string | null
           party_id: string | null
+          petty_cash_fund_id: string | null
         }
         Insert: {
           account_id: string
+          bank_account_id?: string | null
           credit?: number
           debit?: number
           id?: string
           journal_entry_id: string
           memo?: string | null
           party_id?: string | null
+          petty_cash_fund_id?: string | null
         }
         Update: {
           account_id?: string
+          bank_account_id?: string | null
           credit?: number
           debit?: number
           id?: string
           journal_entry_id?: string
           memo?: string | null
           party_id?: string | null
+          petty_cash_fund_id?: string | null
         }
         Relationships: [
           {
@@ -1084,6 +1396,20 @@ export type Database = {
             referencedColumns: ["account_id"]
           },
           {
+            foreignKeyName: "journal_lines_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_account_balances"
+            referencedColumns: ["bank_account_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "journal_lines_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -1095,6 +1421,20 @@ export type Database = {
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_petty_cash_fund_id_fkey"
+            columns: ["petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_fund_balances"
+            referencedColumns: ["petty_cash_fund_id"]
+          },
+          {
+            foreignKeyName: "journal_lines_petty_cash_fund_id_fkey"
+            columns: ["petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_funds"
             referencedColumns: ["id"]
           },
         ]
@@ -1334,6 +1674,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          bank_account_id: string | null
           cancel_reason: string | null
           created_at: string
           created_by: string | null
@@ -1344,6 +1685,7 @@ export type Database = {
           party_id: string
           payment_date: string
           payment_no: string
+          petty_cash_fund_id: string | null
           reference_no: string | null
           row_version: number
           status: string
@@ -1353,6 +1695,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bank_account_id?: string | null
           cancel_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -1363,6 +1706,7 @@ export type Database = {
           party_id: string
           payment_date?: string
           payment_no: string
+          petty_cash_fund_id?: string | null
           reference_no?: string | null
           row_version?: number
           status?: string
@@ -1372,6 +1716,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           cancel_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -1382,6 +1727,7 @@ export type Database = {
           party_id?: string
           payment_date?: string
           payment_no?: string
+          petty_cash_fund_id?: string | null
           reference_no?: string | null
           row_version?: number
           status?: string
@@ -1391,10 +1737,73 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "payments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_account_balances"
+            referencedColumns: ["bank_account_id"]
+          },
+          {
+            foreignKeyName: "payments_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payments_party_id_fkey"
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_petty_cash_fund_id_fkey"
+            columns: ["petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_fund_balances"
+            referencedColumns: ["petty_cash_fund_id"]
+          },
+          {
+            foreignKeyName: "payments_petty_cash_fund_id_fkey"
+            columns: ["petty_cash_fund_id"]
+            isOneToOne: false
+            referencedRelation: "petty_cash_funds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petty_cash_funds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          custodian_user_id: string | null
+          fund_name: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          custodian_user_id?: string | null
+          fund_name: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          custodian_user_id?: string | null
+          fund_name?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_funds_custodian_user_id_fkey"
+            columns: ["custodian_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2608,6 +3017,23 @@ export type Database = {
       }
     }
     Views: {
+      bank_account_balances: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          balance: number | null
+          bank_account_id: string | null
+          bank_name: string | null
+          is_active: boolean | null
+        }
+        Relationships: []
+      }
+      cash_in_hand_balance: {
+        Row: {
+          balance: number | null
+        }
+        Relationships: []
+      }
       current_stock: {
         Row: {
           as_of: string | null
@@ -2678,6 +3104,24 @@ export type Database = {
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      petty_cash_fund_balances: {
+        Row: {
+          balance: number | null
+          custodian_user_id: string | null
+          fund_name: string | null
+          is_active: boolean | null
+          petty_cash_fund_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_funds_custodian_user_id_fkey"
+            columns: ["custodian_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2771,6 +3215,10 @@ export type Database = {
           tax_total: number
         }[]
       }
+      _fn_next_account_code: {
+        Args: { p_parent_code: string }
+        Returns: string
+      }
       _fn_post_journal_entry_core: {
         Args: {
           p_entry_date: string
@@ -2827,8 +3275,16 @@ export type Database = {
         Returns: undefined
       }
       fn_bootstrap_owner: { Args: never; Returns: undefined }
+      fn_cancel_contra_entry: {
+        Args: { p_reason: string; p_transfer_id: string }
+        Returns: undefined
+      }
       fn_cancel_delivery_challan: {
         Args: { p_dc_id: string; p_reason: string }
+        Returns: undefined
+      }
+      fn_cancel_expense: {
+        Args: { p_expense_id: string; p_reason: string }
         Returns: undefined
       }
       fn_cancel_invoice: {
@@ -2855,6 +3311,31 @@ export type Database = {
         Args: { p_reason: string; p_supplier_bill_id: string }
         Returns: undefined
       }
+      fn_create_bank_account: {
+        Args: {
+          p_account_name: string
+          p_account_number: string
+          p_bank_name: string
+          p_branch: string
+          p_opening_balance?: number
+          p_opening_balance_date?: string
+        }
+        Returns: string
+      }
+      fn_create_contra_entry: {
+        Args: {
+          p_amount: number
+          p_from_bank_account_id: string
+          p_from_petty_cash_fund_id: string
+          p_from_type: string
+          p_notes: string
+          p_to_bank_account_id: string
+          p_to_petty_cash_fund_id: string
+          p_to_type: string
+          p_transfer_date: string
+        }
+        Returns: string
+      }
       fn_create_delivery_challan: {
         Args: {
           p_delivery_date: string
@@ -2865,6 +3346,25 @@ export type Database = {
           p_vehicle_no: string
           p_warehouse_id: string
         }
+        Returns: string
+      }
+      fn_create_expense: {
+        Args: {
+          p_amount: number
+          p_bank_account_id: string
+          p_department: string
+          p_description: string
+          p_expense_date: string
+          p_expense_head_id: string
+          p_job_id: string
+          p_payment_source: string
+          p_petty_cash_fund_id: string
+          p_responsible_user_id: string
+        }
+        Returns: string
+      }
+      fn_create_expense_head: {
+        Args: { p_code: string; p_name: string }
         Returns: string
       }
       fn_create_grn: {
@@ -2904,12 +3404,23 @@ export type Database = {
         Args: {
           p_allocations: Json
           p_amount: number
+          p_bank_account_id?: string
           p_direction: string
           p_method: string
           p_notes: string
           p_party_id: string
           p_payment_date: string
+          p_petty_cash_fund_id?: string
           p_reference_no: string
+        }
+        Returns: string
+      }
+      fn_create_petty_cash_fund: {
+        Args: {
+          p_custodian_user_id: string
+          p_fund_name: string
+          p_opening_balance?: number
+          p_opening_balance_date?: string
         }
         Returns: string
       }

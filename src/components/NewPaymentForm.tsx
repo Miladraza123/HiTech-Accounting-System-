@@ -14,12 +14,16 @@ export function NewPaymentForm({
   defaultDirection,
   outstandingInvoices,
   outstandingBills,
+  bankAccounts,
+  pettyCashFunds,
 }: {
   parties: Tables<"parties">[];
   defaultPartyId: string;
   defaultDirection: "receipt" | "payment";
   outstandingInvoices: OutstandingInvoice[];
   outstandingBills: OutstandingBill[];
+  bankAccounts: Tables<"bank_accounts">[];
+  pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {
   const router = useRouter();
   const [direction, setDirection] = useState<"receipt" | "payment">(defaultDirection);
@@ -27,6 +31,9 @@ export function NewPaymentForm({
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState("");
+  const [source, setSource] = useState<"cash" | "bank" | "petty_cash">("cash");
+  const [bankAccountId, setBankAccountId] = useState("");
+  const [pettyCashFundId, setPettyCashFundId] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
   const [notes, setNotes] = useState("");
   const [allocAmounts, setAllocAmounts] = useState<Record<string, string>>({});
@@ -70,6 +77,14 @@ export function NewPaymentForm({
       setError("Allocation total amount se zyada nahi ho sakti.");
       return;
     }
+    if (source === "bank" && !bankAccountId) {
+      setError("Bank Account select karen.");
+      return;
+    }
+    if (source === "petty_cash" && !pettyCashFundId) {
+      setError("Petty Cash Fund select karen.");
+      return;
+    }
     const allocations: PaymentAllocationInput[] = rows
       .map((r) => ({ key: r.key, amount: Number(allocAmounts[r.key]) || 0 }))
       .filter((r) => r.amount > 0)
@@ -85,6 +100,8 @@ export function NewPaymentForm({
         amount: amountNum,
         notes: notes || null,
         allocations,
+        bank_account_id: source === "bank" ? bankAccountId : null,
+        petty_cash_fund_id: source === "petty_cash" ? pettyCashFundId : null,
       });
       if (res.error) setError(res.error);
       else router.push(`/payments/${res.id}`);
@@ -130,7 +147,7 @@ export function NewPaymentForm({
           </select>
         </label>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-ink-soft">Amount *</span>
             <input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="input" />
@@ -139,13 +156,52 @@ export function NewPaymentForm({
             <span className="text-xs font-medium text-ink-soft">Date</span>
             <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="input" />
           </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-ink-soft">Method</span>
-            <input value={method} onChange={(e) => setMethod(e.target.value)} className="input" placeholder="Cash / Bank Transfer / Cheque" />
-          </label>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-ink-soft">Cash/Bank Source *</span>
+          <div className="flex gap-4 text-sm">
+            {(["cash", "bank", "petty_cash"] as const).map((s) => (
+              <label key={s} className="flex items-center gap-1.5">
+                <input type="radio" checked={source === s} onChange={() => setSource(s)} />
+                {s === "cash" ? "Cash in Hand" : s === "bank" ? "Bank" : "Petty Cash"}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {source === "bank" && (
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Bank Account *</span>
+            <select value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} className="input">
+              <option value="">— Select —</option>
+              {bankAccounts.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.account_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {source === "petty_cash" && (
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Petty Cash Fund *</span>
+            <select value={pettyCashFundId} onChange={(e) => setPettyCashFundId(e.target.value)} className="input">
+              <option value="">— Select —</option>
+              {pettyCashFunds.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.fund_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Method / Note</span>
+            <input value={method} onChange={(e) => setMethod(e.target.value)} className="input" placeholder="e.g. Cheque, Online Transfer" />
+          </label>
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-ink-soft">Reference #</span>
             <input value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} className="input" placeholder="Cheque # / transaction id" />

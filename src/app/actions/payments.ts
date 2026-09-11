@@ -18,6 +18,8 @@ export async function createPaymentAction(input: {
   amount: number;
   notes: string | null;
   allocations: PaymentAllocationInput[];
+  bank_account_id?: string | null;
+  petty_cash_fund_id?: string | null;
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_payment", {
@@ -29,6 +31,8 @@ export async function createPaymentAction(input: {
     p_amount: input.amount,
     p_notes: input.notes as string,
     p_allocations: input.allocations,
+    p_bank_account_id: (input.bank_account_id ?? null) as string,
+    p_petty_cash_fund_id: (input.petty_cash_fund_id ?? null) as string,
   });
   if (error) return { error: error.message };
   revalidatePath("/payments");

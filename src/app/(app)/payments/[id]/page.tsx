@@ -19,13 +19,16 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
 
   const supabase = await createClient();
   const [{ data: payment }, { data: allocations }] = await Promise.all([
-    supabase.from("payments").select("*, parties(legal_name)").eq("id", id).maybeSingle(),
+    supabase.from("payments").select("*, parties(legal_name), bank_accounts(account_name), petty_cash_funds(fund_name)").eq("id", id).maybeSingle(),
     supabase.from("payment_allocations").select("*").eq("payment_id", id).order("created_at", { ascending: false }),
   ]);
 
   if (!payment) notFound();
 
   const party = payment.parties as unknown as { legal_name: string } | null;
+  const bank = payment.bank_accounts as unknown as { account_name: string } | null;
+  const fund = payment.petty_cash_funds as unknown as { fund_name: string } | null;
+  const sourceLabel = bank?.account_name ?? fund?.fund_name ?? "Cash in Hand";
   const canCancel = canManage && payment.status === "Posted";
 
   let allocRows: { key: string; label: string; date: string; outstanding: number }[] = [];
@@ -95,6 +98,10 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
             <div>
               <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">Unallocated</p>
               <p className={`mt-0.5 tabular ${payment.unallocated_amount > 0 ? "text-warn font-medium" : "text-ink"}`}>{payment.unallocated_amount.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">{payment.direction === "receipt" ? "Received Into" : "Paid From"}</p>
+              <p className="text-ink mt-0.5">{sourceLabel}</p>
             </div>
             {payment.method && (
               <div>

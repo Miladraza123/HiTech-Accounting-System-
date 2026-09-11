@@ -15,12 +15,14 @@ export default async function NewPaymentPage({
   const { party, direction } = await searchParams;
 
   const supabase = await createClient();
-  const [{ data: parties }, { data: invoiceOutstanding }, { data: invoices }, { data: billOutstanding }, { data: bills }] = await Promise.all([
+  const [{ data: parties }, { data: invoiceOutstanding }, { data: invoices }, { data: billOutstanding }, { data: bills }, { data: bankAccounts }, { data: pettyCashFunds }] = await Promise.all([
     supabase.from("parties").select("*").eq("is_active", true).order("legal_name"),
     supabase.from("invoice_outstanding").select("*").gt("outstanding_amount", 0),
     supabase.from("invoices").select("id, invoice_no, invoice_date"),
     supabase.from("supplier_bill_outstanding").select("*").gt("outstanding_amount", 0),
     supabase.from("supplier_bills").select("id, bill_no, bill_date"),
+    supabase.from("bank_accounts").select("*").eq("is_active", true).order("account_name"),
+    supabase.from("petty_cash_funds").select("*").eq("is_active", true).order("fund_name"),
   ]);
 
   const invoiceById = new Map((invoices ?? []).map((i) => [i.id, i]));
@@ -53,6 +55,8 @@ export default async function NewPaymentPage({
           bill_no: billById.get(o.supplier_bill_id!)?.bill_no ?? "",
           bill_date: billById.get(o.supplier_bill_id!)?.bill_date ?? "",
         }))}
+        bankAccounts={bankAccounts ?? []}
+        pettyCashFunds={pettyCashFunds ?? []}
       />
     </div>
   );

@@ -8,7 +8,104 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 8 — Multi-Unit Conversion (complete)
+## Status: Phase 9 — Cash, Bank & Expense Management (in progress)
+
+A second, much larger "is everything actually complete against the
+original prompt?" audit — this time reading the full original spec
+back line by line, not just re-checking what had shipped — found that
+several whole modules from the prompt were never built: Expense
+Management, Petty Cash, Cash/Bank transfers (Contra entries), manual
+Journal Vouchers, Vehicle/Fleet, Financial Statements (P&L/Balance
+Sheet), most of the requested Reports, Order Health/Stage Aging, Tasks
+& Follow-ups, Returns/Rejection/Replacement, Rate History, Period Lock,
+Daily Snapshot, and a configurable permission matrix. Agreed with the
+project owner to close these **phase by phase, carefully**, rather than
+all at once. This phase closes the first group: **Cash & Bank
+Management, Manual Journal Vouchers, Contra (fund transfer) Entries,
+Expense Management, and Petty Cash** (prompt §17, §18, §19, §42's
+Journal Voucher/Contra requirements).
+
+- **Cash split into three real accounts** — `1100 "Bank / Cash"` was,
+  since Phase 0, one combined account silently used for both cash and
+  every bank transaction. Split into `1050 Cash in Hand` (plain),
+  `1100 Bank Accounts` (control, sub-ledger = new `bank_accounts` table,
+  supports **multiple named bank accounts**, dimensioned by a new
+  `journal_lines.bank_account_id` column — the exact same pattern
+  `party_id` already uses for AR/AP), and `1060 Petty Cash` (control,
+  sub-ledger = new `petty_cash_funds` table, supports **multiple
+  custodians/locations**, same dimensioning pattern via
+  `journal_lines.petty_cash_fund_id`). Both new master tables support an
+  opening balance at creation (posts Dr the account / Cr `1900 Opening
+  Balance Equity`, mirroring how party opening balances already work —
+  no separate stored-balance field anywhere; every balance is always
+  derived live from the ledger, matching this system's approach
+  everywhere else).
+- **`/cash-bank`** — live Cash in Hand / total Bank / total Petty Cash /
+  grand total, plus a per-account and per-fund balance breakdown.
+- **Expense Management** (`/expenses`, `/setup/expense-heads`) —
+  configurable Expense Heads seeded with the prompt's own default list
+  (Fuel, Transport, Loading, Office, Site, Repair, Maintenance, Salary,
+  Utility, Miscellaneous); each head auto-creates its own P&L account
+  under a new `6000 Operating Expenses` parent the moment it's added, so
+  Setup stays a business-friendly list while accounting stays fully
+  double-entry underneath. Every expense records its payment source
+  (Cash / a specific Bank Account / a specific Petty Cash Fund) and can
+  optionally link to a Job, a responsible person, and a department, per
+  the prompt's requirement. Cancel reverses the posting, same pattern as
+  every other document in this system.
+- **Petty Cash** (`/setup/petty-cash-funds`) — multiple funds, each with
+  its own custodian and live balance; Expenses can draw directly from
+  any active fund.
+- **Contra / Fund Transfers** (`/transfers`) — Cash↔Bank, Bank↔Bank,
+  Bank↔Petty-Cash, any combination, in one screen; blocks a transfer to
+  itself, posts a balanced 2-line journal entry tagged with both ends'
+  dimension ids, cancellable (Owner only) with a reason.
+- **Manual Journal Vouchers** (`/journal-vouchers`) — this RPC
+  (`fn_post_journal_entry`) already existed, quietly, since Phase 0 (the
+  Opening Balances import already called it directly) but had no UI
+  until now; added a proper multi-line entry screen with a live
+  Debit=Credit balance indicator, account + Party/Bank/Petty-Cash
+  dimension pickers per line.
+- **A real correctness gap closed in `_fn_post_journal_entry_core`
+  itself** — the shared posting engine every single document type in
+  this system funnels through had **never validated that debits equal
+  credits**. Harmless as long as only pre-balanced, hardcoded jsonb from
+  trusted server functions ever reached it (true for every caller before
+  this phase) — but Journal Vouchers now let a human type arbitrary
+  amounts directly into that same engine, so an unbalanced entry is now
+  a real, guarded-against possibility. Added a hard `debit total = credit
+  total` check (rounded to paisa) that raises before any entry posts.
+- **A caught-before-shipping bug, same pattern as Phase 7's**: widening
+  `fn_create_payment` with two new optional trailing parameters via
+  `CREATE OR REPLACE` didn't replace the old 8-argument version — Postgres
+  identifies functions by name **and** parameter signature, so it silently
+  created a second overload, which would have made every existing
+  `fn_create_payment` RPC call ambiguous the moment the frontend started
+  passing the new arguments. Caught by inspecting `pg_proc` before calling
+  the phase done; fixed with an explicit `drop function` on the stale
+  8-arg signature, documented in its own migration rather than folded in
+  silently.
+- **Payments now know which specific account the money moved through**
+  — `NewPaymentForm` gained an explicit Cash / Bank / Petty Cash source
+  picker (replacing a free-text "Method" field that carried no real
+  accounting meaning); `payments` gained `bank_account_id` /
+  `petty_cash_fund_id` columns, and `fn_create_payment` /
+  `fn_cancel_payment` post to the right specific account instead of the
+  old always-1100 behaviour. A related fallback bug caught in the same
+  review — the case where neither id is set now unambiguously means
+  Cash in Hand (the UI always sends an explicit source), so the old
+  "default to the Bank control account" fallback was corrected to
+  default to `1050` instead, in its own follow-up migration.
+
+**Scope note:** this phase is deliberately just the cash/bank/expense
+slice of the larger gap list found in the re-audit above — Vehicle/
+Fleet, Financial Statements, the rest of the Reports list, Order
+Health/Stage Aging, Tasks, Returns, Rate History, Period Lock, Daily
+Snapshot, and the permission matrix are tracked as separate upcoming
+phases, not silently dropped.
+
+<details>
+<summary>Phase 8 — Multi-Unit Conversion (complete)</summary>
 
 All 7 originally planned phases were completed, then a direct
 "is everything actually complete against the prompt?" check turned up
@@ -89,6 +186,8 @@ advisories appeared after this migration (`item_alt_units.unit` and
 consistent with dozens of pre-existing unindexed/unused-index INFO
 findings already present across this schema; add if `item_alt_units`
 grows large enough to matter.
+
+</details>
 
 <details>
 <summary>Phase 7 — Hardening (complete)</summary>
@@ -522,11 +621,24 @@ src/
       supplier-bills/          — Supplier Bill list, create (from a 'stock'-type GRN), detail —
                                   payment history, cancel
       payments/                — Payment list, create (receipt or payment, bill-wise
-                                  allocation), detail — allocate remainder, cancel
+                                  allocation, Cash/Bank/Petty-Cash source), detail — allocate
+                                  remainder, cancel
+      cash-bank/                — live Cash in Hand / Bank / Petty Cash position, per-account
+                                  and per-fund balance breakdown
+      expenses/                 — Expense list, create (head + payment source + optional
+                                  Job/person/department link), detail, cancel
+      transfers/                — Contra / fund transfer list, create (Cash↔Bank↔Petty-Cash,
+                                  any combination), detail, cancel (Owner only)
+      journal-vouchers/         — Manual Journal Voucher list, create (multi-line, live
+                                  Debit=Credit balance check)
       reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle) +
                                   daily-ledger/, ar-aging/, ap-aging/, trial-balance/
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
+      setup/bank-accounts/     — bank account master (+ opening balance)
+      setup/petty-cash-funds/  — petty cash fund master (+ custodian, opening balance)
+      setup/expense-heads/     — configurable expense categories (each auto-creates its
+                                  own P&L account under 6000 Operating Expenses)
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
@@ -534,7 +646,7 @@ src/
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
-                                  parties, attachments)
+                                  cashBank, parties, attachments)
   components/                  — client-side form/UI components
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
