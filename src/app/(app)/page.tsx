@@ -18,6 +18,9 @@ export default async function HomePage() {
     { count: pendingAdjCount },
     { count: activeJobCount },
     { count: materialPendingJobCount },
+    { count: pendingPodCount },
+    { data: outstandingInvoices },
+    { data: outstandingBills },
   ] = await Promise.all([
     supabase.from("company").select("legal_name").maybeSingle(),
     supabase.from("warehouses").select("*", { count: "exact", head: true }),
@@ -30,7 +33,13 @@ export default async function HomePage() {
     supabase.from("stock_adjustments").select("*", { count: "exact", head: true }).eq("status", "Pending"),
     supabase.from("jobs").select("*", { count: "exact", head: true }).not("status", "in", "(Delivered,Cancelled)"),
     supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "MaterialPending"),
+    supabase.from("delivery_challans").select("*", { count: "exact", head: true }).eq("status", "Issued").eq("acceptance_status", "Pending"),
+    supabase.from("invoice_outstanding").select("outstanding_amount"),
+    supabase.from("supplier_bill_outstanding").select("outstanding_amount"),
   ]);
+
+  const totalReceivable = (outstandingInvoices ?? []).reduce((s, r) => s + (r.outstanding_amount ?? 0), 0);
+  const totalPayable = (outstandingBills ?? []).reduce((s, r) => s + (r.outstanding_amount ?? 0), 0);
 
   const checklist = [
     { label: "Company profile set", done: !!company, href: "/setup/company" },
@@ -48,8 +57,8 @@ export default async function HomePage() {
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
           {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query se
-          lekar Purchase, GRN, Inventory aur ab Fabrication/Jobs (Phase 4 tak) chal rahe hain.
-          Delivery, Invoicing aur Payments agle phases mein aayenge.
+          lekar Delivery, GST Invoicing aur bill-wise Payment/Recovery (Phase 5 tak) chal rahe hain.
+          Customer 360, Credit Control aur Reports agle phase mein aayenge.
         </p>
       </div>
 
@@ -86,6 +95,9 @@ export default async function HomePage() {
         <StatCard label="Pending Stock Adjustments" value={pendingAdjCount ?? 0} />
         <StatCard label="Active Jobs" value={activeJobCount ?? 0} />
         <StatCard label="Jobs — Material Pending" value={materialPendingJobCount ?? 0} />
+        <StatCard label="DC — POD Pending" value={pendingPodCount ?? 0} />
+        <StatCard label="Total Receivable (PKR)" value={totalReceivable} />
+        <StatCard label="Total Payable (PKR)" value={totalPayable} />
         <StatCard label="Clients / Suppliers" value={partyCount ?? 0} />
         <StatCard label="Warehouses" value={warehouseCount ?? 0} />
         <StatCard label="Team members" value={userCount ?? 0} />
@@ -94,8 +106,8 @@ export default async function HomePage() {
       <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
         <p className="font-medium text-ink mb-1">Aage kya?</p>
         <p>
-          Phase 5 mein Delivery Challan, Client Acceptance/POD, GST Invoice &amp; Billing aur
-          Bill-wise Payment/Recovery banega — sath hi Phase 3 se deferred Supplier Bill booking bhi.
+          Phase 6 mein Customer 360 Profile, Client Credit Control aur standard Reports (Daily
+          Ledger/Day Book included) banenge.
         </p>
       </div>
     </div>
@@ -105,7 +117,7 @@ export default async function HomePage() {
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-2xl font-semibold text-ink tabular">{value}</p>
+      <p className="text-2xl font-semibold text-ink tabular">{value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
       <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">{label}</p>
     </div>
   );

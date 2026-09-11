@@ -8,7 +8,62 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 4 — Fabrication & Jobs (complete)
+## Status: Phase 5 — Delivery, Invoicing & Payments (complete)
+
+Goods leave the warehouse, get billed with Pakistan's FBR GST, and get
+paid — bill-wise, in both directions (customer receipts and supplier
+payments) — closing the loop this system's blueprint laid out.
+
+- **Delivery Challan** — partial delivery against a Sales Order line is
+  fully supported (delivered qty can never exceed ordered qty — a hard
+  physical block, not a soft warning). Each line can optionally **issue
+  from warehouse stock** — left unchecked for goods whose cost was
+  already recognised earlier (a `direct`-PO Material Supply line, or a
+  Fabrication job's finished output, which was never itemized into
+  `stock_ledger` in the first place); checked, it posts Dr COGS
+  (business-line-specific: 5000 Material / 5010 Fabrication) / Cr Raw
+  Material Inventory (1310) at current weighted-average cost. A Job
+  whose Sales Order line becomes fully delivered auto-advances from
+  `ReadyForDispatch` to `Delivered`.
+- **Client Acceptance / POD** — Accept (name + optional note) or
+  Dispute (reason required), tracked separately from the DC's own
+  Issued/Cancelled status.
+- **GST Invoice & Billing** — a single Pakistan FBR Sales Tax rate per
+  line (no CGST/SGST/IGST split), invoiced strictly against **delivered**
+  qty (never ordered) — "bill what's been delivered". Posts Dr Trade
+  Receivables (1200) / Cr Sales Revenue (business-line-specific: 4000 /
+  4010) + Cr Output Sales Tax Payable (2400).
+- **Supplier Bill booking** (deferred from Phase 3) — clears GRN
+  Clearing (1330) into Trade Payables (2100) for `stock`-type GRNs only;
+  `direct`/`general` GRNs already booked Trade Payables straight at
+  receiving time and are refused here to prevent double-booking. Books
+  **all** lines of one GRN at once, at exactly the GRN's own rate/tax
+  (no override) so 1330 always nets to zero — and this is also where
+  reclaimable Input Sales Tax (1400) is recognised for the first time,
+  since GRN receiving happens before the supplier's actual tax invoice
+  exists.
+- **Bill-wise Payment & Recovery** — one `payments` table, both
+  directions: a customer **receipt** allocated against one or more
+  Invoices, or a supplier **payment** allocated against one or more
+  Supplier Bills. Allocation can be partial — the remainder sits as an
+  on-account advance (`unallocated_amount`) and can be applied later.
+  Posts Dr Bank/Cash (1100) / Cr Trade Receivables on a receipt, or
+  Dr Trade Payables / Cr Bank/Cash on a payment.
+- Cancelling anything in this phase is deliberately conservative: a DC
+  can't be cancelled once its Sales Order has an invoice; an Invoice or
+  Supplier Bill can't be cancelled once a payment has been allocated
+  against it — reverse the payment first. Every cancel reverses its own
+  journal entry.
+
+**Scope note:** Client Credit Control (credit-limit warnings at invoice
+time, aging, dashboards) is intentionally **not** in this phase — the
+`credit_limit`/`credit_days` columns have existed on `parties` since
+Phase 0 for exactly this, and it ships with Phase 6 (Customer 360 &
+Reports) alongside the Daily Ledger/Day Book, where it belongs next to
+the rest of the reporting suite rather than half-built here.
+
+<details>
+<summary>Phase 4 — Fabrication & Jobs (complete)</summary>
 
 Jobs (Work Orders) turn a Fabrication Sales Order line into a tracked
 production job — material requirement, reservation, issue, costing and
@@ -26,7 +81,7 @@ a status workflow, all in one place.
   and Owner/Production/Store can additionally **manually reserve** to
   prioritise an urgent job. Any gap between required and reserved shows
   as a **"Purchase Required"** shortage badge on the Job — a signal,
-  never a block. Inventory's own list page now also shows Reserved/Free
+  never a block. Inventory's own list page also shows Reserved/Free
   columns, not just On Hand.
 - **Job status workflow** — `MaterialPending → MaterialAvailable →
   FabricationStarted → InProcess → ReadyForDispatch → Delivered /
@@ -51,6 +106,8 @@ and are shown in the cost summary, but nothing posts to them yet since
 there's no payroll/expense-allocation system in this build to source
 those numbers from. This is a deliberate, called-out deferral, not a
 gap in the material-costing flow itself.
+
+</details>
 
 <details>
 <summary>Phase 3 — Purchase, GRN & Inventory (complete)</summary>
@@ -151,8 +208,7 @@ What's live in this phase:
   per-import batch record (`import_batches`). Opening Stock import
   arrives with the Inventory module (Phase 3).
 
-Phases 5–7 (Delivery/Invoicing/Payments, Customer 360 & Reports,
-Hardening) are not built yet.
+Phases 6–7 (Customer 360 & Reports, Hardening) are not built yet.
 
 </details>
 
@@ -197,14 +253,23 @@ src/
                                   material requirements, reserve/issue/return, progress,
                                   ready-for-dispatch, cancel, cost summary
       product-templates/       — BOM/Product Template list, create, detail
+      delivery-challans/       — DC list, create (from a Sales Order), detail —
+                                  Client Acceptance/POD, dispute, cancel
+      invoices/                — GST Invoice list, create (against delivered qty), detail —
+                                  payment history, cancel
+      supplier-bills/          — Supplier Bill list, create (from a 'stock'-type GRN), detail —
+                                  payment history, cancel
+      payments/                — Payment list, create (receipt or payment, bill-wise
+                                  allocation), detail — allocate remainder, cancel
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
-                                  salesOrders, purchaseOrders, items, inventory, jobs, parties,
-                                  attachments)
+                                  salesOrders, purchaseOrders, items, inventory, jobs,
+                                  deliveryChallans, invoices, supplierBills, payments,
+                                  parties, attachments)
   components/                  — client-side form/UI components
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types

@@ -219,6 +219,162 @@ export type Database = {
           },
         ]
       }
+      delivery_challan_lines: {
+        Row: {
+          dc_id: string
+          delivered_qty: number
+          description: string
+          id: string
+          issue_from_stock: boolean
+          item_id: string | null
+          sales_order_line_id: string
+          sort_order: number
+          unit: string | null
+        }
+        Insert: {
+          dc_id: string
+          delivered_qty: number
+          description: string
+          id?: string
+          issue_from_stock?: boolean
+          item_id?: string | null
+          sales_order_line_id: string
+          sort_order?: number
+          unit?: string | null
+        }
+        Update: {
+          dc_id?: string
+          delivered_qty?: number
+          description?: string
+          id?: string
+          issue_from_stock?: boolean
+          item_id?: string | null
+          sales_order_line_id?: string
+          sort_order?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_challan_lines_dc_id_fkey"
+            columns: ["dc_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_challans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challan_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challan_lines_sales_order_line_id_fkey"
+            columns: ["sales_order_line_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challan_lines_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      delivery_challans: {
+        Row: {
+          acceptance_status: string
+          accepted_at: string | null
+          accepted_by_name: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          dc_no: string
+          delivery_date: string
+          dispute_note: string | null
+          driver_name: string | null
+          id: string
+          party_id: string
+          remarks: string | null
+          row_version: number
+          sales_order_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vehicle_no: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          acceptance_status?: string
+          accepted_at?: string | null
+          accepted_by_name?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          dc_no: string
+          delivery_date?: string
+          dispute_note?: string | null
+          driver_name?: string | null
+          id?: string
+          party_id: string
+          remarks?: string | null
+          row_version?: number
+          sales_order_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          acceptance_status?: string
+          accepted_at?: string | null
+          accepted_by_name?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          dc_no?: string
+          delivery_date?: string
+          dispute_note?: string | null
+          driver_name?: string | null
+          id?: string
+          party_id?: string
+          remarks?: string | null
+          row_version?: number
+          sales_order_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_challans_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challans_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challans_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grn_lines: {
         Row: {
           grn_id: string
@@ -379,6 +535,153 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: []
+      }
+      invoice_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          id: string
+          invoice_id: string
+          item_id: string | null
+          qty: number
+          rate: number
+          sales_order_line_id: string
+          sort_order: number
+          tax_pct: number
+          unit: string | null
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          id?: string
+          invoice_id: string
+          item_id?: string | null
+          qty: number
+          rate?: number
+          sales_order_line_id: string
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          id?: string
+          invoice_id?: string
+          item_id?: string | null
+          qty?: number
+          rate?: number
+          sales_order_line_id?: string
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_outstanding"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_sales_order_line_id_fkey"
+            columns: ["sales_order_line_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          grand_total: number
+          id: string
+          invoice_date: string
+          invoice_no: string
+          party_id: string
+          row_version: number
+          sales_order_id: string
+          status: string
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_date?: string
+          invoice_no: string
+          party_id: string
+          row_version?: number
+          sales_order_id: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_date?: string
+          invoice_no?: string
+          party_id?: string
+          row_version?: number
+          sales_order_id?: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       items: {
         Row: {
@@ -896,6 +1199,137 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "party_contacts_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string | null
+          payment_id: string
+          supplier_bill_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          payment_id: string
+          supplier_bill_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          payment_id?: string
+          supplier_bill_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_outstanding"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_supplier_bill_id_fkey"
+            columns: ["supplier_bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bill_outstanding"
+            referencedColumns: ["supplier_bill_id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_supplier_bill_id_fkey"
+            columns: ["supplier_bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          method: string | null
+          notes: string | null
+          party_id: string
+          payment_date: string
+          payment_no: string
+          reference_no: string | null
+          row_version: number
+          status: string
+          unallocated_amount: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          party_id: string
+          payment_date?: string
+          payment_no: string
+          reference_no?: string | null
+          row_version?: number
+          status?: string
+          unallocated_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          party_id?: string
+          payment_date?: string
+          payment_no?: string
+          reference_no?: string | null
+          row_version?: number
+          status?: string
+          unallocated_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_party_id_fkey"
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
@@ -1853,6 +2287,156 @@ export type Database = {
           },
         ]
       }
+      supplier_bill_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          grn_line_id: string | null
+          id: string
+          item_id: string | null
+          qty: number
+          rate: number
+          sort_order: number
+          supplier_bill_id: string
+          tax_pct: number
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          grn_line_id?: string | null
+          id?: string
+          item_id?: string | null
+          qty: number
+          rate?: number
+          sort_order?: number
+          supplier_bill_id: string
+          tax_pct?: number
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          grn_line_id?: string | null
+          id?: string
+          item_id?: string | null
+          qty?: number
+          rate?: number
+          sort_order?: number
+          supplier_bill_id?: string
+          tax_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_bill_lines_grn_line_id_fkey"
+            columns: ["grn_line_id"]
+            isOneToOne: false
+            referencedRelation: "grn_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_bill_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_bill_lines_supplier_bill_id_fkey"
+            columns: ["supplier_bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bill_outstanding"
+            referencedColumns: ["supplier_bill_id"]
+          },
+          {
+            foreignKeyName: "supplier_bill_lines_supplier_bill_id_fkey"
+            columns: ["supplier_bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_bills: {
+        Row: {
+          bill_date: string
+          bill_no: string
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          grand_total: number
+          grn_id: string | null
+          id: string
+          purchase_order_id: string | null
+          row_version: number
+          status: string
+          subtotal: number
+          supplier_bill_ref: string | null
+          supplier_id: string
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bill_date?: string
+          bill_no: string
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          grn_id?: string | null
+          id?: string
+          purchase_order_id?: string | null
+          row_version?: number
+          status?: string
+          subtotal?: number
+          supplier_bill_ref?: string | null
+          supplier_id: string
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bill_date?: string
+          bill_no?: string
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          grn_id?: string | null
+          id?: string
+          purchase_order_id?: string | null
+          row_version?: number
+          status?: string
+          subtotal?: number
+          supplier_bill_ref?: string | null
+          supplier_id?: string
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_bills_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "grns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_bills_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_bills_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unit_conversions: {
         Row: {
           factor: number
@@ -1988,6 +2572,24 @@ export type Database = {
           },
         ]
       }
+      invoice_outstanding: {
+        Row: {
+          allocated_amount: number | null
+          grand_total: number | null
+          invoice_id: string | null
+          outstanding_amount: number | null
+          party_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reserved_stock: {
         Row: {
           item_id: string | null
@@ -2037,6 +2639,24 @@ export type Database = {
           },
         ]
       }
+      supplier_bill_outstanding: {
+        Row: {
+          allocated_amount: number | null
+          grand_total: number | null
+          outstanding_amount: number | null
+          supplier_bill_id: string | null
+          supplier_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_bills_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _fn_insert_quotation_lines: {
@@ -2082,6 +2702,10 @@ export type Database = {
         Args: { p_sales_order_id: string }
         Returns: undefined
       }
+      fn_allocate_payment: {
+        Args: { p_allocations: Json; p_payment_id: string }
+        Returns: undefined
+      }
       fn_amend_sales_order: {
         Args: {
           p_client_po_number: string
@@ -2099,8 +2723,20 @@ export type Database = {
         Returns: undefined
       }
       fn_bootstrap_owner: { Args: never; Returns: undefined }
+      fn_cancel_delivery_challan: {
+        Args: { p_dc_id: string; p_reason: string }
+        Returns: undefined
+      }
+      fn_cancel_invoice: {
+        Args: { p_invoice_id: string; p_reason: string }
+        Returns: undefined
+      }
       fn_cancel_job: {
         Args: { p_job_id: string; p_reason: string }
+        Returns: undefined
+      }
+      fn_cancel_payment: {
+        Args: { p_payment_id: string; p_reason: string }
         Returns: undefined
       }
       fn_cancel_purchase_order: {
@@ -2111,6 +2747,22 @@ export type Database = {
         Args: { p_reason: string; p_sales_order_id: string }
         Returns: undefined
       }
+      fn_cancel_supplier_bill: {
+        Args: { p_reason: string; p_supplier_bill_id: string }
+        Returns: undefined
+      }
+      fn_create_delivery_challan: {
+        Args: {
+          p_delivery_date: string
+          p_driver_name: string
+          p_lines: Json
+          p_remarks: string
+          p_sales_order_id: string
+          p_vehicle_no: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_grn: {
         Args: {
           p_lines: Json
@@ -2119,6 +2771,14 @@ export type Database = {
           p_remarks: string
           p_supplier_id: string
           p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_invoice: {
+        Args: {
+          p_invoice_date: string
+          p_lines: Json
+          p_sales_order_id: string
         }
         Returns: string
       }
@@ -2133,6 +2793,19 @@ export type Database = {
           p_sales_order_line_id: string
           p_start_date: string
           p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_payment: {
+        Args: {
+          p_allocations: Json
+          p_amount: number
+          p_direction: string
+          p_method: string
+          p_notes: string
+          p_party_id: string
+          p_payment_date: string
+          p_reference_no: string
         }
         Returns: string
       }
@@ -2194,6 +2867,14 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_supplier_bill: {
+        Args: {
+          p_bill_date: string
+          p_grn_id: string
+          p_supplier_bill_ref: string
+        }
+        Returns: string
+      }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_issue_job_material: {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
@@ -2221,6 +2902,14 @@ export type Database = {
           p_source_table: string
         }
         Returns: string
+      }
+      fn_record_dispute: {
+        Args: { p_dc_id: string; p_note: string }
+        Returns: undefined
+      }
+      fn_record_pod: {
+        Args: { p_accepted_by_name: string; p_dc_id: string; p_note: string }
+        Returns: undefined
       }
       fn_reject_stock_adjustment: {
         Args: { p_adjustment_id: string; p_note: string }
