@@ -8,7 +8,44 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 2 — Client PO / Sales Order (complete)
+## Status: Phase 3 — Purchase, GRN & Inventory (complete)
+
+The Item Master (raw material / stocked goods / fabrication products,
+with unit, HS Code, tax category) is now in place — everything from
+Quotations onward can reference a real item, not just free text.
+
+- **Purchase Orders** — three types matching §5's categories: `direct`
+  (against a specific client Sales Order, never touches stock — bypass
+  path for Material Supply), `stock` (into a warehouse), `general`
+  (misc expense, no inventory link).
+- **GRN (receiving)** — partial receiving is fully supported; stock
+  always moves by the **actual received qty**, never the ordered qty.
+  Every line shows ordered vs. previously-received vs. this-receipt vs.
+  short/excess (`short_excess_qty`, a generated column — negative is
+  short, positive is excess), exactly as specified.
+- **Stock ledger** — append-only, single source of truth for current
+  stock; a database function (`_fn_post_stock_ledger`) serializes
+  concurrent postings per item+warehouse with an advisory lock,
+  maintains a running balance and a weighted-average cost, and refuses
+  to let stock go negative.
+- **Stock adjustments require Owner approval** — Store can only
+  *request* one; approving is what actually moves stock and posts the
+  accounting entry (shortage = expense, excess = income), at the item's
+  current average cost.
+- **Accounting**: GRN on a `stock` line posts Dr Raw Material Inventory
+  / Cr GRN Clearing; `direct`/`general` receipts post straight to
+  Dr COGS-or-Expense (+ Input Tax) / Cr Trade Payables, per the
+  blueprint.
+
+**Scope note:** two things originally planned for this phase moved
+elsewhere for a good reason — **Material Reservation** (blueprint §8)
+is meaningless without a Job to reserve *for*, so it ships with Phase 4
+(Fabrication) instead. **Supplier Bill booking** (the step that clears
+GRN Clearing into Trade Payables) is deferred to Phase 5, alongside GST
+Invoice/Payment, for symmetry with the Accounts Receivable side.
+
+<details>
+<summary>Phase 2 — Client PO / Sales Order (complete)</summary>
 
 A Sales Order is created straight from a Quotation (lines pre-filled,
 editable), capturing the Client PO Number, PO date, delivery schedule,
@@ -26,6 +63,8 @@ auto-advances the Quotation to `Accepted` and the Query to `Won`.
 - Per-line `ordered_qty` / `delivered_qty` / `invoiced_qty` columns are
   already in place (stable line ids) for Phases 3–5 (GRN, Delivery
   Challan, Invoice) to update as those modules land.
+
+</details>
 
 <details>
 <summary>Phase 1 — Query & Quotation (complete)</summary>
@@ -64,9 +103,8 @@ What's live in this phase:
   per-import batch record (`import_batches`). Opening Stock import
   arrives with the Inventory module (Phase 3).
 
-Phases 3–7 (Purchase/GRN/Inventory, Fabrication/Jobs,
-Delivery/Invoicing/Payments, Customer 360 & Reports, Hardening) are not
-built yet.
+Phases 4–7 (Fabrication/Jobs, Delivery/Invoicing/Payments, Customer 360
+& Reports, Hardening) are not built yet.
 
 </details>
 
@@ -103,12 +141,16 @@ src/
       queries/                 — Query list, create, detail + activity timeline
       quotations/              — Quotation list, create (from a Query), detail
       sales-orders/            — Sales Order list, create (from a Quotation), detail + amendments
+      items/                   — Item Master (raw material / stocked goods / products)
+      purchase-orders/         — Purchase Order list, create, detail + GRN receiving
+      inventory/               — Current stock, per-item ledger drill-down, stock adjustments
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
-    actions/                   — Server Actions (auth, setup, import, queries, quotations, salesOrders, parties, attachments)
+    actions/                   — Server Actions (auth, setup, import, queries, quotations,
+                                  salesOrders, purchaseOrders, items, inventory, parties, attachments)
   components/                  — client-side form/UI components
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types

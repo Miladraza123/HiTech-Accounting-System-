@@ -14,6 +14,8 @@ export default async function HomePage() {
     { count: openQueryCount },
     { count: quotationCount },
     { count: openSoCount },
+    { count: openPoCount },
+    { count: pendingAdjCount },
   ] = await Promise.all([
     supabase.from("company").select("legal_name").maybeSingle(),
     supabase.from("warehouses").select("*", { count: "exact", head: true }),
@@ -22,6 +24,8 @@ export default async function HomePage() {
     supabase.from("queries").select("*", { count: "exact", head: true }).in("status", ["Open", "Quoted"]),
     supabase.from("quotations").select("*", { count: "exact", head: true }),
     supabase.from("sales_orders").select("*", { count: "exact", head: true }).not("status", "in", "(Closed,Cancelled)"),
+    supabase.from("purchase_orders").select("*", { count: "exact", head: true }).not("status", "in", "(Closed,Cancelled,Received)"),
+    supabase.from("stock_adjustments").select("*", { count: "exact", head: true }).eq("status", "Pending"),
   ]);
 
   const checklist = [
@@ -39,8 +43,8 @@ export default async function HomePage() {
           Assalam-o-Alaikum, {user?.fullName?.split(" ")[0] ?? "there"}
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query,
-          Quotation aur Sales Order (Phase 2 tak) chal rahe hain. Purchase/Inventory aur baqi
+          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query se
+          lekar Purchase, GRN aur Inventory (Phase 3 tak) chal rahe hain. Fabrication aur baqi
           modules agle phases mein aayenge.
         </p>
       </div>
@@ -74,6 +78,8 @@ export default async function HomePage() {
         <StatCard label="Open Queries" value={openQueryCount ?? 0} />
         <StatCard label="Quotations" value={quotationCount ?? 0} />
         <StatCard label="Active Sales Orders" value={openSoCount ?? 0} />
+        <StatCard label="Open Purchase Orders" value={openPoCount ?? 0} />
+        <StatCard label="Pending Stock Adjustments" value={pendingAdjCount ?? 0} />
         <StatCard label="Clients / Suppliers" value={partyCount ?? 0} />
         <StatCard label="Warehouses" value={warehouseCount ?? 0} />
         <StatCard label="Team members" value={userCount ?? 0} />
@@ -82,8 +88,8 @@ export default async function HomePage() {
       <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
         <p className="font-medium text-ink mb-1">Aage kya?</p>
         <p>
-          Phase 3 mein Purchase, GRN aur poora Inventory banega — supplier se raw material aane se
-          lekar warehouse stock tak, short/excess tracking ke sath.
+          Phase 4 mein Fabrication / Work Order banega — material reservation, shortage detection,
+          BOM templates aur job costing ke sath.
         </p>
       </div>
     </div>

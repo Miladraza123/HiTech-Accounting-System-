@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -214,6 +216,131 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "provinces"
             referencedColumns: ["code"]
+          },
+        ]
+      }
+      grn_lines: {
+        Row: {
+          grn_id: string
+          id: string
+          item_id: string | null
+          ordered_qty: number
+          po_line_id: string
+          previously_received_qty: number
+          rate: number
+          short_excess_qty: number | null
+          tax_pct: number
+          this_receipt_qty: number
+          total_received_qty: number | null
+          unit: string | null
+        }
+        Insert: {
+          grn_id: string
+          id?: string
+          item_id?: string | null
+          ordered_qty: number
+          po_line_id: string
+          previously_received_qty?: number
+          rate: number
+          short_excess_qty?: number | null
+          tax_pct?: number
+          this_receipt_qty: number
+          total_received_qty?: number | null
+          unit?: string | null
+        }
+        Update: {
+          grn_id?: string
+          id?: string
+          item_id?: string | null
+          ordered_qty?: number
+          po_line_id?: string
+          previously_received_qty?: number
+          rate?: number
+          short_excess_qty?: number | null
+          tax_pct?: number
+          this_receipt_qty?: number
+          total_received_qty?: number | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_lines_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "grns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_lines_po_line_id_fkey"
+            columns: ["po_line_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          grn_no: string
+          id: string
+          purchase_order_id: string
+          received_date: string
+          remarks: string | null
+          supplier_id: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          grn_no: string
+          id?: string
+          purchase_order_id: string
+          received_date?: string
+          remarks?: string | null
+          supplier_id: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          grn_no?: string
+          id?: string
+          purchase_order_id?: string
+          received_date?: string
+          remarks?: string | null
+          supplier_id?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grns_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -607,6 +734,155 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      purchase_order_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          id: string
+          item_id: string | null
+          ordered_qty: number
+          purchase_order_id: string
+          rate: number
+          received_qty: number
+          sort_order: number
+          tax_pct: number
+          unit: string | null
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          id?: string
+          item_id?: string | null
+          ordered_qty: number
+          purchase_order_id: string
+          rate: number
+          received_qty?: number
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          id?: string
+          item_id?: string | null
+          ordered_qty?: number
+          purchase_order_id?: string
+          rate?: number
+          received_qty?: number
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_lines_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_lines_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          expected_delivery: string | null
+          grand_total: number
+          id: string
+          linked_sales_order_id: string | null
+          po_no: string
+          purchase_type: string
+          responsible_user_id: string | null
+          row_version: number
+          status: string
+          subtotal: number
+          supplier_id: string
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+          warehouse_id: string | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_delivery?: string | null
+          grand_total?: number
+          id?: string
+          linked_sales_order_id?: string | null
+          po_no: string
+          purchase_type: string
+          responsible_user_id?: string | null
+          row_version?: number
+          status?: string
+          subtotal?: number
+          supplier_id: string
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id?: string | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_delivery?: string | null
+          grand_total?: number
+          id?: string
+          linked_sales_order_id?: string | null
+          po_no?: string
+          purchase_type?: string
+          responsible_user_id?: string | null
+          row_version?: number
+          status?: string
+          subtotal?: number
+          supplier_id?: string
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_linked_sales_order_id_fkey"
+            columns: ["linked_sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       queries: {
         Row: {
@@ -1086,6 +1362,126 @@ export type Database = {
           },
         ]
       }
+      stock_adjustments: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          item_id: string
+          qty_delta: number
+          reason: string
+          requested_at: string
+          requested_by: string | null
+          status: string
+          warehouse_id: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          item_id: string
+          qty_delta: number
+          reason: string
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          warehouse_id: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          item_id?: string
+          qty_delta?: number
+          reason?: string
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustments_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_ledger: {
+        Row: {
+          avg_cost: number
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          qty: number
+          rate: number
+          ref_id: string | null
+          ref_table: string | null
+          running_balance: number
+          txn_type: string
+          warehouse_id: string
+        }
+        Insert: {
+          avg_cost?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          qty: number
+          rate?: number
+          ref_id?: string | null
+          ref_table?: string | null
+          running_balance: number
+          txn_type: string
+          warehouse_id: string
+        }
+        Update: {
+          avg_cost?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          qty?: number
+          rate?: number
+          ref_id?: string | null
+          ref_table?: string | null
+          running_balance?: number
+          txn_type?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_ledger_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_ledger_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unit_conversions: {
         Row: {
           factor: number
@@ -1195,9 +1591,73 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      current_stock: {
+        Row: {
+          as_of: string | null
+          avg_cost: number | null
+          item_id: string | null
+          qty_on_hand: number | null
+          stock_value: number | null
+          warehouse_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_ledger_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_ledger_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      _fn_insert_quotation_lines: {
+        Args: { p_lines: Json; p_revision_id: string }
+        Returns: {
+          grand_total: number
+          subtotal: number
+          tax_total: number
+        }[]
+      }
+      _fn_post_journal_entry_core: {
+        Args: {
+          p_entry_date: string
+          p_lines: Json
+          p_narration: string
+          p_source_id: string
+          p_source_table: string
+        }
+        Returns: string
+      }
+      _fn_post_stock_ledger: {
+        Args: {
+          p_item_id: string
+          p_notes: string
+          p_qty: number
+          p_rate: number
+          p_ref_id: string
+          p_ref_table: string
+          p_txn_type: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      _fn_recalc_po_totals: {
+        Args: { p_purchase_order_id: string }
+        Returns: undefined
+      }
+      _fn_recalc_so_totals: {
+        Args: { p_sales_order_id: string }
+        Returns: undefined
+      }
       fn_amend_sales_order: {
         Args: {
           p_client_po_number: string
@@ -1210,21 +1670,38 @@ export type Database = {
         }
         Returns: string
       }
-      fn_bootstrap_owner: { Args: Record<PropertyKey, never>; Returns: undefined }
+      fn_approve_stock_adjustment: {
+        Args: { p_adjustment_id: string }
+        Returns: undefined
+      }
+      fn_bootstrap_owner: { Args: never; Returns: undefined }
+      fn_cancel_purchase_order: {
+        Args: { p_purchase_order_id: string; p_reason: string }
+        Returns: undefined
+      }
       fn_cancel_sales_order: {
         Args: { p_reason: string; p_sales_order_id: string }
         Returns: undefined
       }
-      fn_create_sales_order: {
+      fn_create_grn: {
         Args: {
-          p_business_line: string
-          p_client_po_number: string
-          p_confirm_duplicate?: boolean
-          p_delivery_schedule: string
           p_lines: Json
-          p_payment_terms: string
-          p_po_date: string
-          p_quotation_id: string
+          p_purchase_order_id: string
+          p_received_date: string
+          p_remarks: string
+          p_supplier_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_purchase_order: {
+        Args: {
+          p_expected_delivery: string
+          p_lines: Json
+          p_linked_sales_order_id: string
+          p_purchase_type: string
+          p_supplier_id: string
+          p_warehouse_id: string
         }
         Returns: string
       }
@@ -1251,6 +1728,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_sales_order: {
+        Args: {
+          p_business_line: string
+          p_client_po_number: string
+          p_confirm_duplicate?: boolean
+          p_delivery_schedule: string
+          p_lines: Json
+          p_payment_terms: string
+          p_po_date: string
+          p_quotation_id: string
+        }
+        Returns: string
+      }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_log_login: {
         Args: { p_device?: string; p_ip?: string }
@@ -1271,6 +1761,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_reject_stock_adjustment: {
+        Args: { p_adjustment_id: string; p_note: string }
+        Returns: undefined
+      }
+      fn_request_stock_adjustment: {
+        Args: {
+          p_item_id: string
+          p_qty_delta: number
+          p_reason: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_set_query_status: {
         Args: { p_note: string; p_query_id: string; p_status: string }
         Returns: undefined
@@ -1287,7 +1790,7 @@ export type Database = {
         Returns: undefined
       }
       has_role: { Args: { p_code: string }; Returns: boolean }
-      is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_owner: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -1298,13 +1801,126 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database["public"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Tables<T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])> =
-  (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends { Row: infer R } ? R : never
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T] extends { Insert: infer I } ? I : never
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T] extends { Update: infer U } ? U : never
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+
