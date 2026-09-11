@@ -71,6 +71,16 @@ rather than adding features — and found and fixed three.
 - Added `(app)/not-found.tsx` and `(app)/error.tsx` so a bad link or an
   unexpected error renders inside the app's own shell instead of
   Next.js's generic default pages.
+- **A genuinely missed promise, found and closed**: a direct
+  "is everything actually complete?" completeness check against the
+  original requirements — not just re-verifying what shipped — turned
+  up that **Opening Stock import** (entity_type `opening_stock`) had
+  been planned into `import_batches`' own check constraint since Phase
+  0 and explicitly promised for Phase 3, but Phase 3 shipped without
+  it and nothing since had circled back. Built now: `fn_import_opening_stock()`
+  (item code + warehouse code + qty + rate, posts through
+  `_fn_post_stock_ledger` and books Dr Raw Material Inventory / Cr
+  Opening Balance Equity) plus the matching Import Wizard row type.
 
 **Scope note:** this pass is a **targeted audit**, not an exhaustive
 one — it covered every `SECURITY DEFINER` function's privileges and
@@ -341,9 +351,11 @@ What's live in this phase:
   logged field-by-field (`audit_log`), plus a full login/logout session
   trail (`login_sessions`) separate from data-change history.
 - **Import Wizard** — CSV/Excel upload for existing Clients, Suppliers,
-  and Opening Receivables/Payables, with a preview step and a
-  per-import batch record (`import_batches`). Opening Stock import
-  arrives with the Inventory module (Phase 3).
+  Opening Receivables/Payables, and Opening Stock (item code + warehouse
+  code + qty + rate — added in Phase 7, closing a gap left open since
+  this note first said "arrives with Phase 3" and Phase 3 shipped
+  without it), with a preview step and a per-import batch record
+  (`import_batches`).
 
 All 7 planned phases are now built — see the top of this README for
 Phase 7 (Hardening).

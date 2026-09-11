@@ -5,11 +5,12 @@ import Papa from "papaparse";
 import {
   commitPartiesImportAction,
   commitOpeningBalancesImportAction,
+  commitOpeningStockImportAction,
   parseExcelFileAction,
   type ImportResult,
 } from "@/app/actions/import";
 
-type EntityType = "clients" | "suppliers" | "opening_receivables" | "opening_payables";
+type EntityType = "clients" | "suppliers" | "opening_receivables" | "opening_payables" | "opening_stock";
 
 const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: string[][] }[] = [
   {
@@ -46,6 +47,15 @@ const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: s
     sample: [
       ["party_name", "amount", "as_of_date", "narration"],
       ["Punjab Steel Mills", "180000", "2026-06-30", "Purani bill ka bacha hua"],
+    ],
+  },
+  {
+    value: "opening_stock",
+    label: "Opening Stock (existing raw material / warehouse stock)",
+    columns: ["item_code", "warehouse_code", "qty", "rate", "as_of_date", "notes"],
+    sample: [
+      ["item_code", "warehouse_code", "qty", "rate", "as_of_date", "notes"],
+      ["MS-PLATE-6MM", "WH-01", "500", "185.50", "2026-06-30", "Physical count se pehle"],
     ],
   },
 ];
@@ -121,6 +131,17 @@ export function ImportWizard() {
             province: r.province,
             credit_limit: r.credit_limit ? Number(r.credit_limit) : undefined,
             credit_days: r.credit_days ? Number(r.credit_days) : undefined,
+          }))
+        );
+      } else if (entity === "opening_stock") {
+        res = await commitOpeningStockImportAction(
+          rows.map((r) => ({
+            item_code: r.item_code,
+            warehouse_code: r.warehouse_code,
+            qty: Number(r.qty),
+            rate: Number(r.rate) || 0,
+            as_of_date: r.as_of_date,
+            notes: r.notes,
           }))
         );
       } else {

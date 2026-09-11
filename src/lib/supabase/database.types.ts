@@ -2932,6 +2932,19 @@ export type Database = {
         Returns: string
       }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
+      fn_import_opening_stock: {
+        Args: {
+          p_as_of_date: string
+          p_item_code: string
+          p_notes: string
+          p_qty: number
+          p_rate: number
+          p_ref_id: string
+          p_ref_table: string
+          p_warehouse_code: string
+        }
+        Returns: string
+      }
       fn_issue_job_material: {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined

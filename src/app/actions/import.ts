@@ -130,6 +130,74 @@ export async function commitPartiesImportAction(
   return { error: null, importedCount, rowErrors };
 }
 
+type OpeningStockRow = {
+  item_code: string;
+  warehouse_code: string;
+  qty: number;
+  rate: number;
+  as_of_date: string; // yyyy-mm-dd
+  notes?: string;
+};
+
+export async function commitOpeningStockImportAction(rows: OpeningStockRow[]): Promise<ImportResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: batch, error: batchErr } = await supabase
+    .from("import_batches")
+    .insert({ entity_type: "opening_stock", uploaded_by: user?.id, row_count: rows.length })
+    .select("id")
+    .single();
+
+  if (batchErr || !batch) {
+    return { error: batchErr?.message ?? "Batch nahi ban saka.", importedCount: 0, rowErrors: [] };
+  }
+
+  const rowErrors: { row: number; message: string }[] = [];
+  let importedCount = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r.item_code?.trim() || !r.warehouse_code?.trim() || !r.qty || !r.as_of_date) {
+      rowErrors.push({ row: i + 1, message: "Item code, warehouse code, qty aur date zaroori hain — row skip hui." });
+      continue;
+    }
+
+    const { error } = await supabase.rpc("fn_import_opening_stock", {
+      p_item_code: r.item_code.trim(),
+      p_warehouse_code: r.warehouse_code.trim(),
+      p_qty: r.qty,
+      p_rate: r.rate ?? 0,
+      p_as_of_date: r.as_of_date,
+      p_ref_table: "import_batches",
+      p_ref_id: batch.id,
+      p_notes: r.notes as string,
+    });
+
+    if (error) {
+      rowErrors.push({ row: i + 1, message: error.message });
+    } else {
+      importedCount++;
+    }
+  }
+
+  await supabase
+    .from("import_batches")
+    .update({
+      status: rowErrors.length === rows.length ? "failed" : "committed",
+      row_count: importedCount,
+      error_report: rowErrors.length ? rowErrors : null,
+      committed_at: new Date().toISOString(),
+    })
+    .eq("id", batch.id);
+
+  revalidatePath("/setup/import");
+  revalidatePath("/inventory");
+  return { error: null, importedCount, rowErrors };
+}
+
 export async function commitOpeningBalancesImportAction(
   entityType: "opening_receivables" | "opening_payables",
   rows: OpeningBalanceRow[]
