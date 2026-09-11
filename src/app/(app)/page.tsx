@@ -6,13 +6,21 @@ export default async function HomePage() {
   const user = await getCurrentUser();
   const supabase = await createClient();
 
-  const [{ data: company }, { count: warehouseCount }, { count: userCount }, { count: partyCount }] =
-    await Promise.all([
-      supabase.from("company").select("legal_name").maybeSingle(),
-      supabase.from("warehouses").select("*", { count: "exact", head: true }),
-      supabase.from("user_roles").select("*", { count: "exact", head: true }),
-      supabase.from("parties").select("*", { count: "exact", head: true }),
-    ]);
+  const [
+    { data: company },
+    { count: warehouseCount },
+    { count: userCount },
+    { count: partyCount },
+    { count: openQueryCount },
+    { count: quotationCount },
+  ] = await Promise.all([
+    supabase.from("company").select("legal_name").maybeSingle(),
+    supabase.from("warehouses").select("*", { count: "exact", head: true }),
+    supabase.from("user_roles").select("*", { count: "exact", head: true }),
+    supabase.from("parties").select("*", { count: "exact", head: true }),
+    supabase.from("queries").select("*", { count: "exact", head: true }).in("status", ["Open", "Quoted"]),
+    supabase.from("quotations").select("*", { count: "exact", head: true }),
+  ]);
 
   const checklist = [
     { label: "Company profile set", done: !!company, href: "/setup/company" },
@@ -29,9 +37,9 @@ export default async function HomePage() {
           Assalam-o-Alaikum, {user?.fullName?.split(" ")[0] ?? "there"}
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Phase 0
-          (Foundation) mukammal ho chuki hai. Query, Quotation aur baqi kaam wale modules agle
-          phases mein aayenge.
+          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query
+          aur Quotation (Phase 1) chal rahe hain. Sales Order, Purchase/Inventory aur baqi modules
+          agle phases mein aayenge.
         </p>
       </div>
 
@@ -61,16 +69,18 @@ export default async function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Open Queries" value={openQueryCount ?? 0} />
+        <StatCard label="Quotations" value={quotationCount ?? 0} />
+        <StatCard label="Clients / Suppliers" value={partyCount ?? 0} />
         <StatCard label="Warehouses" value={warehouseCount ?? 0} />
         <StatCard label="Team members" value={userCount ?? 0} />
-        <StatCard label="Clients / Suppliers" value={partyCount ?? 0} />
       </div>
 
       <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
         <p className="font-medium text-ink mb-1">Aage kya?</p>
         <p>
-          Phase 1 mein Query aur Quotation module banega — jahan se asal business ka kaam (client
-          inquiries, quotations, revisions) shuru hoga.
+          Phase 2 mein Client PO / Sales Order banega — Quotation confirm hote hi order track hona
+          shuru hoga, duplicate PO warning ke sath.
         </p>
       </div>
     </div>

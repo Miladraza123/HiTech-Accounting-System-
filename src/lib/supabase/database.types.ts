@@ -12,6 +12,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_timeline: {
+        Row: {
+          actor_id: string | null
+          at: string
+          event_type: string
+          id: string
+          next_followup_at: string | null
+          note: string | null
+          owner_id: string
+          owner_table: string
+        }
+        Insert: {
+          actor_id?: string | null
+          at?: string
+          event_type: string
+          id?: string
+          next_followup_at?: string | null
+          note?: string | null
+          owner_id: string
+          owner_table: string
+        }
+        Update: {
+          actor_id?: string | null
+          at?: string
+          event_type?: string
+          id?: string
+          next_followup_at?: string | null
+          note?: string | null
+          owner_id?: string
+          owner_table?: string
+        }
+        Relationships: []
+      }
       attachments: {
         Row: {
           file_path: string
@@ -575,6 +608,264 @@ export type Database = {
         }
         Relationships: []
       }
+      queries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          next_followup_at: string | null
+          notes: string | null
+          party_id: string
+          query_date: string
+          query_no: string
+          requirement: string
+          responsible_user_id: string | null
+          row_version: number
+          source: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          next_followup_at?: string | null
+          notes?: string | null
+          party_id: string
+          query_date?: string
+          query_no: string
+          requirement: string
+          responsible_user_id?: string | null
+          row_version?: number
+          source?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          next_followup_at?: string | null
+          notes?: string | null
+          party_id?: string
+          query_date?: string
+          query_no?: string
+          requirement?: string
+          responsible_user_id?: string | null
+          row_version?: number
+          source?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queries_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queries_source_fkey"
+            columns: ["source"]
+            isOneToOne: false
+            referencedRelation: "query_sources"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      query_sources: {
+        Row: {
+          code: string
+          name: string
+        }
+        Insert: {
+          code: string
+          name: string
+        }
+        Update: {
+          code?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      quotation_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          id: string
+          item_id: string | null
+          qty: number
+          rate: number
+          revision_id: string
+          sort_order: number
+          tax_pct: number
+          unit: string | null
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          id?: string
+          item_id?: string | null
+          qty: number
+          rate: number
+          revision_id: string
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          id?: string
+          item_id?: string | null
+          qty?: number
+          rate?: number
+          revision_id?: string
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_lines_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "quotation_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_lines_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      quotation_revisions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delivery_terms: string | null
+          grand_total: number
+          id: string
+          is_current: boolean
+          payment_terms: string | null
+          quotation_id: string
+          reason: string | null
+          rev_no: number
+          subtotal: number
+          tax_total: number
+          terms: string | null
+          validity_date: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delivery_terms?: string | null
+          grand_total?: number
+          id?: string
+          is_current?: boolean
+          payment_terms?: string | null
+          quotation_id: string
+          reason?: string | null
+          rev_no: number
+          subtotal?: number
+          tax_total?: number
+          terms?: string | null
+          validity_date?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delivery_terms?: string | null
+          grand_total?: number
+          id?: string
+          is_current?: boolean
+          payment_terms?: string | null
+          quotation_id?: string
+          reason?: string | null
+          rev_no?: number
+          subtotal?: number
+          tax_total?: number
+          terms?: string | null
+          validity_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_revisions_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          party_id: string
+          query_id: string
+          quotation_no: string
+          responsible_user_id: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          party_id: string
+          query_id: string
+          quotation_no: string
+          responsible_user_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          party_id?: string
+          query_id?: string
+          quotation_no?: string
+          responsible_user_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roles: {
         Row: {
           code: string
@@ -709,12 +1000,39 @@ export type Database = {
     }
     Functions: {
       fn_bootstrap_owner: { Args: Record<PropertyKey, never>; Returns: undefined }
+      fn_create_quotation: {
+        Args: {
+          p_delivery_terms: string
+          p_lines: Json
+          p_payment_terms: string
+          p_query_id: string
+          p_terms: string
+          p_validity_date: string
+        }
+        Returns: string
+      }
+      fn_create_quotation_revision: {
+        Args: {
+          p_delivery_terms: string
+          p_lines: Json
+          p_payment_terms: string
+          p_quotation_id: string
+          p_reason: string
+          p_terms: string
+          p_validity_date: string
+        }
+        Returns: string
+      }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_log_login: {
         Args: { p_device?: string; p_ip?: string }
         Returns: string
       }
       fn_log_logout: { Args: { p_session_id: string }; Returns: undefined }
+      fn_mark_quotation_sent: {
+        Args: { p_quotation_id: string }
+        Returns: undefined
+      }
       fn_post_journal_entry: {
         Args: {
           p_entry_date: string
@@ -724,6 +1042,21 @@ export type Database = {
           p_source_table: string
         }
         Returns: string
+      }
+      fn_set_query_status: {
+        Args: { p_note: string; p_query_id: string; p_status: string }
+        Returns: undefined
+      }
+      fn_update_draft_quotation: {
+        Args: {
+          p_delivery_terms: string
+          p_lines: Json
+          p_payment_terms: string
+          p_quotation_id: string
+          p_terms: string
+          p_validity_date: string
+        }
+        Returns: undefined
       }
       has_role: { Args: { p_code: string }; Returns: boolean }
       is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }

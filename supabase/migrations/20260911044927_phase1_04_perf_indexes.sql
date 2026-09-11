@@ -1,0 +1,10 @@
+create index idx_activity_actor on public.activity_timeline(actor_id);
+create index idx_queries_created_by on public.queries(created_by);
+create index idx_queries_source on public.queries(source);
+create index idx_queries_updated_by on public.queries(updated_by);
+create index idx_qlines_item on public.quotation_lines(item_id);
+create index idx_qlines_unit on public.quotation_lines(unit);
+create index idx_qrev_created_by on public.quotation_revisions(created_by);
+create index idx_quotations_created_by on public.quotations(created_by);
+create index idx_quotations_responsible on public.quotations(responsible_user_id);
+create index idx_quotations_updated_by on public.quotations(updated_by);
