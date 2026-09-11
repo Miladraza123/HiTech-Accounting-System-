@@ -17,13 +17,23 @@ export default async function NewSalesOrderPage({
 
   const supabase = await createClient();
   const [{ data: quotation }, { data: items }, { data: units }, { data: company }] = await Promise.all([
-    supabase.from("quotations").select("*, parties(legal_name)").eq("id", quotation_id).maybeSingle(),
+    supabase.from("quotations").select("*, parties(legal_name, credit_limit)").eq("id", quotation_id).maybeSingle(),
     supabase.from("items").select("*").eq("is_active", true).order("item_code"),
     supabase.from("units").select("*").order("code"),
     supabase.from("company").select("default_sales_tax_pct").maybeSingle(),
   ]);
 
   if (!quotation) notFound();
+
+  let creditWarning: string | null = null;
+  const partyInfo = quotation.parties as unknown as { legal_name: string; credit_limit: number } | null;
+  if (partyInfo && partyInfo.credit_limit > 0) {
+    const { data: ar } = await supabase.from("party_ar_summary").select("total_outstanding").eq("party_id", quotation.party_id).maybeSingle();
+    const outstanding = ar?.total_outstanding ?? 0;
+    if (outstanding >= partyInfo.credit_limit) {
+      creditWarning = `${partyInfo.legal_name} ki current outstanding (${outstanding.toLocaleString()}) already credit limit (${partyInfo.credit_limit.toLocaleString()}) tak ya us se zyada hai`;
+    }
+  }
 
   const { data: revision } = await supabase
     .from("quotation_revisions")
@@ -36,8 +46,6 @@ export default async function NewSalesOrderPage({
     ? await supabase.from("quotation_lines").select("*").eq("revision_id", revision.id).order("sort_order")
     : { data: [] };
 
-  const party = quotation.parties as unknown as { legal_name: string } | null;
-
   return (
     <div className="space-y-4">
       <div>
@@ -45,7 +53,7 @@ export default async function NewSalesOrderPage({
           ← {quotation.quotation_no}
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Nayi Sales Order</h1>
-        <p className="text-sm text-ink-soft">{party?.legal_name} — Quotation lines se pre-filled, zaroorat ho to badal len.</p>
+        <p className="text-sm text-ink-soft">{partyInfo?.legal_name} — Quotation lines se pre-filled, zaroorat ho to badal len.</p>
       </div>
 
       <NewSalesOrderForm
@@ -55,6 +63,7 @@ export default async function NewSalesOrderPage({
         units={units ?? []}
         defaultPaymentTerms={revision?.payment_terms ?? null}
         defaultTaxPct={company?.default_sales_tax_pct ?? 18}
+        creditWarning={creditWarning}
       />
     </div>
   );

@@ -42,3 +42,13 @@ export async function togglePartyActiveAction(id: string, isActive: boolean) {
   await supabase.from("parties").update({ is_active: isActive }).eq("id", id);
   revalidatePath("/clients");
 }
+
+export async function updateCreditTermsAction(id: string, creditLimit: number, creditDays: number): Promise<ActionResult> {
+  if (creditLimit < 0 || creditDays < 0) return { error: "Negative value nahi ho sakti." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("parties").update({ credit_limit: creditLimit, credit_days: creditDays }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath(`/clients/${id}`);
+  revalidatePath("/clients");
+  return { error: null, success: true };
+}

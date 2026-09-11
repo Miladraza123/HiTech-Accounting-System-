@@ -8,7 +8,59 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 5 — Delivery, Invoicing & Payments (complete)
+## Status: Phase 6 — Customer 360 & Reports (complete)
+
+Every client/supplier now has a single profile pulling together their
+whole history and live financial position, credit exposure is visible
+(and flagged) before it becomes a problem, and the accounting engine
+built since Phase 0 finally surfaces as real reports.
+
+- **Customer 360 Profile** (`/clients/[id]`) — one page per party:
+  outstanding receivable/payable, credit limit/days, an AR aging strip,
+  and every linked record (Queries, Quotations, Sales Orders, Delivery
+  Challans, Invoices, Purchase Orders, Supplier Bills, Payments —
+  whichever apply to that party's `client`/`supplier`/`both` type), each
+  a clickable list straight into its own detail page.
+- **Client Credit Control** — `credit_limit`/`credit_days` (on `parties`
+  since Phase 0) are now load-bearing: Owner can edit them inline on the
+  profile; Available Credit and an over-limit flag are computed live
+  from `party_ar_summary`; creating a Sales Order shows a **soft
+  warning** banner when that client is already at/over their limit —
+  informative, never a hard block, consistent with this system's
+  duplicate-PO-style philosophy throughout. AR/AP Aging (Current /
+  1-30 / 31-60 / 61-90 / 90+, bucketed off each invoice/bill's own
+  `invoice_date`/`bill_date` + that party's `credit_days`) is both on
+  the profile and as a standalone report.
+- **Reports** (`/reports`, gated to Owner/Accounts/Auditor — the same
+  roles the blueprint's permission matrix already gives ledger access):
+  - **Owner Dashboard** — a Material Supply / Fabrication / Combined
+    toggle over Active Sales Orders, Order Value, Invoiced, Outstanding
+    Receivable, and (Fabrication) Active Jobs — the split-and-combined
+    view called for from day one of the design discussion.
+  - **Daily Ledger / Day Book** — every journal entry for a chosen date,
+    full debit/credit lines with account and party, day totals.
+  - **AR Aging** / **AP Aging** — client-wise and supplier-wise
+    outstanding in the same 5 buckets, with a balancing total row.
+  - **Trial Balance** — every account's debit/credit rollup off the live
+    journal, Dr/Cr-labelled by each account's normal balance side.
+- Two new lightweight views (`party_ar_summary`, `party_ap_summary`) and
+  one (`trial_balance`) — all `security_invoker=true` from the start,
+  the lesson Phase 4 paid for the hard way. No new tables, no changes to
+  any existing Phase 1-5 posting function: this phase is entirely
+  additive and read-side.
+
+**Scope note:** the credit-limit warning is a **pre-flight check in the
+Sales Order creation page**, not an enforcement baked into
+`fn_create_sales_order`/`fn_create_invoice` themselves — a deliberate
+call to avoid touching those already-deployed, financially-live
+functions for a check that's advisory by design (per the "warning, not
+block" pattern this system already uses for duplicate POs). A
+theoretical race between the check and the actual order isn't closed by
+this, same as duplicate-PO detection isn't atomic either — acceptable
+for a soft warning, not for something that must hold under concurrency.
+
+<details>
+<summary>Phase 5 — Delivery, Invoicing & Payments (complete)</summary>
 
 Goods leave the warehouse, get billed with Pakistan's FBR GST, and get
 paid — bill-wise, in both directions (customer receipts and supplier
@@ -56,11 +108,13 @@ payments) — closing the loop this system's blueprint laid out.
   journal entry.
 
 **Scope note:** Client Credit Control (credit-limit warnings at invoice
-time, aging, dashboards) is intentionally **not** in this phase — the
+time, aging, dashboards) was intentionally **not** in this phase — the
 `credit_limit`/`credit_days` columns have existed on `parties` since
-Phase 0 for exactly this, and it ships with Phase 6 (Customer 360 &
-Reports) alongside the Daily Ledger/Day Book, where it belongs next to
-the rest of the reporting suite rather than half-built here.
+Phase 0 for exactly this, and it shipped with Phase 6 (Customer 360 &
+Reports) alongside the Daily Ledger/Day Book, next to the rest of the
+reporting suite rather than half-built here.
+
+</details>
 
 <details>
 <summary>Phase 4 — Fabrication & Jobs (complete)</summary>
@@ -208,7 +262,7 @@ What's live in this phase:
   per-import batch record (`import_batches`). Opening Stock import
   arrives with the Inventory module (Phase 3).
 
-Phases 6–7 (Customer 360 & Reports, Hardening) are not built yet.
+Phase 7 (Hardening) is not built yet.
 
 </details>
 
@@ -241,7 +295,8 @@ src/
     quotations/[id]/print/     — standalone print/PDF view (no sidebar chrome)
     (app)/                     — authenticated shell (sidebar, role-aware nav)
       bootstrap/               — first-run "claim Owner" screen
-      clients/                 — client/supplier (party) management
+      clients/                 — client/supplier (party) management + [id]/ Customer 360
+                                  Profile (credit terms, AR aging, every linked record)
       queries/                 — Query list, create, detail + activity timeline
       quotations/              — Quotation list, create (from a Query), detail
       sales-orders/            — Sales Order list, create (from a Quotation), detail + amendments
@@ -261,6 +316,8 @@ src/
                                   payment history, cancel
       payments/                — Payment list, create (receipt or payment, bill-wise
                                   allocation), detail — allocate remainder, cancel
+      reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle) +
+                                  daily-ledger/, ar-aging/, ap-aging/, trial-balance/
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/users/             — role assignment

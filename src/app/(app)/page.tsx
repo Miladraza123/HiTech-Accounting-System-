@@ -57,8 +57,8 @@ export default async function HomePage() {
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
           {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query se
-          lekar Delivery, GST Invoicing aur bill-wise Payment/Recovery (Phase 5 tak) chal rahe hain.
-          Customer 360, Credit Control aur Reports agle phase mein aayenge.
+          lekar Customer 360, Credit Control aur standard Reports (Phase 6 tak) chal rahe hain.
+          System hardening agle/last phase mein hogi.
         </p>
       </div>
 
@@ -106,8 +106,8 @@ export default async function HomePage() {
       <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
         <p className="font-medium text-ink mb-1">Aage kya?</p>
         <p>
-          Phase 6 mein Customer 360 Profile, Client Credit Control aur standard Reports (Daily
-          Ledger/Day Book included) banenge.
+          Phase 7 mein system hardening hogi — end-to-end testing, edge cases, performance aur
+          security ka final review.
         </p>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { PartyForm } from "@/components/PartyForm";
@@ -41,7 +42,11 @@ export default async function ClientsPage() {
             <tbody>
               {(parties ?? []).map((p) => (
                 <tr key={p.id} className="border-t border-line">
-                  <td className="px-4 py-2.5 text-ink whitespace-nowrap">{p.legal_name}</td>
+                  <td className="px-4 py-2.5 text-ink whitespace-nowrap">
+                    <Link href={`/clients/${p.id}`} className="text-accent-ink underline underline-offset-2">
+                      {p.legal_name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">{TYPE_LABEL[p.party_type] ?? p.party_type}</td>
                   <td className="px-4 py-2.5 text-ink-soft font-mono text-xs whitespace-nowrap">
                     {[p.ntn, p.strn].filter(Boolean).join(" / ") || "—"}

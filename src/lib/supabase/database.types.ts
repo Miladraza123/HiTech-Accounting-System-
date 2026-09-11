@@ -158,6 +158,13 @@ export type Database = {
             referencedRelation: "chart_of_accounts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chart_of_accounts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["account_id"]
+          },
         ]
       }
       company: {
@@ -1020,6 +1027,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chart_of_accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["account_id"]
           },
           {
             foreignKeyName: "journal_lines_journal_entry_id_fkey"
@@ -2590,6 +2604,36 @@ export type Database = {
           },
         ]
       }
+      party_ap_summary: {
+        Row: {
+          supplier_id: string | null
+          total_outstanding: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_bills_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      party_ar_summary: {
+        Row: {
+          party_id: string | null
+          total_outstanding: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reserved_stock: {
         Row: {
           item_id: string | null
@@ -2656,6 +2700,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trial_balance: {
+        Row: {
+          account_id: string | null
+          account_type: string | null
+          balance: number | null
+          code: string | null
+          name: string | null
+          total_credit: number | null
+          total_debit: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {

@@ -39,6 +39,7 @@ export function NewSalesOrderForm({
   units,
   defaultPaymentTerms,
   defaultTaxPct,
+  creditWarning,
 }: {
   quotationId: string;
   quotationLines: Tables<"quotation_lines">[];
@@ -46,6 +47,7 @@ export function NewSalesOrderForm({
   units: Tables<"units">[];
   defaultPaymentTerms: string | null;
   defaultTaxPct: number;
+  creditWarning?: string | null;
 }) {
   const router = useRouter();
   const [lines, setLines] = useState<EditableLine[]>(fromQuotationLines(quotationLines, defaultTaxPct));
@@ -89,6 +91,11 @@ export function NewSalesOrderForm({
 
   return (
     <div className="space-y-4">
+      {creditWarning && (
+        <div className="rounded-md border border-warn bg-warn-soft px-4 py-2.5 text-sm text-warn">
+          ⚠ {creditWarning} — is se aage order continue kiya ja sakta hai, sirf aagahi ke liye hai.
+        </div>
+      )}
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <label className="block space-y-1.5">
