@@ -73,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 10 — Vehicle/Fleet &amp; Rider Expenses</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 11 — Financial Statements</p>
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5">

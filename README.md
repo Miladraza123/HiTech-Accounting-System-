@@ -8,7 +8,63 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 10 — Vehicle/Fleet & Engineer/Rider Expenses (complete)
+## Status: Phase 11 — Financial Statements (complete)
+
+Closing the third item on the gap list found by the Phase 9 re-audit:
+**Profit & Loss Statement, Balance Sheet, Cash Flow/Position, and proper
+running-balance Customer/Supplier/General Ledgers** (prompt §42, §50).
+Purely additive reporting — no new tables, no changes to any posting
+function; every figure is computed live off the same `journal_lines` /
+`chart_of_accounts` this system has posted to since Phase 0.
+
+- **`/reports/profit-loss`** — Revenue → COGS → Gross Profit → Operating
+  Expenses → Net Profit, for a date range (defaults to the current
+  fiscal year, matching the July–June FY convention this system's
+  numbering already uses). Every expense head from Phases 9-10 rolls up
+  automatically since they're all real chart-of-accounts children.
+- **`/reports/balance-sheet`** — Assets / Liabilities / Equity, live
+  snapshot (no historical "as of date" yet — noted as a scope limit,
+  not silently glossed over). Equity includes **Retained Earnings**
+  (accumulated Net Profit) since this system never runs a period-close
+  — the identity `Assets = Liabilities + Equity` is asserted and
+  flagged red on the page itself if it ever fails to hold.
+- **`/reports/cash-flow`** — Cash in Hand + Bank Accounts + Petty Cash
+  combined: opening/receipts/payments/closing for a date range, per
+  account and as a running-balance transaction list — this single page
+  covers the prompt's Cash Flow, Cash Book, and Bank Book requirements
+  together rather than as three separate reports.
+- **`/reports/party-ledger`** and **`/reports/general-ledger`** — pick
+  any client/supplier or any chart-of-accounts code and get its full
+  running-balance history — the Customer Ledger / Supplier Ledger /
+  General Ledger the prompt asked for, as one parametrized report each
+  instead of one page per party.
+- **Company Capital/Equity vs Working Capital**, now on the Owner
+  Dashboard (`/reports`) — the prompt explicitly warns against
+  conflating Cash Balance with Company Capital; Company Capital here is
+  genuine Equity + Retained Earnings, Working Capital is Total Assets −
+  Total Liabilities (flagged as an approximation, since this chart of
+  accounts doesn't yet distinguish current vs non-current — everything
+  in it today effectively is current).
+- **A real pre-existing classification bug found and fixed**: `1900
+  Opening Balance Equity` had been seeded back in Phase 0 with
+  `account_type='asset'` instead of `'equity'` — harmless until now
+  since nothing grouped accounts by type before, but it would have
+  silently misclassified every opening-balance entry on the new Balance
+  Sheet. Fixed as a pure label correction (no transactional data or
+  balances touched).
+- **A lint rule caught during this phase**: three new report pages
+  computed a running balance by mutating a loop variable while mapping
+  rows for render (`react-hooks/immutability`, part of this project's
+  existing lint config) — refactored to compute the running-balance
+  array once via `reduce` before rendering, in all three pages.
+
+**Scope note:** Order Health/Stage Aging, Tasks & Follow-ups, Returns/
+Rejection/Replacement, Rate History, Period Lock, Daily Snapshot, the
+rest of the requested operational Reports list, and the configurable
+permission matrix remain as separate upcoming phases.
+
+<details>
+<summary>Phase 10 — Vehicle/Fleet & Engineer/Rider Expenses (complete)</summary>
 
 Closing the second item on the gap list found by the Phase 9 re-audit
 (§20 Vehicle/Fleet Management, §21 Engineer/Rider Expense Tracking).
@@ -65,6 +121,8 @@ requested Reports, Order Health/Stage Aging, Tasks & Follow-ups,
 Returns/Rejection/Replacement, Rate History, Period Lock, Daily
 Snapshot, and the configurable permission matrix remain as separate
 upcoming phases.
+
+</details>
 
 <details>
 <summary>Phase 9 — Cash, Bank & Expense Management (complete)</summary>
@@ -692,9 +750,11 @@ src/
                                   any combination), detail, cancel (Owner only)
       journal-vouchers/         — Manual Journal Voucher list, create (multi-line, live
                                   Debit=Credit balance check)
-      reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle) +
-                                  daily-ledger/, ar-aging/, ap-aging/, trial-balance/,
-                                  vehicle-expenses/ (vehicle + rider-wise, cost/KM)
+      reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle,
+                                  Company Capital/Working Capital) + daily-ledger/,
+                                  ar-aging/, ap-aging/, trial-balance/, profit-loss/,
+                                  balance-sheet/, cash-flow/, party-ledger/,
+                                  general-ledger/, vehicle-expenses/
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/bank-accounts/     — bank account master (+ opening balance)

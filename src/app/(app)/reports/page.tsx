@@ -13,12 +13,27 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const selectedLine = line === "material_supply" || line === "fabrication" ? line : "combined";
 
   const supabase = await createClient();
-  const [{ data: salesOrders }, { data: invoices }, { data: outstandingRows }, { data: jobs }] = await Promise.all([
+  const [{ data: salesOrders }, { data: invoices }, { data: outstandingRows }, { data: jobs }, { data: tb }] = await Promise.all([
     supabase.from("sales_orders").select("id, business_line, status, grand_total").not("status", "in", "(Cancelled)"),
     supabase.from("invoices").select("id, sales_order_id, grand_total, status"),
     supabase.from("invoice_outstanding").select("invoice_id, outstanding_amount"),
     supabase.from("jobs").select("id, sales_order_id, status"),
+    supabase.from("trial_balance").select("*"),
   ]);
+
+  // Company Capital = Equity accounts + accumulated Retained Earnings (books
+  // are never period-closed, so retained earnings = all-time net profit).
+  // Working Capital here approximates Total Assets - Total Liabilities, since
+  // the chart of accounts doesn't yet distinguish current vs non-current —
+  // every asset/liability account today effectively IS current.
+  const totalAssets = (tb ?? []).filter((r) => r.account_type === "asset").reduce((s, r) => s + (r.balance ?? 0), 0);
+  const totalLiabilities = (tb ?? []).filter((r) => r.account_type === "liability").reduce((s, r) => s - (r.balance ?? 0), 0);
+  const totalEquityAccounts = (tb ?? []).filter((r) => r.account_type === "equity").reduce((s, r) => s - (r.balance ?? 0), 0);
+  const retainedEarnings =
+    (tb ?? []).filter((r) => r.account_type === "income").reduce((s, r) => s - (r.balance ?? 0), 0) -
+    (tb ?? []).filter((r) => r.account_type === "expense").reduce((s, r) => s + (r.balance ?? 0), 0);
+  const companyCapital = totalEquityAccounts + retainedEarnings;
+  const workingCapital = totalAssets - totalLiabilities;
 
   const soById = new Map((salesOrders ?? []).map((s) => [s.id, s]));
   const invoiceSoById = new Map((invoices ?? []).map((i) => [i.id, i.sales_order_id]));
@@ -92,11 +107,30 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <h2 className="text-sm font-semibold text-ink mb-3">Financial Position</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-2xl font-semibold text-ink tabular">{companyCapital.toLocaleString()}</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Company Capital / Equity</p>
+          </div>
+          <div>
+            <p className={`text-2xl font-semibold tabular ${workingCapital >= 0 ? "text-ink" : "text-bad"}`}>{workingCapital.toLocaleString()}</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Working Capital (approx.)</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <ReportLink href="/reports/daily-ledger" title="Daily Ledger / Day Book" desc="Kisi bhi din ki saari journal entries, debit/credit ke sath." />
         <ReportLink href="/reports/ar-aging" title="AR Aging" desc="Client-wise outstanding, aging buckets (Current, 1-30, 31-60, 61-90, 90+)." />
         <ReportLink href="/reports/ap-aging" title="AP Aging" desc="Supplier-wise outstanding, aging buckets." />
         <ReportLink href="/reports/trial-balance" title="Trial Balance" desc="Har account ka debit/credit total — poore ledger ka summary." />
+        <ReportLink href="/reports/profit-loss" title="Profit &amp; Loss Statement" desc="Revenue, COGS, Gross Profit, Operating Expenses, Net Profit — date range ke sath." />
+        <ReportLink href="/reports/balance-sheet" title="Balance Sheet" desc="Assets = Liabilities + Equity, live snapshot." />
+        <ReportLink href="/reports/cash-flow" title="Cash Flow &amp; Position" desc="Cash in Hand + Bank + Petty Cash — opening/receipts/payments/closing, combined Cash/Bank Book." />
+        <ReportLink href="/reports/party-ledger" title="Customer / Supplier Ledger" desc="Kisi bhi client/supplier ki poori running-balance ledger." />
+        <ReportLink href="/reports/general-ledger" title="General Ledger" desc="Kisi bhi account ki poori running-balance ledger." />
         <ReportLink href="/reports/vehicle-expenses" title="Vehicle &amp; Rider Expenses" desc="Vehicle-wise fuel/maintenance/cost-per-KM, aur Engineer/Rider-wise field expense totals." />
       </div>
     </div>
