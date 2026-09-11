@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f3ec;
+  --surface: #ffffff;
+  --surface-2: #efeae0;
+  --ink: #20242e;
+  --ink-soft: #565b68;
+  --ink-faint: #8b8f99;
+  --line: #ddd6c7;
+  --line-strong: #c6bda8;
+  --accent: #a85a28;
+  --accent-ink: #7a3f1b;
+  --accent-soft: #f0dec9;
+  --ledger: #2b3a55;
+  --ledger-soft: #e3e8f0;
+  --good: #3e6b4f;
+  --good-soft: #deebe1;
+  --warn: #946a1e;
+  --warn-soft: #f3e6c8;
+  --bad: #9c3b34;
+  --bad-soft: #f5dedb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171a21;
+    --surface: #1f232c;
+    --surface-2: #262b35;
+    --ink: #edebe3;
+    --ink-soft: #b4b8c2;
+    --ink-faint: #7c818c;
+    --line: #343a46;
+    --line-strong: #454c5a;
+    --accent: #e08a4f;
+    --accent-ink: #f2b383;
+    --accent-soft: #3a2a1c;
+    --ledger: #9db3d6;
+    --ledger-soft: #232b3b;
+    --good: #7fbe96;
+    --good-soft: #1e2e24;
+    --warn: #d8ae5c;
+    --warn-soft: #332a15;
+    --bad: #e08981;
+    --bad-soft: #33201d;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ledger: var(--ledger);
+  --color-ledger-soft: var(--ledger-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--line);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
