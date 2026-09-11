@@ -8,7 +8,27 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 1 — Query & Quotation (complete)
+## Status: Phase 2 — Client PO / Sales Order (complete)
+
+A Sales Order is created straight from a Quotation (lines pre-filled,
+editable), capturing the Client PO Number, PO date, delivery schedule,
+business line (Material Supply vs. Fabrication — this is what later
+powers the split Owner Dashboard), and payment terms. Creating it
+auto-advances the Quotation to `Accepted` and the Query to `Won`.
+
+- **Duplicate PO detection** — same client + same PO number surfaces as
+  a **warning** the user can proceed past (never a hard block); a
+  different client using the same PO number is fine and never flagged.
+- **Amendments, not overwrites** — every change to a confirmed order
+  snapshots the prior header+lines into `sales_order_revisions` first,
+  requires a reason, and a line that already has deliveries against it
+  (`delivered_qty > 0`) cannot be removed.
+- Per-line `ordered_qty` / `delivered_qty` / `invoiced_qty` columns are
+  already in place (stable line ids) for Phases 3–5 (GRN, Delivery
+  Challan, Invoice) to update as those modules land.
+
+<details>
+<summary>Phase 1 — Query & Quotation (complete)</summary>
 
 Clients & Suppliers (party master UI), Query capture with an activity/
 follow-up timeline and manual status transitions (On Hold / Lost /
@@ -17,6 +37,8 @@ against the item master or free-text, automatic tax totals, Draft →
 Sent workflow, versioned revisions (Rev-0, Rev-1, …) that are never
 overwritten, and a print/PDF view. Creating a Quotation automatically
 advances its Query from `Open` to `Quoted`.
+
+</details>
 
 <details>
 <summary>Phase 0 — Foundation (complete)</summary>
@@ -42,7 +64,7 @@ What's live in this phase:
   per-import batch record (`import_batches`). Opening Stock import
   arrives with the Inventory module (Phase 3).
 
-Phases 2–7 (Sales Orders, Purchase/GRN/Inventory, Fabrication/Jobs,
+Phases 3–7 (Purchase/GRN/Inventory, Fabrication/Jobs,
 Delivery/Invoicing/Payments, Customer 360 & Reports, Hardening) are not
 built yet.
 
@@ -80,12 +102,13 @@ src/
       clients/                 — client/supplier (party) management
       queries/                 — Query list, create, detail + activity timeline
       quotations/              — Quotation list, create (from a Query), detail
+      sales-orders/            — Sales Order list, create (from a Quotation), detail + amendments
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
-    actions/                   — Server Actions (auth, setup, import, queries, quotations, parties, attachments)
+    actions/                   — Server Actions (auth, setup, import, queries, quotations, salesOrders, parties, attachments)
   components/                  — client-side form/UI components
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types

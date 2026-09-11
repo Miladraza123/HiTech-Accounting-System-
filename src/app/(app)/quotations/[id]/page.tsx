@@ -28,13 +28,14 @@ export default async function QuotationDetailPage({
   const canEdit = isOwner(user) || hasRole(user, "sales");
 
   const supabase = await createClient();
-  const [{ data: quotation }, { data: revisions }, { data: items }, { data: units }, { data: attachments }] =
+  const [{ data: quotation }, { data: revisions }, { data: items }, { data: units }, { data: attachments }, { data: salesOrders }] =
     await Promise.all([
       supabase.from("quotations").select("*, parties(legal_name), queries(query_no)").eq("id", id).maybeSingle(),
       supabase.from("quotation_revisions").select("*").eq("quotation_id", id).order("rev_no", { ascending: false }),
       supabase.from("items").select("*").eq("is_active", true).order("item_code"),
       supabase.from("units").select("*").order("code"),
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
+      supabase.from("sales_orders").select("id, so_no, status").eq("quotation_id", id).order("created_at", { ascending: false }),
     ]);
 
   if (!quotation || !revisions?.length) notFound();
@@ -118,6 +119,28 @@ export default async function QuotationDetailPage({
         </div>
 
         <div className="space-y-6">
+          {canEdit && quotation.status !== "Draft" && (
+            <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+              <h2 className="text-sm font-semibold text-ink mb-1">Sales Order</h2>
+              {(salesOrders ?? []).map((so) => (
+                <Link
+                  key={so.id}
+                  href={`/sales-orders/${so.id}`}
+                  className="flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm hover:bg-surface-2 transition"
+                >
+                  <span className="font-mono text-xs text-accent-ink">{so.so_no}</span>
+                  <span className="text-xs text-ink-faint">{so.status}</span>
+                </Link>
+              ))}
+              <Link
+                href={`/sales-orders/new?quotation_id=${id}`}
+                className="block text-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition"
+              >
+                + Client PO Aa Gaya — Sales Order Banayen
+              </Link>
+            </div>
+          )}
+
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Revision History</h2>
             {revisions.map((r) => (

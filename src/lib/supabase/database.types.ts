@@ -887,6 +887,205 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_order_lines: {
+        Row: {
+          amount: number | null
+          delivered_qty: number
+          description: string
+          id: string
+          invoiced_qty: number
+          item_id: string | null
+          ordered_qty: number
+          rate: number
+          sales_order_id: string
+          sort_order: number
+          tax_pct: number
+          unit: string | null
+        }
+        Insert: {
+          amount?: number | null
+          delivered_qty?: number
+          description: string
+          id?: string
+          invoiced_qty?: number
+          item_id?: string | null
+          ordered_qty: number
+          rate: number
+          sales_order_id: string
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Update: {
+          amount?: number | null
+          delivered_qty?: number
+          description?: string
+          id?: string
+          invoiced_qty?: number
+          item_id?: string | null
+          ordered_qty?: number
+          rate?: number
+          sales_order_id?: string
+          sort_order?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_lines_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_lines_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      sales_order_revisions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          rev_no: number
+          sales_order_id: string
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          rev_no: number
+          sales_order_id: string
+          snapshot: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          rev_no?: number
+          sales_order_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_revisions_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_orders: {
+        Row: {
+          business_line: string
+          cancel_reason: string | null
+          client_po_number: string
+          created_at: string
+          created_by: string | null
+          delivery_schedule: string | null
+          grand_total: number
+          id: string
+          party_id: string
+          payment_terms: string | null
+          po_date: string
+          query_id: string
+          quotation_id: string
+          responsible_user_id: string | null
+          row_version: number
+          so_no: string
+          status: string
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_line: string
+          cancel_reason?: string | null
+          client_po_number: string
+          created_at?: string
+          created_by?: string | null
+          delivery_schedule?: string | null
+          grand_total?: number
+          id?: string
+          party_id: string
+          payment_terms?: string | null
+          po_date?: string
+          query_id: string
+          quotation_id: string
+          responsible_user_id?: string | null
+          row_version?: number
+          so_no: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_line?: string
+          cancel_reason?: string | null
+          client_po_number?: string
+          created_at?: string
+          created_by?: string | null
+          delivery_schedule?: string | null
+          grand_total?: number
+          id?: string
+          party_id?: string
+          payment_terms?: string | null
+          po_date?: string
+          query_id?: string
+          quotation_id?: string
+          responsible_user_id?: string | null
+          row_version?: number
+          so_no?: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unit_conversions: {
         Row: {
           factor: number
@@ -999,7 +1198,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      fn_amend_sales_order: {
+        Args: {
+          p_client_po_number: string
+          p_delivery_schedule: string
+          p_lines: Json
+          p_payment_terms: string
+          p_po_date: string
+          p_reason: string
+          p_sales_order_id: string
+        }
+        Returns: string
+      }
       fn_bootstrap_owner: { Args: Record<PropertyKey, never>; Returns: undefined }
+      fn_cancel_sales_order: {
+        Args: { p_reason: string; p_sales_order_id: string }
+        Returns: undefined
+      }
+      fn_create_sales_order: {
+        Args: {
+          p_business_line: string
+          p_client_po_number: string
+          p_confirm_duplicate?: boolean
+          p_delivery_schedule: string
+          p_lines: Json
+          p_payment_terms: string
+          p_po_date: string
+          p_quotation_id: string
+        }
+        Returns: string
+      }
       fn_create_quotation: {
         Args: {
           p_delivery_terms: string

@@ -13,6 +13,7 @@ export default async function HomePage() {
     { count: partyCount },
     { count: openQueryCount },
     { count: quotationCount },
+    { count: openSoCount },
   ] = await Promise.all([
     supabase.from("company").select("legal_name").maybeSingle(),
     supabase.from("warehouses").select("*", { count: "exact", head: true }),
@@ -20,6 +21,7 @@ export default async function HomePage() {
     supabase.from("parties").select("*", { count: "exact", head: true }),
     supabase.from("queries").select("*", { count: "exact", head: true }).in("status", ["Open", "Quoted"]),
     supabase.from("quotations").select("*", { count: "exact", head: true }),
+    supabase.from("sales_orders").select("*", { count: "exact", head: true }).not("status", "in", "(Closed,Cancelled)"),
   ]);
 
   const checklist = [
@@ -37,9 +39,9 @@ export default async function HomePage() {
           Assalam-o-Alaikum, {user?.fullName?.split(" ")[0] ?? "there"}
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query
-          aur Quotation (Phase 1) chal rahe hain. Sales Order, Purchase/Inventory aur baqi modules
-          agle phases mein aayenge.
+          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query,
+          Quotation aur Sales Order (Phase 2 tak) chal rahe hain. Purchase/Inventory aur baqi
+          modules agle phases mein aayenge.
         </p>
       </div>
 
@@ -71,6 +73,7 @@ export default async function HomePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Open Queries" value={openQueryCount ?? 0} />
         <StatCard label="Quotations" value={quotationCount ?? 0} />
+        <StatCard label="Active Sales Orders" value={openSoCount ?? 0} />
         <StatCard label="Clients / Suppliers" value={partyCount ?? 0} />
         <StatCard label="Warehouses" value={warehouseCount ?? 0} />
         <StatCard label="Team members" value={userCount ?? 0} />
@@ -79,8 +82,8 @@ export default async function HomePage() {
       <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
         <p className="font-medium text-ink mb-1">Aage kya?</p>
         <p>
-          Phase 2 mein Client PO / Sales Order banega — Quotation confirm hote hi order track hona
-          shuru hoga, duplicate PO warning ke sath.
+          Phase 3 mein Purchase, GRN aur poora Inventory banega — supplier se raw material aane se
+          lekar warehouse stock tak, short/excess tracking ke sath.
         </p>
       </div>
     </div>

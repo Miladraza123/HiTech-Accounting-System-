@@ -24,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/clients", label: "Clients & Suppliers", show: true },
     { href: "/queries", label: "Queries", show: true },
     { href: "/quotations", label: "Quotations", show: true },
+    { href: "/sales-orders", label: "Sales Orders", show: true },
     { href: "/setup/company", label: "Company", show: owner },
     { href: "/setup/warehouses", label: "Warehouses", show: owner || user.roles.includes("store") },
     { href: "/setup/users", label: "Users & Roles", show: owner },
@@ -42,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 1 — Query &amp; Quotation</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 2 — Sales Order</p>
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5">
