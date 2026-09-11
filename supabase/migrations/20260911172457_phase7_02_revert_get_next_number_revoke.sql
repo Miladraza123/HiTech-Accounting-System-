@@ -1,0 +1,22 @@
+-- Revert part of phase7_01: fn_get_next_number IS a genuine, working
+-- direct call site — src/app/actions/queries.ts (createQueryAction)
+-- calls it straight from the Next.js server action, then does a plain
+-- table insert relying on the `queries` RLS INSERT policy
+-- (is_owner() or has_role('sales')) as the real authorization boundary.
+-- Query creation was never wrapped in its own SECURITY DEFINER function
+-- like every later document type was — a Phase 1 design inconsistency,
+-- not something to silently paper over mid-hardening-pass by breaking
+-- a real, working feature. Revoking authenticated access here would
+-- have broken Query creation entirely.
+--
+-- The original hardening motivation stands as a real, low-severity
+-- observation (any authenticated user, of any role or none, can call
+-- fn_get_next_number for ANY doc type and waste a sequence number
+-- without ever being able to create the corresponding document, since
+-- every document table's own RLS INSERT policy is the actual gate) —
+-- documented as a known, pre-existing, low-severity characteristic
+-- rather than fixed here, since the correct fix (wrapping Query
+-- creation in its own fn_create_query(), matching every other document
+-- type) is a large enough change to Phase 1's stable code that it
+-- belongs in its own reviewed change, not folded into this pass.
+grant execute on function public.fn_get_next_number(text) to authenticated;

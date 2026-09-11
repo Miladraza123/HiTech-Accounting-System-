@@ -3,17 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { EditCreditTermsForm } from "@/components/EditCreditTermsForm";
+import { agingBucket, dueDateFrom, emptyBuckets, bucketTotal } from "@/lib/aging";
 
 const TYPE_LABEL: Record<string, string> = { client: "Client", supplier: "Supplier", both: "Client + Supplier" };
-
-function agingBucket(dueDate: string): "current" | "d1_30" | "d31_60" | "d61_90" | "d90_plus" {
-  const days = Math.floor((Date.now() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "current";
-  if (days <= 30) return "d1_30";
-  if (days <= 60) return "d31_60";
-  if (days <= 90) return "d61_90";
-  return "d90_plus";
-}
 
 export default async function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,15 +54,13 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
 
   // AR aging for this client's still-outstanding invoices
   const outstandingByInvoiceId = new Map((invoiceOutstanding ?? []).map((o) => [o.invoice_id, o.outstanding_amount ?? 0]));
-  const buckets = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0 };
+  const buckets = emptyBuckets();
   for (const inv of invoices ?? []) {
     const out = outstandingByInvoiceId.get(inv.id) ?? 0;
     if (inv.status !== "Posted" || out <= 0.005) continue;
-    const dueDate = new Date(inv.invoice_date);
-    dueDate.setDate(dueDate.getDate() + (party.credit_days ?? 0));
-    buckets[agingBucket(dueDate.toISOString().slice(0, 10))] += out;
+    buckets[agingBucket(dueDateFrom(inv.invoice_date, party.credit_days ?? 0))] += out;
   }
-  const hasOpenInvoices = Object.values(buckets).some((v) => v > 0.005);
+  const hasOpenInvoices = bucketTotal(buckets) > 0.005;
 
   return (
     <div className="space-y-6">

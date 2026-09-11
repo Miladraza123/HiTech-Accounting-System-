@@ -8,7 +8,88 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 6 — Customer 360 & Reports (complete)
+## Status: Phase 7 — Hardening (complete, all 7 phases now built)
+
+All seven planned phases are now live: Foundation → Query & Quotation →
+Sales Order → Purchase/GRN/Inventory → Fabrication/Jobs →
+Delivery/Invoicing/Payments → Customer 360/Credit Control/Reports →
+this phase, which went back through Phases 0-6 looking for real bugs
+rather than adding features — and found and fixed three.
+
+- **Concurrency fixes** — two check-then-act races against live
+  aggregates (not a single row a plain lock could protect), the same
+  class of problem `_fn_post_stock_ledger` already solved for stock
+  postings back in Phase 3:
+  - `fn_reserve_job_material` / `fn_create_job`'s auto-reserve step read
+    `stock_availability.free_qty` then inserted a reservation — two
+    concurrent reserves on the same item+warehouse could each pass their
+    own check and together over-reserve past what's actually free.
+  - `fn_create_payment` / `fn_allocate_payment` read
+    `invoice_outstanding`/`supplier_bill_outstanding` then inserted an
+    allocation — two concurrent payments against the same Invoice/Bill
+    could each see the same outstanding balance and together
+    over-allocate it.
+  - Both fixed with `pg_advisory_xact_lock`, keyed by item+warehouse or
+    by invoice/bill id — the same pattern already proven in this
+    codebase, not a new mechanism.
+- **`fn_bootstrap_owner` race** — the one-time "claim Owner" call had
+  the same check-then-act shape (two people signing up in the same
+  instant could both become Owner); closed the same way, with a fixed
+  advisory-lock key since there's no row yet to lock.
+- **A caught-before-shipping regression**: the first hardening pass
+  revoked direct `authenticated` access to `fn_get_next_number`
+  (reasoning: no other document type calls it directly — every other
+  `fn_create_*` wraps it internally, so revoking should have been
+  transparent). Grepping the app code before calling it done turned up
+  one real exception: `createQueryAction` (Phase 1) calls it directly,
+  relying on the `queries` table's own RLS INSERT policy
+  (`is_owner() or has_role('sales')`) as the actual authorization
+  boundary. The revoke would have silently broken Query creation, so
+  it's reverted — documented in the migration itself as a known,
+  low-severity, pre-existing characteristic (any signed-in user can
+  waste a sequence number for any doc type without ever being able to
+  create the document behind it) rather than "fixed" by breaking a
+  working feature. Reported as-is, not swept under the rug.
+- **Security audit, clean** — every one of this project's ~44
+  `SECURITY DEFINER` functions confirmed to have `search_path=public`
+  set (blocks search-path-hijacking) and an explicit role check where
+  one belongs; every table in `public` confirmed to have RLS enabled
+  with at least one policy, no exceptions; both Storage buckets
+  (`attachments`, `imports`) confirmed private with policies scoped to
+  `authenticated` only (`anon` gets zero rows); `parties` deletion
+  confirmed structurally safe — every transactional table referencing
+  it uses `ON DELETE NO ACTION`, so Postgres itself refuses to delete a
+  party with real history even though the RLS policy alone would allow
+  the attempt.
+- **Code-quality cleanup** — the AR-aging bucket logic existed as three
+  separate copies (Customer 360, AR Aging report, AP Aging report);
+  consolidated into `src/lib/aging.ts`, now covered by unit tests
+  (`npm run test`, via a newly-added Vitest setup) — the first
+  automated tests in this codebase, scoped to pure calculation logic
+  that doesn't need a live database, since that's what this sandbox can
+  actually run and verify.
+- Added `(app)/not-found.tsx` and `(app)/error.tsx` so a bad link or an
+  unexpected error renders inside the app's own shell instead of
+  Next.js's generic default pages.
+
+**Scope note:** this pass is a **targeted audit**, not an exhaustive
+one — it covered every `SECURITY DEFINER` function's privileges and
+search_path, RLS coverage on every table, Storage bucket policies, FK
+delete behavior around `parties`, and check-then-act races on the
+functions most exposed to concurrent multi-user access (stock
+reservation, payment allocation, owner bootstrap). It did not attempt
+to re-derive or re-prove every business rule across all 6 prior phases
+from scratch — those were each verified at the time they shipped. Full
+live-auth browser/integration testing against the Supabase project
+remains blocked by this sandbox's own egress policy (unchanged since
+Phase 0) — the concurrency fixes above are reasoned from the function
+bodies and Postgres's documented locking semantics, and precedented by
+the identical pattern already proven correct in production-shape code
+since Phase 3, but were not exercised under real concurrent load in
+this sandbox.
+
+<details>
+<summary>Phase 6 — Customer 360 & Reports (complete)</summary>
 
 Every client/supplier now has a single profile pulling together their
 whole history and live financial position, credit exposure is visible
@@ -58,6 +139,8 @@ block" pattern this system already uses for duplicate POs). A
 theoretical race between the check and the actual order isn't closed by
 this, same as duplicate-PO detection isn't atomic either — acceptable
 for a soft warning, not for something that must hold under concurrency.
+
+</details>
 
 <details>
 <summary>Phase 5 — Delivery, Invoicing & Payments (complete)</summary>
@@ -262,7 +345,8 @@ What's live in this phase:
   per-import batch record (`import_batches`). Opening Stock import
   arrives with the Inventory module (Phase 3).
 
-Phase 7 (Hardening) is not built yet.
+All 7 planned phases are now built — see the top of this README for
+Phase 7 (Hardening).
 
 </details>
 
@@ -285,6 +369,12 @@ npm run dev
 The **first person to sign up** (`/signup`) is prompted to claim Owner
 access (`/bootstrap`) — after that, the Owner assigns roles to everyone
 else from **Users & Roles**.
+
+```bash
+npm run build   # production build + typecheck
+npm run lint    # eslint
+npm run test    # vitest — pure calculation logic (aging buckets), no DB needed
+```
 
 ## Project layout
 
@@ -323,6 +413,7 @@ src/
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
+      not-found.tsx, error.tsx — branded 404 / error boundary inside the app shell
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
@@ -331,6 +422,9 @@ src/
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers
+    aging.ts (+ aging.test.ts) — AR/AP aging-bucket logic, shared by Customer 360 and
+                                  the AR/AP Aging reports; the one thing in this repo
+                                  with an automated test (`npm run test`)
   proxy.ts                     — session refresh + route protection (Next.js 16's
                                   renamed middleware.ts)
 ```

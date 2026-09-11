@@ -2,18 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
-
-function agingBucket(dueDate: string): "current" | "d1_30" | "d31_60" | "d61_90" | "d90_plus" {
-  const days = Math.floor((Date.now() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "current";
-  if (days <= 30) return "d1_30";
-  if (days <= 60) return "d31_60";
-  if (days <= 90) return "d61_90";
-  return "d90_plus";
-}
-
-type Buckets = { current: number; d1_30: number; d31_60: number; d61_90: number; d90_plus: number };
-const emptyBuckets = (): Buckets => ({ current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0 });
+import { agingBucket, dueDateFrom, emptyBuckets, type Buckets } from "@/lib/aging";
 
 export default async function ArAgingPage() {
   const user = await getCurrentUser();
@@ -34,9 +23,7 @@ export default async function ArAgingPage() {
     const inv = invoiceById.get(o.invoice_id!);
     const party = partyById.get(o.party_id!);
     if (!inv || !party) continue;
-    const dueDate = new Date(inv.invoice_date);
-    dueDate.setDate(dueDate.getDate() + (party.credit_days ?? 0));
-    const bucket = agingBucket(dueDate.toISOString().slice(0, 10));
+    const bucket = agingBucket(dueDateFrom(inv.invoice_date, party.credit_days ?? 0));
     const rec = perParty.get(party.id) ?? emptyBuckets();
     rec[bucket] += o.outstanding_amount ?? 0;
     perParty.set(party.id, rec);
