@@ -11,12 +11,14 @@ export function NewExpenseForm({
   pettyCashFunds,
   jobs,
   profiles,
+  vehicles,
 }: {
   expenseHeads: Tables<"expense_heads">[];
   bankAccounts: Tables<"bank_accounts">[];
   pettyCashFunds: Tables<"petty_cash_funds">[];
   jobs: { id: string; job_no: string; description: string }[];
   profiles: Tables<"profiles">[];
+  vehicles: Tables<"vehicles">[];
 }) {
   const router = useRouter();
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
@@ -29,8 +31,16 @@ export function NewExpenseForm({
   const [responsibleUserId, setResponsibleUserId] = useState("");
   const [department, setDepartment] = useState("");
   const [description, setDescription] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
+  const [odometerReading, setOdometerReading] = useState("");
+  const [fuelLitres, setFuelLitres] = useState("");
+  const [fuelRate, setFuelRate] = useState("");
+  const [settlementStatus, setSettlementStatus] = useState<"Settled" | "Pending">("Settled");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const selectedHead = expenseHeads.find((h) => h.id === expenseHeadId);
+  const isFuel = selectedHead?.code === "FUEL";
 
   function submit() {
     setError(null);
@@ -63,6 +73,11 @@ export function NewExpenseForm({
         responsible_user_id: responsibleUserId || null,
         department: department || null,
         description: description || null,
+        vehicle_id: vehicleId || null,
+        odometer_reading: odometerReading ? Number(odometerReading) : null,
+        fuel_litres: isFuel && fuelLitres ? Number(fuelLitres) : null,
+        fuel_rate: isFuel && fuelRate ? Number(fuelRate) : null,
+        settlement_status: settlementStatus,
       });
       if (res.error) {
         setError(res.error);
@@ -164,6 +179,46 @@ export function NewExpenseForm({
           <input value={department} onChange={(e) => setDepartment(e.target.value)} className="input" />
         </label>
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-ink-soft">Vehicle (optional)</span>
+          <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className="input">
+            <option value="">— None —</option>
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.vehicle_no} {v.make_model && `— ${v.make_model}`}
+              </option>
+            ))}
+          </select>
+        </label>
+        {vehicleId && (
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Meter Reading</span>
+            <input type="number" step="0.01" min="0" value={odometerReading} onChange={(e) => setOdometerReading(e.target.value)} className="input" />
+          </label>
+        )}
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-ink-soft">Settlement Status</span>
+          <select value={settlementStatus} onChange={(e) => setSettlementStatus(e.target.value as "Settled" | "Pending")} className="input">
+            <option value="Settled">Settled</option>
+            <option value="Pending">Pending</option>
+          </select>
+        </label>
+      </div>
+
+      {vehicleId && isFuel && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Litres</span>
+            <input type="number" step="0.01" min="0" value={fuelLitres} onChange={(e) => setFuelLitres(e.target.value)} className="input" />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Rate / Litre</span>
+            <input type="number" step="0.01" min="0" value={fuelRate} onChange={(e) => setFuelRate(e.target.value)} className="input" />
+          </label>
+        </div>
+      )}
 
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Description</span>

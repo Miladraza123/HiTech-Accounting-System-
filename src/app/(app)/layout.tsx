@@ -56,6 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/setup/bank-accounts", label: "Bank Accounts", show: owner || user.roles.includes("accounts") },
     { href: "/setup/petty-cash-funds", label: "Petty Cash Funds", show: owner || user.roles.includes("accounts") },
     { href: "/setup/expense-heads", label: "Expense Heads", show: owner },
+    { href: "/setup/vehicles", label: "Vehicles / Fleet", show: owner || user.roles.includes("accounts") },
     { href: "/setup/users", label: "Users & Roles", show: owner },
     { href: "/setup/chart-of-accounts", label: "Chart of Accounts", show: owner || user.roles.includes("accounts") },
     { href: "/setup/import", label: "Import Wizard", show: owner || user.roles.includes("accounts") },
@@ -72,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 9 — Cash, Bank &amp; Expenses</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 10 — Vehicle/Fleet &amp; Rider Expenses</p>
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5">

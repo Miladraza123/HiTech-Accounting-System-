@@ -97,6 +97,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <ReportLink href="/reports/ar-aging" title="AR Aging" desc="Client-wise outstanding, aging buckets (Current, 1-30, 31-60, 61-90, 90+)." />
         <ReportLink href="/reports/ap-aging" title="AP Aging" desc="Supplier-wise outstanding, aging buckets." />
         <ReportLink href="/reports/trial-balance" title="Trial Balance" desc="Har account ka debit/credit total — poore ledger ka summary." />
+        <ReportLink href="/reports/vehicle-expenses" title="Vehicle &amp; Rider Expenses" desc="Vehicle-wise fuel/maintenance/cost-per-KM, aur Engineer/Rider-wise field expense totals." />
       </div>
     </div>
   );

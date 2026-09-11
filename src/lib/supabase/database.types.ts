@@ -126,6 +126,8 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           account_name: string
@@ -136,6 +138,8 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           account_name?: string
@@ -146,6 +150,8 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -277,6 +283,8 @@ export type Database = {
           to_type: string
           transfer_date: string
           transfer_no: string
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           amount: number
@@ -295,6 +303,8 @@ export type Database = {
           to_type: string
           transfer_date?: string
           transfer_no: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           amount?: number
@@ -313,6 +323,8 @@ export type Database = {
           to_type?: string
           transfer_date?: string
           transfer_no?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -548,6 +560,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           account_code: string
@@ -557,6 +571,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           account_code?: string
@@ -566,6 +582,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -596,12 +614,19 @@ export type Database = {
           expense_date: string
           expense_head_id: string
           expense_no: string
+          fuel_litres: number | null
+          fuel_rate: number | null
           id: string
           job_id: string | null
+          odometer_reading: number | null
           payment_source: string
           petty_cash_fund_id: string | null
           responsible_user_id: string | null
+          settlement_status: string
           status: string
+          updated_at: string
+          updated_by: string | null
+          vehicle_id: string | null
         }
         Insert: {
           amount: number
@@ -614,12 +639,19 @@ export type Database = {
           expense_date?: string
           expense_head_id: string
           expense_no: string
+          fuel_litres?: number | null
+          fuel_rate?: number | null
           id?: string
           job_id?: string | null
+          odometer_reading?: number | null
           payment_source: string
           petty_cash_fund_id?: string | null
           responsible_user_id?: string | null
+          settlement_status?: string
           status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_id?: string | null
         }
         Update: {
           amount?: number
@@ -632,12 +664,19 @@ export type Database = {
           expense_date?: string
           expense_head_id?: string
           expense_no?: string
+          fuel_litres?: number | null
+          fuel_rate?: number | null
           id?: string
           job_id?: string | null
+          odometer_reading?: number | null
           payment_source?: string
           petty_cash_fund_id?: string | null
           responsible_user_id?: string | null
+          settlement_status?: string
           status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -687,6 +726,27 @@ export type Database = {
             columns: ["responsible_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_expense_summary"
+            referencedColumns: ["vehicle_id"]
+          },
+          {
+            foreignKeyName: "expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -1781,6 +1841,8 @@ export type Database = {
           fund_name: string
           id: string
           is_active: boolean
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           created_at?: string
@@ -1789,6 +1851,8 @@ export type Database = {
           fund_name: string
           id?: string
           is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           created_at?: string
@@ -1797,6 +1861,8 @@ export type Database = {
           fund_name?: string
           id?: string
           is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1805,6 +1871,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_funds_custodian_user_id_fkey"
+            columns: ["custodian_user_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -2985,6 +3058,72 @@ export type Database = {
           },
         ]
       }
+      vehicles: {
+        Row: {
+          assigned_user_id: string | null
+          assignment_date: string | null
+          created_at: string
+          created_by: string | null
+          current_meter_reading: number
+          id: string
+          make_model: string | null
+          opening_meter_reading: number
+          registration_no: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vehicle_no: string
+          vehicle_type: string | null
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          assignment_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_meter_reading?: number
+          id?: string
+          make_model?: string | null
+          opening_meter_reading?: number
+          registration_no?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no: string
+          vehicle_type?: string | null
+        }
+        Update: {
+          assigned_user_id?: string | null
+          assignment_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_meter_reading?: number
+          id?: string
+          make_model?: string | null
+          opening_meter_reading?: number
+          registration_no?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       warehouses: {
         Row: {
           address: string | null
@@ -3124,6 +3263,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "petty_cash_funds_custodian_user_id_fkey"
+            columns: ["custodian_user_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       reserved_stock: {
@@ -3148,6 +3294,16 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      responsible_person_expense_summary: {
+        Row: {
+          expense_count: number | null
+          full_name: string | null
+          pending_settlement_count: number | null
+          total_expense: number | null
+          user_id: string | null
+        }
+        Relationships: []
       }
       stock_availability: {
         Row: {
@@ -3204,6 +3360,37 @@ export type Database = {
           total_debit: number | null
         }
         Relationships: []
+      }
+      vehicle_expense_summary: {
+        Row: {
+          assigned_user_id: string | null
+          current_meter_reading: number | null
+          fuel_expense: number | null
+          maintenance_expense: number | null
+          make_model: string | null
+          opening_meter_reading: number | null
+          status: string | null
+          total_expense: number | null
+          vehicle_id: string | null
+          vehicle_no: string | null
+          vehicle_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_assigned_user_id_fkey"
+            columns: ["assigned_user_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
     }
     Functions: {
@@ -3356,10 +3543,15 @@ export type Database = {
           p_description: string
           p_expense_date: string
           p_expense_head_id: string
+          p_fuel_litres?: number
+          p_fuel_rate?: number
           p_job_id: string
+          p_odometer_reading?: number
           p_payment_source: string
           p_petty_cash_fund_id: string
           p_responsible_user_id: string
+          p_settlement_status?: string
+          p_vehicle_id?: string
         }
         Returns: string
       }

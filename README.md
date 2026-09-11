@@ -8,7 +8,66 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 9 — Cash, Bank & Expense Management (in progress)
+## Status: Phase 10 — Vehicle/Fleet & Engineer/Rider Expenses (complete)
+
+Closing the second item on the gap list found by the Phase 9 re-audit
+(§20 Vehicle/Fleet Management, §21 Engineer/Rider Expense Tracking).
+Built as an **extension of Phase 9's Expense module**, not a parallel
+system — a vehicle-linked expense is still just an Expense with a
+`vehicle_id`, exactly the way a job-linked expense already worked.
+
+- **`vehicles`** (new table) — Vehicle #, Registration #, Type, Make/
+  Model, Assigned Engineer/Rider, Assignment Date, Opening/Current Meter
+  Reading, Status (Active/UnderMaintenance/Retired/Unassigned). A DB
+  check enforces current meter reading never goes below the opening one.
+- **`/setup/vehicles`** (list + create) and **`/setup/vehicles/[id]`**
+  (reassign, change status, meter reading, live totals, expense history,
+  document attachments) — the Item-Master-detail-page pattern, reused.
+- **10 more vehicle-specific Expense Heads** added from the prompt's own
+  list (Oil Change, Tyres, Battery, Insurance, Token/Registration, Toll,
+  Parking, Fine/Challan, Tracker, Accident) — Fuel/Repair/Maintenance/
+  Miscellaneous already existed from Phase 9. Each auto-creates its own
+  P&L account under `6000 Operating Expenses`, same mechanism as before.
+- **`fn_create_expense` widened** (Vehicle, Meter Reading, Litres, Rate/
+  Litre for fuel entries, Settlement Status) — a fuel/vehicle expense
+  automatically advances the vehicle's live meter reading (only ever
+  forward, never regresses, so a backdated entry can't corrupt it).
+  Learned the exact lesson Phase 9 paid for with `fn_create_payment`:
+  created the new signature and explicitly dropped the old one in the
+  same migration/transaction this time, so no ambiguous overload was
+  ever exposed.
+- **Settlement Status** (§21) — a lightweight `Settled`/`Pending`
+  tracking flag on each expense, deliberately **not** a full unsettled-
+  staff-advance sub-ledger (that's a materially bigger, differently-
+  shaped feature the prompt doesn't fully specify) — the expense still
+  posts its real cash/bank/petty-cash movement immediately at entry,
+  same as every other expense; "Pending" just flags it for someone to
+  follow up on later.
+- **Receipts/Attachments** on Expenses — the existing generic
+  `AttachmentsPanel` (already used for DC/PO/Query/etc.) attached to the
+  Expense detail page, closing that part of §21 with zero new code.
+- **`/reports/vehicle-expenses`** — Vehicle-wise total/fuel/maintenance/
+  Cost-per-KM (with the top-spending vehicle called out), plus
+  Engineer/Rider-wise expense totals with a Pending-Settlement count —
+  covers the whole §20 report list in one page rather than five.
+- **A real gap in Phase 9 itself, found and fixed while planning this
+  phase**: none of Phase 9's five new tables (`bank_accounts`,
+  `petty_cash_funds`, `expense_heads`, `expenses`, `contra_transfers`)
+  had the standard `trg_audit` / `trg_updated_at` triggers every other
+  table in this schema carries — `audit_log` (prompt §35's actual
+  mechanism) was silently not tracking any of them. Retrofitted in this
+  phase's own migration, plus the same triggers on the new `vehicles`
+  table from day one.
+
+**Scope note:** this closes the Vehicle/Fleet + Engineer/Rider slice
+only. Financial Statements (P&L/Balance Sheet), the rest of the
+requested Reports, Order Health/Stage Aging, Tasks & Follow-ups,
+Returns/Rejection/Replacement, Rate History, Period Lock, Daily
+Snapshot, and the configurable permission matrix remain as separate
+upcoming phases.
+
+<details>
+<summary>Phase 9 — Cash, Bank & Expense Management (complete)</summary>
 
 A second, much larger "is everything actually complete against the
 original prompt?" audit — this time reading the full original spec
@@ -103,6 +162,8 @@ Fleet, Financial Statements, the rest of the Reports list, Order
 Health/Stage Aging, Tasks, Returns, Rate History, Period Lock, Daily
 Snapshot, and the permission matrix are tracked as separate upcoming
 phases, not silently dropped.
+
+</details>
 
 <details>
 <summary>Phase 8 — Multi-Unit Conversion (complete)</summary>
@@ -632,13 +693,16 @@ src/
       journal-vouchers/         — Manual Journal Voucher list, create (multi-line, live
                                   Debit=Credit balance check)
       reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle) +
-                                  daily-ledger/, ar-aging/, ap-aging/, trial-balance/
+                                  daily-ledger/, ar-aging/, ap-aging/, trial-balance/,
+                                  vehicle-expenses/ (vehicle + rider-wise, cost/KM)
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/bank-accounts/     — bank account master (+ opening balance)
       setup/petty-cash-funds/  — petty cash fund master (+ custodian, opening balance)
       setup/expense-heads/     — configurable expense categories (each auto-creates its
                                   own P&L account under 6000 Operating Expenses)
+      setup/vehicles/          — fleet list + [id]/ detail (assign Engineer/Rider, status,
+                                  meter reading, expense history, documents)
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
@@ -646,7 +710,7 @@ src/
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
-                                  cashBank, parties, attachments)
+                                  cashBank, vehicles, parties, attachments)
   components/                  — client-side form/UI components
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types

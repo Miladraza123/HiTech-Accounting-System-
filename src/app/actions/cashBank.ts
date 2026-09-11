@@ -95,6 +95,11 @@ export async function createExpenseAction(input: {
   responsible_user_id: string | null;
   department: string | null;
   description: string | null;
+  vehicle_id?: string | null;
+  odometer_reading?: number | null;
+  fuel_litres?: number | null;
+  fuel_rate?: number | null;
+  settlement_status?: "Settled" | "Pending";
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_expense", {
@@ -108,6 +113,11 @@ export async function createExpenseAction(input: {
     p_responsible_user_id: input.responsible_user_id as string,
     p_department: input.department as string,
     p_description: input.description as string,
+    p_vehicle_id: (input.vehicle_id ?? null) as string,
+    p_odometer_reading: (input.odometer_reading ?? null) as number,
+    p_fuel_litres: (input.fuel_litres ?? null) as number,
+    p_fuel_rate: (input.fuel_rate ?? null) as number,
+    p_settlement_status: input.settlement_status ?? "Settled",
   });
   if (error) return { error: error.message };
   revalidatePath("/expenses");

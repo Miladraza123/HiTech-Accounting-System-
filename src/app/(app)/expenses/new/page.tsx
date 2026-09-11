@@ -9,12 +9,13 @@ export default async function NewExpensePage() {
   if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/expenses");
 
   const supabase = await createClient();
-  const [{ data: expenseHeads }, { data: bankAccounts }, { data: pettyCashFunds }, { data: jobs }, { data: profiles }] = await Promise.all([
+  const [{ data: expenseHeads }, { data: bankAccounts }, { data: pettyCashFunds }, { data: jobs }, { data: profiles }, { data: vehicles }] = await Promise.all([
     supabase.from("expense_heads").select("*").eq("is_active", true).order("name"),
     supabase.from("bank_accounts").select("*").eq("is_active", true).order("account_name"),
     supabase.from("petty_cash_funds").select("*").eq("is_active", true).order("fund_name"),
     supabase.from("jobs").select("id, job_no, description").not("status", "in", "(Delivered,Cancelled)").order("job_no"),
     supabase.from("profiles").select("*").eq("is_active", true).order("full_name"),
+    supabase.from("vehicles").select("*").not("status", "eq", "Retired").order("vehicle_no"),
   ]);
 
   return (
@@ -41,6 +42,7 @@ export default async function NewExpensePage() {
           pettyCashFunds={pettyCashFunds ?? []}
           jobs={jobs ?? []}
           profiles={profiles ?? []}
+          vehicles={vehicles ?? []}
         />
       )}
     </div>
