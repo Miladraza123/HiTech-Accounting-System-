@@ -436,6 +436,219 @@ export type Database = {
           },
         ]
       }
+      job_cost_ledger: {
+        Row: {
+          amount: number
+          cost_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string | null
+          job_id: string
+          memo: string | null
+          qty: number | null
+          ref_id: string | null
+          ref_table: string | null
+        }
+        Insert: {
+          amount: number
+          cost_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string | null
+          job_id: string
+          memo?: string | null
+          qty?: number | null
+          ref_id?: string | null
+          ref_table?: string | null
+        }
+        Update: {
+          amount?: number
+          cost_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string | null
+          job_id?: string
+          memo?: string | null
+          qty?: number | null
+          ref_id?: string | null
+          ref_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_cost_ledger_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_cost_ledger_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_material_requirements: {
+        Row: {
+          id: string
+          issued_qty: number
+          item_id: string
+          job_id: string
+          required_qty: number
+          reserved_qty: number
+          returned_qty: number
+          source: string
+          unit: string | null
+        }
+        Insert: {
+          id?: string
+          issued_qty?: number
+          item_id: string
+          job_id: string
+          required_qty: number
+          reserved_qty?: number
+          returned_qty?: number
+          source?: string
+          unit?: string | null
+        }
+        Update: {
+          id?: string
+          issued_qty?: number
+          item_id?: string
+          job_id?: string
+          required_qty?: number
+          reserved_qty?: number
+          returned_qty?: number
+          source?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_material_requirements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_requirements_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_requirements_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          job_no: string
+          job_qty: number
+          notes: string | null
+          product_template_id: string | null
+          progress_pct: number
+          required_delivery_date: string | null
+          responsible_user_id: string | null
+          row_version: number
+          sales_order_id: string
+          sales_order_line_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          job_no: string
+          job_qty: number
+          notes?: string | null
+          product_template_id?: string | null
+          progress_pct?: number
+          required_delivery_date?: string | null
+          responsible_user_id?: string | null
+          row_version?: number
+          sales_order_id: string
+          sales_order_line_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          job_no?: string
+          job_qty?: number
+          notes?: string | null
+          product_template_id?: string | null
+          progress_pct?: number
+          required_delivery_date?: string | null
+          responsible_user_id?: string | null
+          row_version?: number
+          sales_order_id?: string
+          sales_order_line_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_product_template_id_fkey"
+            columns: ["product_template_id"]
+            isOneToOne: false
+            referencedRelation: "product_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_sales_order_line_id_fkey"
+            columns: ["sales_order_line_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           created_at: string
@@ -687,6 +900,106 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "parties"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_template_lines: {
+        Row: {
+          id: string
+          item_id: string
+          qty_per_unit: number
+          sort_order: number
+          template_id: string
+          unit: string | null
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          qty_per_unit: number
+          sort_order?: number
+          template_id: string
+          unit?: string | null
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          qty_per_unit?: number
+          sort_order?: number
+          template_id?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_template_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_template_lines_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "product_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_template_lines_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      product_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          output_item_id: string | null
+          output_unit: string | null
+          template_code: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          output_item_id?: string | null
+          output_unit?: string | null
+          template_code: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          output_item_id?: string | null
+          output_unit?: string | null
+          template_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_templates_output_item_id_fkey"
+            columns: ["output_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_templates_output_unit_fkey"
+            columns: ["output_unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -1482,6 +1795,64 @@ export type Database = {
           },
         ]
       }
+      stock_reservations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          job_id: string
+          reservation_mode: string
+          reserved_qty: number
+          status: string
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          job_id: string
+          reservation_mode: string
+          reserved_qty: number
+          status?: string
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          job_id?: string
+          reservation_mode?: string
+          reserved_qty?: number
+          status?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unit_conversions: {
         Row: {
           factor: number
@@ -1617,6 +1988,55 @@ export type Database = {
           },
         ]
       }
+      reserved_stock: {
+        Row: {
+          item_id: string | null
+          reserved_qty: number | null
+          warehouse_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_availability: {
+        Row: {
+          avg_cost: number | null
+          free_qty: number | null
+          item_id: string | null
+          qty_on_hand: number | null
+          reserved_qty: number | null
+          warehouse_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_ledger_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_ledger_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _fn_insert_quotation_lines: {
@@ -1650,6 +2070,10 @@ export type Database = {
         }
         Returns: string
       }
+      _fn_recalc_job_material_status: {
+        Args: { p_job_id: string }
+        Returns: undefined
+      }
       _fn_recalc_po_totals: {
         Args: { p_purchase_order_id: string }
         Returns: undefined
@@ -1675,6 +2099,10 @@ export type Database = {
         Returns: undefined
       }
       fn_bootstrap_owner: { Args: never; Returns: undefined }
+      fn_cancel_job: {
+        Args: { p_job_id: string; p_reason: string }
+        Returns: undefined
+      }
       fn_cancel_purchase_order: {
         Args: { p_purchase_order_id: string; p_reason: string }
         Returns: undefined
@@ -1691,6 +2119,31 @@ export type Database = {
           p_remarks: string
           p_supplier_id: string
           p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_job: {
+        Args: {
+          p_description: string
+          p_job_qty: number
+          p_material_lines: Json
+          p_product_template_id: string
+          p_required_delivery_date: string
+          p_responsible_user_id: string
+          p_sales_order_line_id: string
+          p_start_date: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_product_template: {
+        Args: {
+          p_description: string
+          p_lines: Json
+          p_name: string
+          p_output_item_id: string
+          p_output_unit: string
+          p_template_code: string
         }
         Returns: string
       }
@@ -1742,11 +2195,19 @@ export type Database = {
         Returns: string
       }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
+      fn_issue_job_material: {
+        Args: { p_item_id: string; p_job_id: string; p_qty: number }
+        Returns: undefined
+      }
       fn_log_login: {
         Args: { p_device?: string; p_ip?: string }
         Returns: string
       }
       fn_log_logout: { Args: { p_session_id: string }; Returns: undefined }
+      fn_mark_job_ready_for_dispatch: {
+        Args: { p_job_id: string }
+        Returns: undefined
+      }
       fn_mark_quotation_sent: {
         Args: { p_quotation_id: string }
         Returns: undefined
@@ -1765,6 +2226,10 @@ export type Database = {
         Args: { p_adjustment_id: string; p_note: string }
         Returns: undefined
       }
+      fn_release_job_material: {
+        Args: { p_reservation_id: string }
+        Returns: undefined
+      }
       fn_request_stock_adjustment: {
         Args: {
           p_item_id: string
@@ -1773,6 +2238,19 @@ export type Database = {
           p_warehouse_id: string
         }
         Returns: string
+      }
+      fn_reserve_job_material: {
+        Args: {
+          p_item_id: string
+          p_job_id: string
+          p_qty: number
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_return_job_material: {
+        Args: { p_item_id: string; p_job_id: string; p_qty: number }
+        Returns: undefined
       }
       fn_set_query_status: {
         Args: { p_note: string; p_query_id: string; p_status: string }
@@ -1787,6 +2265,10 @@ export type Database = {
           p_terms: string
           p_validity_date: string
         }
+        Returns: undefined
+      }
+      fn_update_job_progress: {
+        Args: { p_job_id: string; p_note: string; p_progress_pct: number }
         Returns: undefined
       }
       has_role: { Args: { p_code: string }; Returns: boolean }
@@ -1923,4 +2405,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

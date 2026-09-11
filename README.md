@@ -8,7 +8,52 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 3 — Purchase, GRN & Inventory (complete)
+## Status: Phase 4 — Fabrication & Jobs (complete)
+
+Jobs (Work Orders) turn a Fabrication Sales Order line into a tracked
+production job — material requirement, reservation, issue, costing and
+a status workflow, all in one place.
+
+- **BOM / Product Templates** — a reusable "recipe" (raw material +
+  qty-per-output-unit) for repeat products. Creating a Job with a
+  template auto-computes `required_qty = qty_per_unit × job_qty`; a
+  Job can just as easily skip the template and take fully custom
+  material lines instead — both are first-class, per the "kuch custom,
+  kuch repeat" requirement.
+- **Material Reservation & Shortage** (blueprint §8) — `stock_availability`
+  (Available / Reserved / Free) drives both flows: creating a Job
+  **auto-reserves** whatever free stock exists for each requirement,
+  and Owner/Production/Store can additionally **manually reserve** to
+  prioritise an urgent job. Any gap between required and reserved shows
+  as a **"Purchase Required"** shortage badge on the Job — a signal,
+  never a block. Inventory's own list page now also shows Reserved/Free
+  columns, not just On Hand.
+- **Job status workflow** — `MaterialPending → MaterialAvailable →
+  FabricationStarted → InProcess → ReadyForDispatch → Delivered /
+  Cancelled`. All of it is automated where the blueprint calls for it:
+  reserving enough stock flips Material Pending → Available; the
+  **first material issue** on an Available job flips it to Fabrication
+  Started; raising progress above 0% flips Fabrication Started →
+  In Process (one-way — never reverts on a later progress edit).
+  Cancelling is blocked once material has been issued and not
+  returned, and always requires a reason.
+- **Issue / Return** — issuing consumes Active reservations oldest
+  first (partial consumption supported), moves real stock at the
+  item's current weighted-average cost, and posts Dr Work-in-Progress
+  (1320) / Cr Raw Material Inventory (1310); returning reverses both
+  the stock movement and the journal entry.
+- **Job Cost Ledger** — every material issue/return is a costed line;
+  the Job detail page totals Material / Labour / Overhead.
+
+**Scope note:** Job costing here is **material only** — Labour and
+Overhead cost types exist in the schema (`job_cost_ledger.cost_type`)
+and are shown in the cost summary, but nothing posts to them yet since
+there's no payroll/expense-allocation system in this build to source
+those numbers from. This is a deliberate, called-out deferral, not a
+gap in the material-costing flow itself.
+
+<details>
+<summary>Phase 3 — Purchase, GRN & Inventory (complete)</summary>
 
 The Item Master (raw material / stocked goods / fabrication products,
 with unit, HS Code, tax category) is now in place — everything from
@@ -39,10 +84,13 @@ Quotations onward can reference a real item, not just free text.
 
 **Scope note:** two things originally planned for this phase moved
 elsewhere for a good reason — **Material Reservation** (blueprint §8)
-is meaningless without a Job to reserve *for*, so it ships with Phase 4
-(Fabrication) instead. **Supplier Bill booking** (the step that clears
-GRN Clearing into Trade Payables) is deferred to Phase 5, alongside GST
-Invoice/Payment, for symmetry with the Accounts Receivable side.
+is meaningless without a Job to reserve *for*, so it shipped with
+Phase 4 (Fabrication) instead. **Supplier Bill booking** (the step
+that clears GRN Clearing into Trade Payables) is deferred to Phase 5,
+alongside GST Invoice/Payment, for symmetry with the Accounts
+Receivable side.
+
+</details>
 
 <details>
 <summary>Phase 2 — Client PO / Sales Order (complete)</summary>
@@ -103,8 +151,8 @@ What's live in this phase:
   per-import batch record (`import_batches`). Opening Stock import
   arrives with the Inventory module (Phase 3).
 
-Phases 4–7 (Fabrication/Jobs, Delivery/Invoicing/Payments, Customer 360
-& Reports, Hardening) are not built yet.
+Phases 5–7 (Delivery/Invoicing/Payments, Customer 360 & Reports,
+Hardening) are not built yet.
 
 </details>
 
@@ -143,14 +191,20 @@ src/
       sales-orders/            — Sales Order list, create (from a Quotation), detail + amendments
       items/                   — Item Master (raw material / stocked goods / products)
       purchase-orders/         — Purchase Order list, create, detail + GRN receiving
-      inventory/               — Current stock, per-item ledger drill-down, stock adjustments
+      inventory/               — Current stock (+ Reserved/Free), per-item ledger drill-down,
+                                  stock adjustments
+      jobs/                    — Job list, create (from a Fabrication SO line), detail —
+                                  material requirements, reserve/issue/return, progress,
+                                  ready-for-dispatch, cancel, cost summary
+      product-templates/       — BOM/Product Template list, create, detail
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
-                                  salesOrders, purchaseOrders, items, inventory, parties, attachments)
+                                  salesOrders, purchaseOrders, items, inventory, jobs, parties,
+                                  attachments)
   components/                  — client-side form/UI components
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
