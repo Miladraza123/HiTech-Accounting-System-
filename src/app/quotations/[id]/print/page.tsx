@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { printStyles, AUTO_PRINT_SCRIPT } from "@/lib/printStyles";
 import type { Metadata } from "next";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -40,28 +41,7 @@ export default async function QuotationPrintPage({ params }: { params: Promise<{
 
   return (
     <div className="print-quote">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            .print-quote { all: initial; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px; }
-            .print-quote * { box-sizing: border-box; }
-            .print-quote .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #20242E; padding-bottom: 16px; margin-bottom: 20px; }
-            .print-quote .co-name { font-size: 20px; font-weight: 700; }
-            .print-quote .muted { color: #565B68; font-size: 12px; }
-            .print-quote h1 { font-size: 16px; margin: 0 0 2px; }
-            .print-quote table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
-            .print-quote th, .print-quote td { border: 1px solid #DDD6C7; padding: 6px 10px; text-align: left; }
-            .print-quote th { background: #EFEAE0; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
-            .print-quote td.num, .print-quote th.num { text-align: right; font-variant-numeric: tabular-nums; }
-            .print-quote .totals { display: flex; justify-content: flex-end; gap: 24px; margin-top: 8px; font-size: 13px; }
-            .print-quote .totals .grand { font-weight: 700; }
-            .print-quote .terms { margin-top: 24px; font-size: 12px; }
-            .print-quote .terms dt { color: #565B68; margin-top: 8px; }
-            .print-quote .terms dd { margin: 2px 0 0; }
-            @media print { .print-quote { padding: 0; } }
-          `,
-        }}
-      />
+      <style dangerouslySetInnerHTML={{ __html: printStyles("print-quote") }} />
 
       <div className="hdr">
         <div>
@@ -154,11 +134,7 @@ export default async function QuotationPrintPage({ params }: { params: Promise<{
         )}
       </dl>
 
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.addEventListener('load', () => setTimeout(() => window.print(), 300));`,
-        }}
-      />
+      <script dangerouslySetInnerHTML={{ __html: AUTO_PRINT_SCRIPT }} />
     </div>
   );
 }

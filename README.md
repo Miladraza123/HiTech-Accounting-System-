@@ -81,6 +81,21 @@ rather than adding features — and found and fixed three.
   (item code + warehouse code + qty + rate, posts through
   `_fn_post_stock_ledger` and books Dr Raw Material Inventory / Cr
   Opening Balance Equity) plus the matching Import Wizard row type.
+- **A4 print/PDF views for every formal document** — only the
+  Quotation had one; the same completeness check flagged that GST
+  Invoice, Delivery Challan, Purchase Order and Supplier Bill (all
+  documents a real business prints, emails, or gets physically signed —
+  Delivery Challan's whole POD step assumes a paper document exists)
+  had none. Added standalone print routes for all four (`/invoices/
+  [id]/print`, `/delivery-challans/[id]/print`, `/purchase-orders/[id]/
+  print`, `/supplier-bills/[id]/print`), a "Print / PDF" button on each
+  detail page, and pulled the print stylesheet (previously inlined only
+  in the Quotation print page) into a shared `src/lib/printStyles.ts`
+  with an explicit `@page { size: A4; margin: 15mm; }` rule — applied
+  to the Quotation print page too, so paper size is now consistent and
+  explicit everywhere rather than left to the visiting browser's
+  default. Invoice's print includes each line's HS Code (FBR tax
+  document); Delivery Challan and Invoice both carry a signature block.
 
 **Scope note:** this pass is a **targeted audit**, not an exhaustive
 one — it covered every `SECURITY DEFINER` function's privileges and
@@ -394,7 +409,10 @@ npm run test    # vitest — pure calculation logic (aging buckets), no DB neede
 src/
   app/
     login/, signup/            — auth pages
-    quotations/[id]/print/     — standalone print/PDF view (no sidebar chrome)
+    {quotations,invoices,delivery-challans,purchase-orders,
+      supplier-bills}/[id]/print/
+                               — standalone A4 print/PDF views (no sidebar chrome),
+                                  one per formal document type
     (app)/                     — authenticated shell (sidebar, role-aware nav)
       bootstrap/               — first-run "claim Owner" screen
       clients/                 — client/supplier (party) management + [id]/ Customer 360
@@ -437,6 +455,8 @@ src/
     aging.ts (+ aging.test.ts) — AR/AP aging-bucket logic, shared by Customer 360 and
                                   the AR/AP Aging reports; the one thing in this repo
                                   with an automated test (`npm run test`)
+    printStyles.ts             — shared A4 print stylesheet + auto-print script, used by
+                                  every [id]/print/ route above
   proxy.ts                     — session refresh + route protection (Next.js 16's
                                   renamed middleware.ts)
 ```

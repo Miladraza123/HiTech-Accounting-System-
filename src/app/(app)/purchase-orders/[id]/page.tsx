@@ -43,16 +43,25 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/purchase-orders" className="text-xs text-ink-faint hover:text-ink">
-          ← Purchase Orders
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-lg font-semibold text-ink font-mono">{po.po_no}</h1>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[po.status] ?? ""}`}>{po.status}</span>
-          <span className="rounded-full bg-ledger-soft px-2 py-0.5 text-xs font-mono text-ledger">{TYPE_LABEL[po.purchase_type]}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/purchase-orders" className="text-xs text-ink-faint hover:text-ink">
+            ← Purchase Orders
+          </Link>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-lg font-semibold text-ink font-mono">{po.po_no}</h1>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[po.status] ?? ""}`}>{po.status}</span>
+            <span className="rounded-full bg-ledger-soft px-2 py-0.5 text-xs font-mono text-ledger">{TYPE_LABEL[po.purchase_type]}</span>
+          </div>
+          <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
         </div>
-        <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
+        <Link
+          href={`/purchase-orders/${id}/print`}
+          target="_blank"
+          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+        >
+          Print / PDF
+        </Link>
       </div>
 
       {po.status === "Cancelled" && po.cancel_reason && (

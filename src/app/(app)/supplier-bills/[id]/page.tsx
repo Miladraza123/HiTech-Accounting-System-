@@ -35,18 +35,27 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/supplier-bills" className="text-xs text-ink-faint hover:text-ink">
-          ← Supplier Bills
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-lg font-semibold text-ink font-mono">{bill.bill_no}</h1>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[bill.status] ?? ""}`}>{bill.status}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/supplier-bills" className="text-xs text-ink-faint hover:text-ink">
+            ← Supplier Bills
+          </Link>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-lg font-semibold text-ink font-mono">{bill.bill_no}</h1>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[bill.status] ?? ""}`}>{bill.status}</span>
+          </div>
+          <p className="text-sm text-ink-soft mt-0.5">
+            {party?.legal_name} — GRN {grn?.grn_no} ({grn?.received_date})
+          </p>
+          {bill.supplier_bill_ref && <p className="text-xs text-ink-faint mt-0.5">Supplier Ref#: {bill.supplier_bill_ref}</p>}
         </div>
-        <p className="text-sm text-ink-soft mt-0.5">
-          {party?.legal_name} — GRN {grn?.grn_no} ({grn?.received_date})
-        </p>
-        {bill.supplier_bill_ref && <p className="text-xs text-ink-faint mt-0.5">Supplier Ref#: {bill.supplier_bill_ref}</p>}
+        <Link
+          href={`/supplier-bills/${id}/print`}
+          target="_blank"
+          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+        >
+          Print / PDF
+        </Link>
       </div>
 
       {bill.status === "Cancelled" && bill.cancel_reason && (

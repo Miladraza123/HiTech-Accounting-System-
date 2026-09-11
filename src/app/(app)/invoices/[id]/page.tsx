@@ -35,24 +35,33 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/invoices" className="text-xs text-ink-faint hover:text-ink">
-          ← GST Invoices
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-lg font-semibold text-ink font-mono">{invoice.invoice_no}</h1>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[invoice.status] ?? ""}`}>{invoice.status}</span>
-        </div>
-        <p className="text-sm text-ink-soft mt-0.5">
-          {party?.legal_name} — SO {so?.so_no} (PO: {so?.client_po_number})
-        </p>
-        {(party?.ntn || party?.strn || party?.cnic) && (
-          <p className="text-xs text-ink-faint mt-0.5">
-            {party?.ntn && <>NTN: {party.ntn} </>}
-            {party?.strn && <>STRN: {party.strn} </>}
-            {party?.cnic && <>CNIC: {party.cnic}</>}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/invoices" className="text-xs text-ink-faint hover:text-ink">
+            ← GST Invoices
+          </Link>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-lg font-semibold text-ink font-mono">{invoice.invoice_no}</h1>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[invoice.status] ?? ""}`}>{invoice.status}</span>
+          </div>
+          <p className="text-sm text-ink-soft mt-0.5">
+            {party?.legal_name} — SO {so?.so_no} (PO: {so?.client_po_number})
           </p>
-        )}
+          {(party?.ntn || party?.strn || party?.cnic) && (
+            <p className="text-xs text-ink-faint mt-0.5">
+              {party?.ntn && <>NTN: {party.ntn} </>}
+              {party?.strn && <>STRN: {party.strn} </>}
+              {party?.cnic && <>CNIC: {party.cnic}</>}
+            </p>
+          )}
+        </div>
+        <Link
+          href={`/invoices/${id}/print`}
+          target="_blank"
+          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+        >
+          Print / PDF
+        </Link>
       </div>
 
       {invoice.status === "Cancelled" && invoice.cancel_reason && (
