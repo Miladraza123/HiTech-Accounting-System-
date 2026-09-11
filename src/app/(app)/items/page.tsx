@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ItemForm } from "@/components/ItemForm";
@@ -47,7 +48,11 @@ export default async function ItemsPage() {
             <tbody>
               {(items ?? []).map((it) => (
                 <tr key={it.id} className="border-t border-line">
-                  <td className="px-4 py-2.5 font-mono text-xs text-ink-soft whitespace-nowrap">{it.item_code}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                    <Link href={`/items/${it.id}`} className="text-accent-ink underline underline-offset-2">
+                      {it.item_code}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2.5 text-ink whitespace-nowrap">
                     {it.description}
                     {it.spec && <span className="block text-xs text-ink-faint">{it.spec}</span>}

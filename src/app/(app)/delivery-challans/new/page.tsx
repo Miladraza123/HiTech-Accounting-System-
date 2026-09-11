@@ -9,13 +9,15 @@ export default async function NewDeliveryChallanPage() {
   if (!(isOwner(user) || hasRole(user, "dispatch"))) redirect("/delivery-challans");
 
   const supabase = await createClient();
-  const [{ data: salesOrders }, { data: warehouses }] = await Promise.all([
+  const [{ data: salesOrders }, { data: warehouses }, { data: items }, { data: altUnits }] = await Promise.all([
     supabase
       .from("sales_orders")
       .select("*, parties(legal_name), sales_order_lines(*)")
       .not("status", "in", "(Cancelled,Closed)")
       .order("created_at", { ascending: false }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
+    supabase.from("items").select("*"),
+    supabase.from("item_alt_units").select("*").eq("is_active", true),
   ]);
 
   // Only Sales Orders that actually have something left to deliver
@@ -66,6 +68,8 @@ export default async function NewDeliveryChallanPage() {
             }[]).filter((l) => l.delivered_qty < l.ordered_qty),
           }))}
           warehouses={warehouses}
+          items={items ?? []}
+          altUnits={altUnits ?? []}
         />
       )}
     </div>

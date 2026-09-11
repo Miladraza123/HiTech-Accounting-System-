@@ -29,12 +29,20 @@ export function QuotationLineEditor({
   lines,
   onChange,
   defaultTaxPct = 18,
+  altUnitsByItem,
 }: {
   items: Tables<"items">[];
   units: Tables<"units">[];
   lines: EditableLine[];
   onChange: (lines: EditableLine[]) => void;
   defaultTaxPct?: number;
+  /**
+   * When provided (Sales Order usage), the Unit dropdown for a line with an item
+   * selected is restricted to that item's base_unit + its active alternate units
+   * (Sale/Issue/Delivery side multi-unit conversion) instead of the full unit list.
+   * When omitted (Quotation / PO usage), behavior is unchanged — any unit is selectable.
+   */
+  altUnitsByItem?: Record<string, { unit: string; factor: number }[]>;
 }) {
   useEffect(() => {
     if (lines.length === 0) onChange([blankLine(defaultTaxPct)]);
@@ -93,6 +101,11 @@ export function QuotationLineEditor({
           <tbody>
             {lines.map((l) => {
               const amount = (Number(l.qty) || 0) * (Number(l.rate) || 0);
+              const item = l.item_id ? items.find((i) => i.id === l.item_id) : undefined;
+              const unitOptions =
+                altUnitsByItem && item
+                  ? [item.base_unit, ...(altUnitsByItem[item.id] ?? []).map((a) => a.unit)]
+                  : units.map((u) => u.code);
               return (
                 <tr key={l.key} className="border-t border-line">
                   <td className="px-2 py-1.5">
@@ -128,9 +141,9 @@ export function QuotationLineEditor({
                   <td className="px-2 py-1.5">
                     <select value={l.unit} onChange={(e) => update(l.key, { unit: e.target.value })} className="input !py-1 text-xs">
                       <option value="">—</option>
-                      {units.map((u) => (
-                        <option key={u.code} value={u.code}>
-                          {u.code}
+                      {unitOptions.map((code) => (
+                        <option key={code} value={code}>
+                          {code}
                         </option>
                       ))}
                     </select>

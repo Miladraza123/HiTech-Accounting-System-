@@ -8,10 +8,93 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 7 — Hardening (complete, all 7 phases now built)
+## Status: Phase 8 — Multi-Unit Conversion (complete)
 
-All seven planned phases are now live: Foundation → Query & Quotation →
-Sales Order → Purchase/GRN/Inventory → Fabrication/Jobs →
+All 7 originally planned phases were completed, then a direct
+"is everything actually complete against the prompt?" check turned up
+one more real gap: items bought in one unit but sold/issued in another
+(e.g. purchased in KG, sold in PCS) had no way to be entered correctly
+— every unit field across Sales Order/Delivery Challan/Job material was
+a free-text dropdown of *all* units, with zero conversion, so an alt
+unit typed on a Sales Order line was silently treated as if it were the
+item's base unit everywhere downstream, including stock postings.
+Fixed, scoped exactly as agreed: **Sale/Issue/Delivery side only** —
+Purchase Orders and GRN are completely unaffected and always stay in
+`items.base_unit`.
+
+- **`item_alt_units`** (new table) — per-item alternate units with a
+  conversion factor to that item's `base_unit` (e.g. base_unit=KG,
+  alt unit=PCS, factor=12 means 1 PCS = 12 KG). Deliberately separate
+  from the existing global `unit_conversions` table (TON→KG etc.,
+  which is item-agnostic) since these factors are item-specific — one
+  bar's "1 PCS" is not another's. A trigger blocks an alt unit equal to
+  the item's own base_unit (ambiguous double-entry). RLS mirrors
+  `items`: anyone signed-in can read, Owner/Store/Production manage,
+  Owner alone deletes.
+- **Item Master detail page** (`/items/[id]`, new — the Item Master was
+  previously a flat list with no per-item page at all) — shows the
+  item's core fields and an **Alternate Units** panel to add/activate/
+  deactivate/remove alt units, with the factor's meaning spelled out in
+  plain language, not just a bare number.
+- **Sales Order line entry** (`NewSalesOrderForm` / `SalesOrderAmendPanel`,
+  both built on the shared `QuotationLineEditor`) — once an item is
+  picked, the Unit dropdown is now restricted to that item's base_unit
+  + its own active alt units, instead of every unit in the system
+  (previously any unit could be picked for any item, with no relation
+  to what the item actually supports — a latent correctness gap this
+  closes). Quotation and Purchase Order line entry, which share the
+  same editor component, are deliberately left untouched — the new
+  restriction only activates when a caller opts in with an
+  `altUnitsByItem` map, which only the Sales Order forms now pass.
+- **Delivery Challan → stock posting** — the real conversion boundary.
+  A Sales Order line can be ordered/delivered in an alt unit (e.g. PCS)
+  while the warehouse tracks that item in its base_unit (e.g. KG); when
+  "Issue from Stock" is checked, the form computes a base-unit-
+  equivalent `stock_qty` client-side (`delivered_qty × factor`), shown
+  live next to the qty field, and blocks submission with a clear error
+  if the line's unit has no conversion factor set for that item rather
+  than silently posting the wrong stock quantity. `delivery_challan_lines`
+  gained a nullable `stock_qty` column; `fn_create_delivery_challan` and
+  `fn_cancel_delivery_challan` were updated (same signatures — the new
+  value rides through the existing `p_lines` jsonb parameter) to post
+  and reverse stock/COGS off `stock_qty` when present, falling back to
+  `delivered_qty` for lines where the order unit already equals the
+  base unit (the common case) or for pre-existing rows. Invoicing
+  needed **no changes at all** — invoice lines already copy the Sales
+  Order line's unit/qty as-is, and COGS is booked once, at the DC's
+  stock-posting boundary, never again at invoicing.
+- **Job material requirement entry** (`NewJobForm`'s manual lines and
+  `NewProductTemplateForm`'s BOM lines, both on the shared
+  `MaterialLineEditor`) — required_qty / qty_per_unit must always be
+  base_unit-denominated, because `fn_create_job`'s auto-reserve step and
+  every later reserve/issue/return function compares it directly
+  against `stock_availability.free_qty`, which is base_unit-tracked (no
+  SQL changes needed there — they already treat their qty argument as
+  base_unit-equivalent, so getting a correct value into them at entry
+  is the whole fix). The Unit dropdown is now restricted the same way
+  as Sales Order lines, and the entered qty is converted to base_unit
+  client-side before the Server Action call, blocking with the same
+  clear error if a conversion factor is missing. Reserve/Issue/Return
+  actions on an already-created Job (`JobMaterialPanel`) needed **no
+  changes** — by the time a requirement exists, it's already
+  base_unit-denominated end-to-end, matching how the stock ledger
+  itself is tracked; the conversion problem only exists at the point of
+  first entry, which this phase closes.
+
+**Scope note:** exactly what was agreed before building — Sale/Issue/
+Delivery side only. Purchase Orders/GRN remain `base_unit`-only,
+completely unchanged. Two new INFO-level (not ERROR) performance
+advisories appeared after this migration (`item_alt_units.unit` and
+`.created_by` foreign keys have no covering index) — left as-is,
+consistent with dozens of pre-existing unindexed/unused-index INFO
+findings already present across this schema; add if `item_alt_units`
+grows large enough to matter.
+
+<details>
+<summary>Phase 7 — Hardening (complete)</summary>
+
+All seven originally planned phases went live: Foundation → Query &
+Quotation → Sales Order → Purchase/GRN/Inventory → Fabrication/Jobs →
 Delivery/Invoicing/Payments → Customer 360/Credit Control/Reports →
 this phase, which went back through Phases 0-6 looking for real bugs
 rather than adding features — and found and fixed three.
@@ -112,6 +195,8 @@ bodies and Postgres's documented locking semantics, and precedented by
 the identical pattern already proven correct in production-shape code
 since Phase 3, but were not exercised under real concurrent load in
 this sandbox.
+
+</details>
 
 <details>
 <summary>Phase 6 — Customer 360 & Reports (complete)</summary>
@@ -420,7 +505,9 @@ src/
       queries/                 — Query list, create, detail + activity timeline
       quotations/              — Quotation list, create (from a Query), detail
       sales-orders/            — Sales Order list, create (from a Quotation), detail + amendments
-      items/                   — Item Master (raw material / stocked goods / products)
+      items/                   — Item Master list + [id]/ detail page (Alternate Units for
+                                  multi-unit Sale/Issue/Delivery conversion; Purchase/GRN
+                                  always stays in the item's base_unit)
       purchase-orders/         — Purchase Order list, create, detail + GRN receiving
       inventory/               — Current stock (+ Reserved/Free), per-item ledger drill-down,
                                   stock adjustments

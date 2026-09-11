@@ -236,6 +236,7 @@ export type Database = {
           item_id: string | null
           sales_order_line_id: string
           sort_order: number
+          stock_qty: number | null
           unit: string | null
         }
         Insert: {
@@ -247,6 +248,7 @@ export type Database = {
           item_id?: string | null
           sales_order_line_id: string
           sort_order?: number
+          stock_qty?: number | null
           unit?: string | null
         }
         Update: {
@@ -258,6 +260,7 @@ export type Database = {
           item_id?: string | null
           sales_order_line_id?: string
           sort_order?: number
+          stock_qty?: number | null
           unit?: string | null
         }
         Relationships: [
@@ -687,6 +690,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_alt_units: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          factor: number
+          id: string
+          is_active: boolean
+          item_id: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          factor: number
+          id?: string
+          is_active?: boolean
+          item_id: string
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          factor?: number
+          id?: string
+          is_active?: boolean
+          item_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_alt_units_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_alt_units_unit_fkey"
+            columns: ["unit"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["code"]
           },
         ]
       }

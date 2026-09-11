@@ -9,9 +9,10 @@ export default async function NewProductTemplatePage() {
   if (!(isOwner(user) || hasRole(user, "production"))) redirect("/product-templates");
 
   const supabase = await createClient();
-  const [{ data: items }, { data: units }] = await Promise.all([
+  const [{ data: items }, { data: units }, { data: altUnits }] = await Promise.all([
     supabase.from("items").select("*").eq("is_active", true).order("item_code"),
     supabase.from("units").select("*").order("code"),
+    supabase.from("item_alt_units").select("*").eq("is_active", true),
   ]);
 
   return (
@@ -32,7 +33,7 @@ export default async function NewProductTemplatePage() {
           .
         </div>
       ) : (
-        <NewProductTemplateForm items={items} units={units ?? []} />
+        <NewProductTemplateForm items={items} units={units ?? []} altUnits={altUnits ?? []} />
       )}
     </div>
   );

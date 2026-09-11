@@ -6,18 +6,40 @@ import { createProductTemplateAction, type TemplateLineInput } from "@/app/actio
 import { MaterialLineEditor, blankMaterialLine, type EditableMaterialLine } from "@/components/MaterialLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
 
-function serialize(lines: EditableMaterialLine[]): TemplateLineInput[] {
-  return lines
-    .filter((l) => l.item_id)
-    .map((l) => ({
-      item_id: l.item_id,
-      qty_per_unit: Number(l.qty) || 0,
-      unit: l.unit || undefined,
-    }));
+type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
+
+// qty_per_unit must be base_unit-denominated — fn_create_job multiplies it directly
+// by job_qty to produce job_material_requirements.required_qty (which itself must be
+// base_unit, since it's compared against stock_availability). Convert at entry here.
+function serialize(lines: EditableMaterialLine[], items: Tables<"items">[], altUnits: AltUnit[]): { result: TemplateLineInput[] | null; error: string | null } {
+  const result: TemplateLineInput[] = [];
+  for (const l of lines) {
+    if (!l.item_id) continue;
+    const item = items.find((i) => i.id === l.item_id);
+    const qtyEntered = Number(l.qty) || 0;
+    let baseQty = qtyEntered;
+    if (item && l.unit && l.unit !== item.base_unit) {
+      const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
+      if (!alt) {
+        return {
+          result: null,
+          error: `"${item.item_code}" ki unit (${l.unit}) ka base unit (${item.base_unit}) mein conversion factor set nahi hai — Item Master mein "Alternate Units" add karen.`,
+        };
+      }
+      baseQty = Math.round(qtyEntered * alt.factor * 1000) / 1000;
+    }
+    result.push({ item_id: l.item_id, qty_per_unit: baseQty, unit: item?.base_unit ?? (l.unit || undefined) });
+  }
+  return { result, error: null };
 }
 
-export function NewProductTemplateForm({ items, units }: { items: Tables<"items">[]; units: Tables<"units">[] }) {
+export function NewProductTemplateForm({ items, units, altUnits }: { items: Tables<"items">[]; units: Tables<"units">[]; altUnits: AltUnit[] }) {
   const router = useRouter();
+  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
+  for (const a of altUnits) {
+    if (!a.is_active) continue;
+    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
+  }
   const [templateCode, setTemplateCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -33,7 +55,12 @@ export function NewProductTemplateForm({ items, units }: { items: Tables<"items"
       setError("Template code aur naam zaroori hai.");
       return;
     }
-    const materialLines = serialize(lines);
+    const { result, error: convErr } = serialize(lines, items, altUnits);
+    if (convErr) {
+      setError(convErr);
+      return;
+    }
+    const materialLines = result ?? [];
     if (!materialLines.length) {
       setError("Kam az kam ek raw material line honi chahiye.");
       return;
@@ -99,7 +126,7 @@ export function NewProductTemplateForm({ items, units }: { items: Tables<"items"
 
       <div>
         <p className="text-xs font-medium text-ink-soft mb-2">Raw Material Requirement — per 1 output unit</p>
-        <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Qty / Unit" />
+        <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Qty / Unit" altUnitsByItem={altUnitsByItem} />
       </div>
 
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}

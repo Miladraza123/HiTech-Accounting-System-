@@ -36,6 +36,7 @@ export function SalesOrderAmendPanel({
   salesOrderId,
   items,
   units,
+  altUnits,
   currentLines,
   currentClientPo,
   currentPoDate,
@@ -45,6 +46,7 @@ export function SalesOrderAmendPanel({
   salesOrderId: string;
   items: Tables<"items">[];
   units: Tables<"units">[];
+  altUnits: Tables<"item_alt_units">[];
   currentLines: Tables<"sales_order_lines">[];
   currentClientPo: string;
   currentPoDate: string;
@@ -52,6 +54,11 @@ export function SalesOrderAmendPanel({
   currentPaymentTerms: string | null;
 }) {
   const router = useRouter();
+  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
+  for (const a of altUnits) {
+    if (!a.is_active) continue;
+    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
+  }
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<EditableLine[]>(toEditable(currentLines));
   const [clientPo, setClientPo] = useState(currentClientPo);
@@ -127,7 +134,7 @@ export function SalesOrderAmendPanel({
         </label>
       </div>
 
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} />
+      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} altUnitsByItem={altUnitsByItem} />
       <p className="text-xs text-ink-faint">
         Jis line par delivery ho chuki hai usay hataya nahi ja sakta — sirf uski qty/rate badal sakte hain.
       </p>

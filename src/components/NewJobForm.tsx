@@ -14,14 +14,31 @@ type SoLineOption = {
   sales_orders: { so_no: string; client_po_number: string; parties: { legal_name: string } | null };
 };
 
-function serialize(lines: EditableMaterialLine[]): MaterialLineInput[] {
-  return lines
-    .filter((l) => l.item_id)
-    .map((l) => ({
-      item_id: l.item_id,
-      required_qty: Number(l.qty) || 0,
-      unit: l.unit || undefined,
-    }));
+type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
+
+// Material requirement qty must always end up base_unit-denominated — stock reservation
+// pooling (fn_reserve_job_material etc.) compares required_qty against stock_availability,
+// which is tracked in base_unit. Converts here at entry, not at the SQL layer.
+function serialize(lines: EditableMaterialLine[], items: Tables<"items">[], altUnits: AltUnit[]): { result: MaterialLineInput[] | null; error: string | null } {
+  const result: MaterialLineInput[] = [];
+  for (const l of lines) {
+    if (!l.item_id) continue;
+    const item = items.find((i) => i.id === l.item_id);
+    const qtyEntered = Number(l.qty) || 0;
+    let baseQty = qtyEntered;
+    if (item && l.unit && l.unit !== item.base_unit) {
+      const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
+      if (!alt) {
+        return {
+          result: null,
+          error: `"${item.item_code}" ki unit (${l.unit}) ka base unit (${item.base_unit}) mein conversion factor set nahi hai — Item Master mein "Alternate Units" add karen.`,
+        };
+      }
+      baseQty = Math.round(qtyEntered * alt.factor * 1000) / 1000;
+    }
+    result.push({ item_id: l.item_id, required_qty: baseQty, unit: item?.base_unit ?? (l.unit || undefined) });
+  }
+  return { result, error: null };
 }
 
 export function NewJobForm({
@@ -30,6 +47,7 @@ export function NewJobForm({
   templates,
   items,
   units,
+  altUnits,
   profiles,
 }: {
   soLines: SoLineOption[];
@@ -37,9 +55,15 @@ export function NewJobForm({
   templates: Tables<"product_templates">[];
   items: Tables<"items">[];
   units: Tables<"units">[];
+  altUnits: AltUnit[];
   profiles: Tables<"profiles">[];
 }) {
   const router = useRouter();
+  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
+  for (const a of altUnits) {
+    if (!a.is_active) continue;
+    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
+  }
   const [soLineId, setSoLineId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [templateId, setTemplateId] = useState("");
@@ -82,7 +106,12 @@ export function NewJobForm({
     }
     let materialLines: MaterialLineInput[] = [];
     if (!templateId) {
-      materialLines = serialize(lines);
+      const { result, error: convErr } = serialize(lines, items, altUnits);
+      if (convErr) {
+        setError(convErr);
+        return;
+      }
+      materialLines = result ?? [];
       if (!materialLines.length) {
         setError("Template select karen ya material requirement manually likhen.");
         return;
@@ -212,7 +241,7 @@ export function NewJobForm({
             Template se material requirement khud calculate hoga: <span className="tabular">qty_per_unit × {templatePreview.qty}</span>.
           </p>
         ) : (
-          <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Required Qty" />
+          <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Required Qty" altUnitsByItem={altUnitsByItem} />
         )}
       </div>
 

@@ -9,6 +9,12 @@ export type DeliveryChallanLineInput = {
   sales_order_line_id: string;
   delivered_qty: number;
   issue_from_stock: boolean;
+  /**
+   * Base-unit-equivalent qty for stock ledger posting when the line's unit differs
+   * from the item's base_unit (multi-unit conversion). Only meaningful/required when
+   * issue_from_stock=true; omit/undefined falls back to delivered_qty in the DB function.
+   */
+  stock_qty?: number;
 };
 
 export async function createDeliveryChallanAction(input: {

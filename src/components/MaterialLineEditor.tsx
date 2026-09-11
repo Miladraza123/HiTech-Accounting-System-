@@ -31,12 +31,20 @@ export function MaterialLineEditor({
   lines,
   onChange,
   qtyLabel = "Qty",
+  altUnitsByItem,
 }: {
   items: Tables<"items">[];
   units: Tables<"units">[];
   lines: EditableMaterialLine[];
   onChange: (lines: EditableMaterialLine[]) => void;
   qtyLabel?: string;
+  /**
+   * When provided, the Unit dropdown for a line with an item selected is restricted
+   * to that item's base_unit + its active alternate units (multi-unit conversion —
+   * qty entered here gets converted to base_unit before being sent to the server,
+   * since stock/reservation tracking is always base_unit-denominated).
+   */
+  altUnitsByItem?: Record<string, { unit: string; factor: number }[]>;
 }) {
   useEffect(() => {
     if (lines.length === 0) onChange([blankMaterialLine()]);
@@ -78,46 +86,57 @@ export function MaterialLineEditor({
             </tr>
           </thead>
           <tbody>
-            {lines.map((l) => (
-              <tr key={l.key} className="border-t border-line">
-                <td className="px-2 py-1.5">
-                  <select value={l.item_id} onChange={(e) => pickItem(l.key, e.target.value)} required className="input !py-1 text-xs">
-                    <option value="">— Select item —</option>
-                    {items.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.item_code} — {i.description}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value={l.qty}
-                    onChange={(e) => update(l.key, { qty: e.target.value })}
-                    required
-                    className="input !py-1 text-xs text-right tabular"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <select value={l.unit} onChange={(e) => update(l.key, { unit: e.target.value })} className="input !py-1 text-xs">
-                    <option value="">—</option>
-                    {units.map((u) => (
-                      <option key={u.code} value={u.code}>
-                        {u.code}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-1">
-                  <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Line hatayen">
-                    ×
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {lines.map((l) => {
+              const item = l.item_id ? items.find((i) => i.id === l.item_id) : undefined;
+              const unitOptions =
+                altUnitsByItem && item
+                  ? [item.base_unit, ...(altUnitsByItem[item.id] ?? []).map((a) => a.unit)]
+                  : units.map((u) => u.code);
+              const nonBaseUnit = !!item && !!l.unit && l.unit !== item.base_unit;
+              return (
+                <tr key={l.key} className="border-t border-line">
+                  <td className="px-2 py-1.5">
+                    <select value={l.item_id} onChange={(e) => pickItem(l.key, e.target.value)} required className="input !py-1 text-xs">
+                      <option value="">— Select item —</option>
+                      {items.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.item_code} — {i.description}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      value={l.qty}
+                      onChange={(e) => update(l.key, { qty: e.target.value })}
+                      required
+                      className="input !py-1 text-xs text-right tabular"
+                    />
+                    {altUnitsByItem && nonBaseUnit && (
+                      <p className="text-[10px] text-ink-faint text-right mt-0.5">base unit mein convert hoga</p>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <select value={l.unit} onChange={(e) => update(l.key, { unit: e.target.value })} className="input !py-1 text-xs">
+                      <option value="">—</option>
+                      {unitOptions.map((code) => (
+                        <option key={code} value={code}>
+                          {code}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-1">
+                    <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Line hatayen">
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

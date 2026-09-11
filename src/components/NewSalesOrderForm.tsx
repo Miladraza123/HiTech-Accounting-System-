@@ -37,6 +37,7 @@ export function NewSalesOrderForm({
   quotationLines,
   items,
   units,
+  altUnits,
   defaultPaymentTerms,
   defaultTaxPct,
   creditWarning,
@@ -45,11 +46,17 @@ export function NewSalesOrderForm({
   quotationLines: Tables<"quotation_lines">[];
   items: Tables<"items">[];
   units: Tables<"units">[];
+  altUnits: Tables<"item_alt_units">[];
   defaultPaymentTerms: string | null;
   defaultTaxPct: number;
   creditWarning?: string | null;
 }) {
   const router = useRouter();
+  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
+  for (const a of altUnits) {
+    if (!a.is_active) continue;
+    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
+  }
   const [lines, setLines] = useState<EditableLine[]>(fromQuotationLines(quotationLines, defaultTaxPct));
   const [clientPoNumber, setClientPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
@@ -143,7 +150,14 @@ export function NewSalesOrderForm({
         </div>
       </div>
 
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} defaultTaxPct={defaultTaxPct} />
+      <QuotationLineEditor
+        items={items}
+        units={units}
+        lines={lines}
+        onChange={setLines}
+        defaultTaxPct={defaultTaxPct}
+        altUnitsByItem={altUnitsByItem}
+      />
 
       {duplicateWarning && (
         <div className="rounded-md border border-warn bg-warn-soft px-4 py-3 text-sm text-warn space-y-2">

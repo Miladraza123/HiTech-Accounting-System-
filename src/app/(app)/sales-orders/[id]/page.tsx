@@ -27,7 +27,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
   const canEdit = isOwner(user) || hasRole(user, "sales");
 
   const supabase = await createClient();
-  const [{ data: so }, { data: lines }, { data: revisions }, { data: items }, { data: units }, { data: attachments }] =
+  const [{ data: so }, { data: lines }, { data: revisions }, { data: items }, { data: units }, { data: altUnits }, { data: attachments }] =
     await Promise.all([
       supabase
         .from("sales_orders")
@@ -38,6 +38,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
       supabase.from("sales_order_revisions").select("*").eq("sales_order_id", id).order("rev_no", { ascending: false }),
       supabase.from("items").select("*").eq("is_active", true).order("item_code"),
       supabase.from("units").select("*").order("code"),
+      supabase.from("item_alt_units").select("*").eq("is_active", true),
       supabase.from("attachments").select("*").eq("owner_table", "sales_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     ]);
 
@@ -125,6 +126,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
               salesOrderId={id}
               items={items ?? []}
               units={units ?? []}
+              altUnits={altUnits ?? []}
               currentLines={lines ?? []}
               currentClientPo={so.client_po_number}
               currentPoDate={so.po_date}

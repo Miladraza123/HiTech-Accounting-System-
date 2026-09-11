@@ -37,3 +37,31 @@ export async function toggleItemActiveAction(id: string, isActive: boolean) {
   await supabase.from("items").update({ is_active: isActive }).eq("id", id);
   revalidatePath("/items");
 }
+
+// --- Item Alternate Units (multi-unit conversion) — Sale/Issue/Delivery side only.
+// Purchase/GRN always stays in items.base_unit, unaffected by this table.
+
+export async function addItemAltUnitAction(itemId: string, unit: string, factor: number): Promise<ActionResult> {
+  const supabase = await createClient();
+  if (!unit) return { error: "Unit select karen." };
+  if (!factor || factor <= 0) return { error: "Factor zero se zyada hona chahiye." };
+
+  const { error } = await supabase.from("item_alt_units").insert({ item_id: itemId, unit, factor });
+  if (error) return { error: error.message };
+  revalidatePath(`/items/${itemId}`);
+  return { error: null, success: true };
+}
+
+export async function toggleItemAltUnitActiveAction(id: string, itemId: string, isActive: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("item_alt_units").update({ is_active: isActive }).eq("id", id);
+  revalidatePath(`/items/${itemId}`);
+  return { error: error?.message ?? null };
+}
+
+export async function deleteItemAltUnitAction(id: string, itemId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("item_alt_units").delete().eq("id", id);
+  revalidatePath(`/items/${itemId}`);
+  return { error: error?.message ?? null };
+}

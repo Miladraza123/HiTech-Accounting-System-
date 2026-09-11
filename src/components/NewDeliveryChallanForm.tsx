@@ -21,7 +21,19 @@ type SoOption = {
   lines: SoLine[];
 };
 
-export function NewDeliveryChallanForm({ salesOrders, warehouses }: { salesOrders: SoOption[]; warehouses: Tables<"warehouses">[] }) {
+type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
+
+export function NewDeliveryChallanForm({
+  salesOrders,
+  warehouses,
+  items,
+  altUnits,
+}: {
+  salesOrders: SoOption[];
+  warehouses: Tables<"warehouses">[];
+  items: Tables<"items">[];
+  altUnits: AltUnit[];
+}) {
   const router = useRouter();
   const [soId, setSoId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
@@ -46,16 +58,42 @@ export function NewDeliveryChallanForm({ salesOrders, warehouses }: { salesOrder
       setError("Warehouse select karen.");
       return;
     }
-    const lines: DeliveryChallanLineInput[] = (so?.lines ?? [])
-      .map((l) => ({
-        sales_order_line_id: l.id,
-        delivered_qty: Number(qtys[l.id] ?? 0),
-        issue_from_stock: !!issueFlags[l.id],
-      }))
-      .filter((l) => l.delivered_qty > 0);
-    if (!lines.length) {
+    const candidateLines = (so?.lines ?? []).filter((l) => Number(qtys[l.id] ?? 0) > 0);
+    if (!candidateLines.length) {
       setError("Kam az kam ek line mein delivered qty likhen.");
       return;
+    }
+
+    const lines: DeliveryChallanLineInput[] = [];
+    for (const l of candidateLines) {
+      const deliveredQty = Number(qtys[l.id] ?? 0);
+      const issue = !!issueFlags[l.id];
+      let stockQty: number | undefined;
+      if (issue) {
+        const item = items.find((i) => i.id === l.item_id);
+        if (!item) {
+          setError(`"${l.description}" ka item nahi mila — stock se issue nahi ho sakta.`);
+          return;
+        }
+        if (!l.unit || l.unit === item.base_unit) {
+          stockQty = deliveredQty;
+        } else {
+          const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
+          if (!alt) {
+            setError(
+              `"${l.description}" ki unit (${l.unit}) ka is item ke base unit (${item.base_unit}) mein conversion factor set nahi hai — Item Master mein "Alternate Units" add karen, ya "Issue from Stock" uncheck karen.`
+            );
+            return;
+          }
+          stockQty = Math.round(deliveredQty * alt.factor * 1000) / 1000;
+        }
+      }
+      lines.push({
+        sales_order_line_id: l.id,
+        delivered_qty: deliveredQty,
+        issue_from_stock: issue,
+        stock_qty: stockQty,
+      });
     }
     startTransition(async () => {
       const res = await createDeliveryChallanAction({
@@ -137,34 +175,51 @@ export function NewDeliveryChallanForm({ salesOrders, warehouses }: { salesOrder
                 </tr>
               </thead>
               <tbody>
-                {so.lines.map((l) => (
-                  <tr key={l.id} className="border-t border-line">
-                    <td className="px-3 py-2 text-ink">{l.description}</td>
-                    <td className="px-3 py-2 text-right tabular text-ink-soft">{l.ordered_qty}</td>
-                    <td className="px-3 py-2 text-right tabular text-ink-soft">{l.delivered_qty}</td>
-                    <td className="px-3 py-2 text-right tabular text-ink-soft">{(l.ordered_qty - l.delivered_qty).toFixed(3)}</td>
-                    <td className="px-2 py-1.5">
-                      <input
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        value={qtys[l.id] ?? ""}
-                        onChange={(e) => setQtys((q) => ({ ...q, [l.id]: e.target.value }))}
-                        className="input !py-1 text-xs text-right tabular"
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="px-3 py-1.5 text-center">
-                      <input
-                        type="checkbox"
-                        disabled={!l.item_id}
-                        checked={!!issueFlags[l.id]}
-                        onChange={(e) => setIssueFlags((f) => ({ ...f, [l.id]: e.target.checked }))}
-                        title={!l.item_id ? "Is line ka item nahi hai" : "Warehouse stock se qty kam ho jayegi"}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {so.lines.map((l) => {
+                  const item = items.find((i) => i.id === l.item_id);
+                  const deliveredQty = Number(qtys[l.id] ?? 0);
+                  const needsConversion = !!item && !!l.unit && l.unit !== item.base_unit;
+                  const alt = needsConversion ? altUnits.find((a) => a.item_id === item!.id && a.unit === l.unit && a.is_active) : undefined;
+                  const conversionMissing = needsConversion && !alt;
+                  return (
+                    <tr key={l.id} className="border-t border-line">
+                      <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-3 py-2 text-right tabular text-ink-soft">{l.ordered_qty}</td>
+                      <td className="px-3 py-2 text-right tabular text-ink-soft">{l.delivered_qty}</td>
+                      <td className="px-3 py-2 text-right tabular text-ink-soft">{(l.ordered_qty - l.delivered_qty).toFixed(3)}</td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={qtys[l.id] ?? ""}
+                          onChange={(e) => setQtys((q) => ({ ...q, [l.id]: e.target.value }))}
+                          className="input !py-1 text-xs text-right tabular"
+                          placeholder="0"
+                        />
+                        {issueFlags[l.id] && alt && deliveredQty > 0 && (
+                          <p className="text-[10px] text-ink-faint text-right mt-0.5 tabular">
+                            = {(Math.round(deliveredQty * alt.factor * 1000) / 1000).toFixed(3)} {item?.base_unit} stock
+                          </p>
+                        )}
+                        {issueFlags[l.id] && conversionMissing && (
+                          <p className="text-[10px] text-bad text-right mt-0.5">
+                            {l.unit}→{item?.base_unit} conversion missing
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5 text-center">
+                        <input
+                          type="checkbox"
+                          disabled={!l.item_id}
+                          checked={!!issueFlags[l.id]}
+                          onChange={(e) => setIssueFlags((f) => ({ ...f, [l.id]: e.target.checked }))}
+                          title={!l.item_id ? "Is line ka item nahi hai" : "Warehouse stock se qty kam ho jayegi"}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
