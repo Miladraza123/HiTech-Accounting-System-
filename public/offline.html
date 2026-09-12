@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline — HiTech</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f3ec;
+        --surface: #ffffff;
+        --ink: #20242e;
+        --ink-soft: #565b68;
+        --line: #ddd6c7;
+        --accent: #a85a28;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #171a21;
+          --surface: #1f232c;
+          --ink: #edebe3;
+          --ink-soft: #b4b8c2;
+          --line: #343a46;
+          --accent: #e08a4f;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      .card {
+        max-width: 26rem;
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 28px 24px;
+        text-align: center;
+      }
+      .icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 16px;
+        border-radius: 14px;
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 20px;
+      }
+      h1 { font-size: 1.05rem; margin: 0 0 8px; }
+      p { font-size: 0.875rem; color: var(--ink-soft); margin: 0 0 20px; line-height: 1.5; }
+      button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      button:hover { opacity: 0.9; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">HT</div>
+      <h1>Aap is waqt offline hain</h1>
+      <p>
+        Internet connection nahi mil raha. Pehle se khola gaya page cache se
+        dikhaya jayega agar available ho — nayi ya live data (invoices,
+        stock, payments waghera) ke liye internet wapis aane ka intezar
+        karen.
+      </p>
+      <button onclick="location.reload()">Dobara koshish karen</button>
+    </div>
+  </body>
+</html>

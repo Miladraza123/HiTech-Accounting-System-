@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   MaterialPending: "bg-warn-soft text-warn",
@@ -24,22 +26,30 @@ const STATUS_LABEL: Record<string, string> = {
   Cancelled: "Cancelled",
 };
 
-export default async function JobsPage({ searchParams }: { searchParams: Promise<{ status?: string; health?: string }> }) {
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; health?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "job.manage");
-  const { status: statusFilter, health: healthFilter } = await searchParams;
+  const { status: statusFilter, health: healthFilter, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
 
   const supabase = await createClient();
-  let query = supabase
-    .from("jobs")
-    .select("*, sales_orders(so_no, parties(legal_name)), warehouses(name)")
-    .order("created_at", { ascending: false });
-  if (statusFilter) query = query.eq("status", statusFilter);
-  const { data: allJobs } = await query;
+  const JOBS_SELECT = "*, sales_orders(so_no, parties(legal_name)), warehouses(name)";
 
-  // "health" is computed per-row (not a DB column), so that filter is applied after the fetch.
-  const jobs = healthFilter
-    ? (allJobs ?? []).filter((j) => {
+  // "health" is computed per-row (not a DB column), so it can't be pushed
+  // down into the query. When it's set, we fetch every matching row and
+  // filter+paginate in JS (DB-level .range() would silently drop matches
+  // that fall outside the fetched page before the health filter even
+  // runs). When it's not set, paginate at the DB level as usual.
+  async function loadJobs() {
+    if (healthFilter) {
+      let allQuery = supabase.from("jobs").select(JOBS_SELECT).order("created_at", { ascending: false });
+      if (statusFilter) allQuery = allQuery.eq("status", statusFilter);
+      const { data: allJobs } = await allQuery;
+      const filtered = (allJobs ?? []).filter((j) => {
         const health = computeHealth({
           isOpen: !["Delivered", "Cancelled"].includes(j.status),
           promisedDate: j.required_delivery_date,
@@ -47,8 +57,21 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         });
         if (healthFilter === "attention") return health?.label === "AtRisk" || health?.label === "Stalled";
         return health?.label === healthFilter;
-      })
-    : allJobs;
+      });
+      const [sliceFrom, sliceTo] = pageRange(page);
+      return { jobs: filtered.slice(sliceFrom, sliceTo + 1), totalPages: computeTotalPages(filtered.length) };
+    }
+
+    let pagedQuery = supabase
+      .from("jobs")
+      .select(JOBS_SELECT, { count: "exact" })
+      .order("created_at", { ascending: false });
+    if (statusFilter) pagedQuery = pagedQuery.eq("status", statusFilter);
+    const [rangeFrom, rangeTo] = pageRange(page);
+    const { data, count } = await pagedQuery.range(rangeFrom, rangeTo);
+    return { jobs: data ?? [], totalPages: computeTotalPages(count ?? 0) };
+  }
+  const { jobs, totalPages } = await loadJobs();
 
   return (
     <div className="space-y-6">
@@ -137,6 +160,13 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        basePath="/jobs"
+        searchParams={{ status: statusFilter, health: healthFilter }}
+        currentPage={page}
+        totalPages={totalPages}
+      />
     </div>
   );
 }

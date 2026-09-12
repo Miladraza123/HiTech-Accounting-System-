@@ -2,12 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
 const COMPANY_ID = "00000000-0000-0000-0000-000000000001";
 
-export type ActionResult = { error: string | null; success?: boolean };
+export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[] };
 
 // ---------- Company ----------
+// Smart Merge: the form also submits a `base_*` hidden field per editable
+// column, holding the value this browser tab had loaded when it opened
+// the form. On save, only the fields that actually changed are sent, and
+// only a field someone else *also* changed (to a different value) since
+// this tab loaded the page comes back as a conflict — every other field
+// this admin edited is still saved immediately.
 export async function saveCompanyAction(
   _prev: ActionResult,
   formData: FormData
@@ -17,23 +24,51 @@ export async function saveCompanyAction(
   const legal_name = String(formData.get("legal_name") ?? "").trim();
   if (!legal_name) return { error: "Company ka naam zaroori hai." };
 
-  const payload = {
-    id: COMPANY_ID,
+  const field = (name: string) => String(formData.get(name) ?? "").trim() || null;
+  const next = {
     legal_name,
-    ntn: String(formData.get("ntn") ?? "").trim() || null,
-    strn: String(formData.get("strn") ?? "").trim() || null,
-    address: String(formData.get("address") ?? "").trim() || null,
-    province: String(formData.get("province") ?? "").trim() || null,
-    phone: String(formData.get("phone") ?? "").trim() || null,
-    email: String(formData.get("email") ?? "").trim() || null,
+    ntn: field("ntn"),
+    strn: field("strn"),
+    address: field("address"),
+    province: field("province"),
+    phone: field("phone"),
+    email: field("email"),
     default_sales_tax_pct: Number(formData.get("default_sales_tax_pct") ?? 18),
   };
 
-  const { error } = await supabase.from("company").upsert(payload);
-  if (error) return { error: error.message };
+  const { data: existing } = await supabase.from("company").select("id").maybeSingle();
 
+  if (!existing) {
+    // First-time setup — nothing to merge against yet.
+    const { error } = await supabase.from("company").insert({ id: COMPANY_ID, ...next });
+    if (error) return { error: error.message };
+    revalidatePath("/setup/company");
+    revalidatePath("/");
+    return { error: null, success: true };
+  }
+
+  const base = {
+    legal_name: field("base_legal_name"),
+    ntn: field("base_ntn"),
+    strn: field("base_strn"),
+    address: field("base_address"),
+    province: field("base_province"),
+    phone: field("base_phone"),
+    email: field("base_email"),
+    default_sales_tax_pct: Number(formData.get("base_default_sales_tax_pct") ?? 18),
+  };
+  const changes = diffFields(base, next);
+  const { result, error } = await smartMergeUpdate(supabase, "company", COMPANY_ID, base, changes);
+  if (error) return { error };
+
+  // Any non-conflicting field was applied even when others conflicted —
+  // revalidate either way so the page's own data reflects it.
   revalidatePath("/setup/company");
   revalidatePath("/");
+
+  if (result && result.conflicts.length > 0) {
+    return { error: null, conflicts: result.conflicts };
+  }
   return { error: null, success: true };
 }
 

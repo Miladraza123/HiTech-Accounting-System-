@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Open: "bg-ledger-soft text-ledger",
@@ -12,15 +14,25 @@ const STATUS_STYLE: Record<string, string> = {
   OnHold: "bg-surface-2 text-ink-faint",
 };
 
-export default async function QueriesPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+export default async function QueriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "query.manage");
-  const { from, to } = await searchParams;
+  const { from, to, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  let query = supabase.from("queries").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  let query = supabase
+    .from("queries")
+    .select("*, parties(legal_name)", { count: "exact" })
+    .order("created_at", { ascending: false });
   if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
-  const { data: queries } = await query;
+  const { data: queries, count } = await query.range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -91,6 +103,8 @@ export default async function QueriesPage({ searchParams }: { searchParams: Prom
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/queries" searchParams={{ from, to }} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

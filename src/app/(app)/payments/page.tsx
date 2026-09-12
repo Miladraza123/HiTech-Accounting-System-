@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -14,17 +16,23 @@ const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt (in)", payme
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; direction?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; direction?: string; page?: string }>;
 }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "payment.manage");
-  const { from, to, direction } = await searchParams;
+  const { from, to, direction, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  let query = supabase.from("payments").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  let query = supabase
+    .from("payments")
+    .select("*, parties(legal_name)", { count: "exact" })
+    .order("created_at", { ascending: false });
   if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
   if (direction === "receipt" || direction === "payment") query = query.eq("direction", direction);
-  const { data: payments } = await query;
+  const { data: payments, count } = await query.range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -97,6 +105,8 @@ export default async function PaymentsPage({
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/payments" searchParams={{ from, to, direction }} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

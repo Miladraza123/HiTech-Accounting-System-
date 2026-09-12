@@ -4391,6 +4391,10 @@ export type Database = {
         Returns: undefined
       }
       fn_set_role_permission: { Args: { p_permission_key: string; p_role_codes: string[] }; Returns: undefined }
+      fn_smart_merge_update: {
+        Args: { p_base: Json; p_changes: Json; p_row_id: string; p_table_name: string }
+        Returns: Json
+      }
       fn_update_draft_quotation: {
         Args: {
           p_delivery_terms: string

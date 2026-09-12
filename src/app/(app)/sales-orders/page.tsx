@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -18,13 +20,23 @@ const BUSINESS_LINE_LABEL: Record<string, string> = {
   fabrication: "Fabrication",
 };
 
-export default async function SalesOrdersPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
-  const { from, to } = await searchParams;
+export default async function SalesOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; page?: string }>;
+}) {
+  const { from, to, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  let query = supabase.from("sales_orders").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  let query = supabase
+    .from("sales_orders")
+    .select("*, parties(legal_name)", { count: "exact" })
+    .order("created_at", { ascending: false });
   if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
-  const { data: orders } = await query;
+  const { data: orders, count } = await query.range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -100,6 +112,8 @@ export default async function SalesOrdersPage({ searchParams }: { searchParams: 
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/sales-orders" searchParams={{ from, to }} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

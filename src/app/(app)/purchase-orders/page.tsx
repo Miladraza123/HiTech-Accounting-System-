@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -14,15 +16,25 @@ const STATUS_STYLE: Record<string, string> = {
 
 const TYPE_LABEL: Record<string, string> = { direct: "Direct", stock: "Stock", general: "General" };
 
-export default async function PurchaseOrdersPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
+export default async function PurchaseOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "purchase_order.manage");
-  const { open } = await searchParams;
+  const { open, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  let query = supabase.from("purchase_orders").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  let query = supabase
+    .from("purchase_orders")
+    .select("*, parties(legal_name)", { count: "exact" })
+    .order("created_at", { ascending: false });
   if (open === "1") query = query.not("status", "in", "(Received,Closed,Cancelled)");
-  const { data: orders } = await query;
+  const { data: orders, count } = await query.range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -103,6 +115,8 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/purchase-orders" searchParams={{ open }} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

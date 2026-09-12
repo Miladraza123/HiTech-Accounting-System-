@@ -2,21 +2,31 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
   Cancelled: "bg-bad-soft text-bad",
 };
 
-export default async function SupplierBillsPage() {
+export default async function SupplierBillsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "supplier_bill.manage");
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const [{ data: bills }, { data: outstanding }] = await Promise.all([
-    supabase.from("supplier_bills").select("*, parties(legal_name), grns(grn_no)").order("created_at", { ascending: false }),
+  const [{ data: bills, count }, { data: outstanding }] = await Promise.all([
+    supabase
+      .from("supplier_bills")
+      .select("*, parties(legal_name), grns(grn_no)", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(rangeFrom, rangeTo),
     supabase.from("supplier_bill_outstanding").select("*"),
   ]);
+  const totalPages = computeTotalPages(count ?? 0);
 
   const outstandingById = new Map((outstanding ?? []).map((o) => [o.supplier_bill_id, o.outstanding_amount ?? 0]));
 
@@ -82,6 +92,8 @@ export default async function SupplierBillsPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/supplier-bills" searchParams={{}} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

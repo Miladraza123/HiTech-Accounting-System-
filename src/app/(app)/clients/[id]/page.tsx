@@ -117,7 +117,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">Credit Terms</h2>
-            <EditCreditTermsForm partyId={id} creditLimit={creditLimit} creditDays={party.credit_days ?? 0} />
+            <EditCreditTermsForm partyId={id} partyName={party.legal_name} creditLimit={creditLimit} creditDays={party.credit_days ?? 0} />
           </div>
           <p className="text-xs text-ink-soft">Credit Days: {party.credit_days ?? 0} — invoice due date = invoice date + credit days.</p>
           {overLimit && (

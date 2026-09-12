@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -10,15 +12,20 @@ const STATUS_STYLE: Record<string, string> = {
 
 const SOURCE_LABEL: Record<string, string> = { cash: "Cash", bank: "Bank", petty_cash: "Petty Cash" };
 
-export default async function ExpensesPage() {
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "expense.manage");
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const { data: expenses } = await supabase
+  const { data: expenses, count } = await supabase
     .from("expenses")
-    .select("*, expense_heads(name), bank_accounts(account_name), petty_cash_funds(fund_name)")
-    .order("expense_date", { ascending: false });
+    .select("*, expense_heads(name), bank_accounts(account_name), petty_cash_funds(fund_name)", { count: "exact" })
+    .order("expense_date", { ascending: false })
+    .range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -81,6 +88,8 @@ export default async function ExpensesPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/expenses" searchParams={{}} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

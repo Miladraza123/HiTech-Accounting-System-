@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Draft: "bg-surface-2 text-ink-faint",
@@ -13,18 +15,21 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function QuotationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; status?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; status?: string; page?: string }>;
 }) {
-  const { from, to, status } = await searchParams;
+  const { from, to, status, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
   let query = supabase
     .from("quotations")
-    .select("*, parties(legal_name), quotation_revisions(rev_no, grand_total, is_current)")
+    .select("*, parties(legal_name), quotation_revisions(rev_no, grand_total, is_current)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
   if (status) query = query.eq("status", status);
-  const { data: quotations } = await query;
+  const { data: quotations, count } = await query.range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -87,6 +92,8 @@ export default async function QuotationsPage({
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/quotations" searchParams={{ from, to, status }} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

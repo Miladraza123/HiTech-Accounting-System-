@@ -2,21 +2,31 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
   Cancelled: "bg-bad-soft text-bad",
 };
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "invoice.manage");
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const [{ data: invoices }, { data: outstanding }] = await Promise.all([
-    supabase.from("invoices").select("*, parties(legal_name), sales_orders(so_no)").order("created_at", { ascending: false }),
+  const [{ data: invoices, count }, { data: outstanding }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(rangeFrom, rangeTo),
     supabase.from("invoice_outstanding").select("*"),
   ]);
+  const totalPages = computeTotalPages(count ?? 0);
 
   const outstandingById = new Map((outstanding ?? []).map((o) => [o.invoice_id, o.outstanding_amount ?? 0]));
 
@@ -82,6 +92,8 @@ export default async function InvoicesPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/invoices" searchParams={{}} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

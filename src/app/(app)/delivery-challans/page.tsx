@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Issued: "bg-ledger-soft text-ledger",
@@ -14,18 +16,25 @@ const ACCEPTANCE_STYLE: Record<string, string> = {
   Disputed: "bg-bad-soft text-bad",
 };
 
-export default async function DeliveryChallansPage({ searchParams }: { searchParams: Promise<{ acceptance?: string }> }) {
+export default async function DeliveryChallansPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ acceptance?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "delivery_challan.manage");
-  const { acceptance } = await searchParams;
+  const { acceptance, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
   let query = supabase
     .from("delivery_challans")
-    .select("*, parties(legal_name), sales_orders(so_no)")
+    .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (acceptance) query = query.eq("acceptance_status", acceptance);
-  const { data: dcs } = await query;
+  const { data: dcs, count } = await query.range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -99,6 +108,8 @@ export default async function DeliveryChallansPage({ searchParams }: { searchPar
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/delivery-challans" searchParams={{ acceptance }} currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
 import { signOutAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "@/components/MobileNav";
+import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -78,6 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const userRoleLabel = user.roles.length ? user.roles.map((r) => ROLE_LABELS[r] ?? r).join(", ") : "No role assigned";
 
   return (
+    <OfflineQueueProvider>
     <div className="min-h-screen bg-bg">
       <MobileNav
         navItems={navItems}
@@ -158,5 +160,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+    </OfflineQueueProvider>
   );
 }

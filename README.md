@@ -8,7 +8,135 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 17 — Daily Backup & Restore (complete)
+## Status: Phase 18 — Performance & Smart Merge (complete)
+
+Four independent pieces, built in dependency order (Indexes → Pagination →
+Smart Merge → PWA/Offline, since the offline queue has to replay through
+Smart Merge's conflict-aware save path):
+
+**A.1 — Missing-index audit.** Every single-column foreign key in the
+public schema was checked against `pg_index` for whether it's the
+*leftmost* column of any existing index (the only way an index actually
+helps a plain lookup on that column) — found and added 50 genuinely
+missing FK indexes, dropped 1 real duplicate (`idx_daily_snapshots_date`,
+redundant with the table's own UNIQUE constraint index), added
+`created_at desc` indexes to the 16 tables whose list pages sort by it
+with no index behind it at all, and added a case/whitespace-insensitive
+unique index on `parties.legal_name` (a real duplicate-client/-supplier
+risk this business already manages manually — zero existing collisions
+confirmed before adding it).
+
+**A.2 — Pagination.** The 10 core transactional list pages (Queries,
+Quotations, Sales Orders, Purchase Orders, Jobs, Invoices, Supplier
+Bills, Payments, Expenses, Delivery Challans) used to fetch every row of
+the table on every page load. They now fetch 25 rows at a time via
+Supabase's `.range()` with `{count: "exact"}`, rendering a shared
+`<PaginationControls>` component that preserves every existing filter
+(date range, status, etc.) across page links. Jobs is the one special
+case: its "health" badge is computed in JS from `required_delivery_date`
++ `updated_at` (not a DB column), so DB-level `.range()` pagination would
+silently return incomplete results whenever the health filter is active
+— when it is, the page instead fetches every status-filtered row, applies
+the health filter, and paginates the already-filtered array in memory;
+when it isn't, it paginates at the DB level like every other page.
+
+**B — Smart Merge.** Replaces "reject the whole save if anything on the
+row changed" with field-level 3-way conflict resolution: a field nobody
+else touched is always safe to save regardless of what else changed on
+the row, and only a field two people changed to two *different* values
+is held back for a decision — every other field the user changed is
+still applied in the same request. This app's business documents
+(queries → quotations → sales orders → jobs → delivery → invoices →
+payments) are append-only workflow documents — created once, then moved
+through fixed state-machine actions (cancel, amend-as-a-new-revision,
+record POD, allocate payment, …), each already targeting its own
+distinct columns via its own dedicated RPC — so there's no free-form
+"edit this record's fields" UI on those to protect in the first place.
+The two places in the app that *are* genuine edit-anytime, multi-field
+forms on an existing row — **Company Profile** and **Party Credit
+Terms** — are exactly where Smart Merge is wired in, through one
+generic, reusable engine any future free-edit form can opt into with a
+one-line addition to its allowlist:
+- `fn_smart_merge_update(table, row_id, base, changes)` — `base` is the
+  row as the browser last loaded it, `changes` is only the fields it's
+  actually trying to change. For each changed field: current value
+  already equals the new value → no-op; current value still equals
+  `base` → nobody else touched it, apply it; otherwise → genuine
+  conflict, left untouched and reported back (`{field, base_value,
+  server_value, my_value}`) while every other, non-conflicting field
+  the user changed is still applied in the same statement.
+- A per-table allowlist of editable columns (`company`:
+  legal_name/ntn/strn/address/province/phone/email/
+  default_sales_tax_pct; `parties`: credit_limit/credit_days) is the
+  hard security boundary — a table or column not on it can never be
+  written through this path, whatever a client sends.
+- Runs with the *caller's own* privileges (not SECURITY DEFINER), so
+  the table's normal RLS UPDATE policy still decides who may write —
+  Smart Merge sits on top of the existing permission model, never
+  around it.
+- A type-aware value-equality check means `"18"` vs `18.00` (a
+  `numeric(5,2)` column's own text formatting vs. what a browser last
+  displayed) is correctly treated as "unchanged", never a false
+  conflict.
+- The conflict UI ("Mera value rakhen" / "Server ka value rakhen") ships
+  on both forms — resolving "mine" resubmits with the base advanced to
+  the server's current value; resolving "theirs" just accepts it.
+- `row_version` (present on 9 tables since Phase 0/1/2/3/5, but never
+  actually read or written by any application code before this) is now
+  genuinely incremented on every Smart-Merge-applied write, on the
+  tables that have it — an optional optimization the engine detects
+  per-table, not a requirement (`company` has no `row_version` column
+  at all and is handled the same way).
+
+**A.3 — PWA shell.** `public/manifest.webmanifest` + `public/sw.js` +
+`public/offline.html`, registered from the root layout
+(`ServiceWorkerRegister`) with a dismissible "naya version available"
+toast when a new service worker has finished installing in the
+background (the user decides when to reload, never a silent swap
+mid-edit). Caching strategy: HTML navigations are **network-first**
+(always try live data first; fall back to cache, then the offline page,
+only when genuinely offline); Next's static build output
+(`/_next/static/*`, images, fonts, icons) is **cache-first with a
+background refresh** (stale-while-revalidate); every non-GET request
+(Server Actions, RPC calls) and every cross-origin request (Supabase's
+REST/Auth/Storage API) is **never** touched by the service worker at
+all — business data must always be live, never served from a cache.
+The cache is versioned (`hitech-v1`) and `activate` deletes every
+older-versioned cache, so nothing stale survives a deploy.
+- **Bug found and fixed while building this**: the app's `proxy.ts`
+  (Next.js 16's renamed `middleware.ts`) redirected an unauthenticated
+  request for `/sw.js`, `/manifest.webmanifest`, and `/offline.html` to
+  `/login` — its matcher excluded images and `_next/*` but not these new
+  static files, which would have made the service worker completely
+  unregisterable. Fixed by adding them to the matcher's exclusion list;
+  verified with a real production build + server, confirming all three
+  now return 200 with the right content-type while `/` still correctly
+  redirects when signed out.
+
+**A.4/5 — Local-first optimistic UI + offline write queue.** A
+dependency-free IndexedDB-backed queue (`src/lib/offlineQueue.ts`)
+persists a write across reloads when the browser is offline. Scope
+mirrors Smart Merge's for the same reason — Company Profile and Party
+Credit Terms are the only two free-edit forms to route through it —
+which also means every queued write, by construction, replays through
+the *exact same* `fn_smart_merge_update` conflict-aware RPC an online
+save uses, per the prompt's own explicit dependency note: never a blind
+overwrite just because it happened to be queued.
+- Saving while offline queues the diff instead of failing outright, and
+  shows a small "⏳ Offline save — sync ka intezar" indicator right on
+  the form.
+- `OfflineQueueProvider` (wrapping the whole authenticated app) flushes
+  the queue automatically on the browser's `online` event and on first
+  mount if already online — a floating status pill shows "Offline — N
+  changes pending sync" while offline, and a toast summarizes the
+  result once back online.
+- A synced write that comes back with a genuine conflict (someone else
+  changed the same field while this browser was offline) surfaces the
+  identical Mera/Server resolution UI as an online save's conflict —
+  never a silently-dropped edit.
+
+<details>
+<summary>Phase 17 — Daily Backup & Restore (complete)</summary>
 
 Every night, without any human action, the system emails two files: an
 Excel workbook (for a person to read) and a JSON file (for a full
@@ -97,6 +225,8 @@ uses — never a service-role key), `BACKUP_EMAIL` / `BACKUP_PASSWORD`
 (the dedicated Backup Bot account's login), `GMAIL_USER` /
 `GMAIL_APP_PASSWORD` (a Gmail account + its App Password, for sending),
 `BACKUP_TO_EMAIL` (where the nightly email should land).
+
+</details>
 
 <details>
 <summary>Phase 16 — Owner Dashboard Redesign (complete)</summary>
@@ -1255,7 +1385,8 @@ src/
                                   inline-SVG/CSS charts, no charting library dependency —
                                   MobileNav — phone-width sidebar fallback (a sticky top bar
                                   + slide-in drawer, same nav/search/logout as the desktop
-                                  sidebar), RestoreBackupPanel — the Backup & Restore UI)
+                                  sidebar), RestoreBackupPanel — the Backup & Restore UI,
+                                  PaginationControls — shared Prev/Next + page-number links)
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers
@@ -1282,8 +1413,24 @@ src/
                                   every [id]/print/ route above
     excelExport.ts             — shared xlsx builder (exceljs) backing every /export
                                   Route Handler above
+    pagination.ts              — shared DEFAULT_PAGE_SIZE/parsePage/pageRange/totalPages
+                                  helpers, used by every paginated list page
+    smartMerge.ts (+ .test.ts) — Smart Merge client: diffFields() (pure) + smartMergeUpdate()
+                                  (calls fn_smart_merge_update)
+    offlineQueue.ts            — dependency-free IndexedDB-backed offline write queue,
+                                  replays every entry through smartMergeUpdate()
   proxy.ts                     — session refresh + route protection (Next.js 16's
-                                  renamed middleware.ts)
+                                  renamed middleware.ts) — sw.js/manifest.webmanifest/
+                                  offline.html are excluded from auth so the service
+                                  worker always registers, signed in or not
+  components/OfflineQueueProvider.tsx — offline/pending-sync status pill, sync toast,
+                                  and Smart-Merge conflict-resolution banner for a
+                                  background-synced write; wraps the (app) layout
+  components/ServiceWorkerRegister.tsx — registers public/sw.js, shows an "update
+                                  available" toast when a new version has installed
+public/sw.js, manifest.webmanifest, offline.html, icon-*.png — the PWA shell:
+                                  network-first HTML, stale-while-revalidate static
+                                  assets, versioned cache, never caches API/RPC calls
 backup/                        — standalone Daily Backup runner (backup.js + its own
                                   package.json) — deliberately NOT part of the Next.js
                                   app bundle; runs headless via GitHub Actions only
