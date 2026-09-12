@@ -7,6 +7,21 @@ import { agingBucket, dueDateFrom } from "@/lib/aging";
 import { resolveRange, toExclusiveUpperBound, buildTimeBuckets, countInBuckets, RANGE_LABEL } from "@/lib/dashboardHelpers";
 import { TrendLineChart, type TrendSeries } from "@/components/TrendLineChart";
 import { CompareBarChart, type CompareBar } from "@/components/CompareBarChart";
+import { Badge } from "@/components/ui/Badge";
+import {
+  HelpCircle,
+  FileText,
+  ShoppingCart,
+  TrendingUp,
+  Truck,
+  CreditCard,
+  Landmark,
+  Wallet,
+  Boxes,
+  Sun,
+  CloudSun,
+  Moon,
+} from "lucide-react";
 
 const LINE_LABEL: Record<string, string> = { material_supply: "Material Supply", fabrication: "Fabrication" };
 
@@ -14,6 +29,7 @@ type SearchParams = { line?: string; range?: string; from?: string; to?: string 
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await getCurrentUser();
+  if (!user) redirect("/login");
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
   const { line, range, from: fromParam, to: toParam } = await searchParams;
@@ -308,6 +324,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <p className="mt-1 text-sm text-ink-soft">Business ka live management view — Sales, Fabrication, Accounts aur Owner action items ek jaga.</p>
       </div>
 
+      <GreetingBanner fullName={user.fullName} />
+
       <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-ink-faint font-mono">
@@ -359,16 +377,40 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
       {/* ---------- TOP KPI CARDS ---------- */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <KpiCard realHref={`/queries?from=${from}&to=${to}`} value={queriesInRangeCount.toLocaleString()} label="Queries Received" />
-        <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={quotationsSentInRange.length.toLocaleString()} label="Quotations Sent" />
-        <KpiCard realHref={`/sales-orders?from=${from}&to=${to}`} value={salesOrdersInRange.length.toLocaleString()} label="PO Received" />
-        <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={`${conversionPct}%`} label="Quotation → PO Conversion" />
-        <KpiCard realHref="/reports/pending-orders" value={pendingDeliverLines.length.toLocaleString()} label="Pending Deliveries" tone={pendingDeliverLines.length > 0 ? "warn" : undefined} />
-        <KpiCard realHref={`/payments?direction=receipt&from=${from}&to=${to}`} value={paymentsReceivedTotal.toLocaleString()} label="Payments Received" tone="good" />
-        <KpiCard realHref="/reports/ar-aging" value={receivablesTotal.toLocaleString()} label="Receivables" tone={receivablesTotal > 0 ? "warn" : undefined} />
-        <KpiCard realHref="/reports/ap-aging" value={payablesTotal.toLocaleString()} label="Payables" tone={payablesTotal > 0 ? "warn" : undefined} />
-        <KpiCard realHref="/cash-bank" value={cashBankTotal.toLocaleString()} label="Cash &amp; Bank" tone="good" />
-        <KpiCard realHref="/inventory" value={stockValueTotal.toLocaleString()} label="Raw Material Stock Value" />
+        <KpiCard realHref={`/queries?from=${from}&to=${to}`} value={queriesInRangeCount.toLocaleString()} label="Queries Received" icon={<HelpCircle size={17} />} />
+        <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={quotationsSentInRange.length.toLocaleString()} label="Quotations Sent" icon={<FileText size={17} />} />
+        <KpiCard realHref={`/sales-orders?from=${from}&to=${to}`} value={salesOrdersInRange.length.toLocaleString()} label="PO Received" icon={<ShoppingCart size={17} />} />
+        <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={`${conversionPct}%`} label="Quotation → PO Conversion" icon={<TrendingUp size={17} />} />
+        <KpiCard
+          realHref="/reports/pending-orders"
+          value={pendingDeliverLines.length.toLocaleString()}
+          label="Pending Deliveries"
+          tone={pendingDeliverLines.length > 0 ? "warn" : undefined}
+          icon={<Truck size={17} />}
+        />
+        <KpiCard
+          realHref={`/payments?direction=receipt&from=${from}&to=${to}`}
+          value={paymentsReceivedTotal.toLocaleString()}
+          label="Payments Received"
+          tone="good"
+          icon={<CreditCard size={17} />}
+        />
+        <KpiCard
+          realHref="/reports/ar-aging"
+          value={receivablesTotal.toLocaleString()}
+          label="Receivables"
+          tone={receivablesTotal > 0 ? "warn" : undefined}
+          icon={<Landmark size={17} />}
+        />
+        <KpiCard
+          realHref="/reports/ap-aging"
+          value={payablesTotal.toLocaleString()}
+          label="Payables"
+          tone={payablesTotal > 0 ? "warn" : undefined}
+          icon={<Landmark size={17} />}
+        />
+        <KpiCard realHref="/cash-bank" value={cashBankTotal.toLocaleString()} label="Cash &amp; Bank" tone="good" icon={<Wallet size={17} />} />
+        <KpiCard realHref="/inventory" value={stockValueTotal.toLocaleString()} label="Raw Material Stock Value" icon={<Boxes size={17} />} />
       </div>
 
       {/* ---------- MANAGEMENT CHARTS ---------- */}
@@ -396,7 +438,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <SectionCard title="Recent Queries" seeAllHref="/queries">
           <div className="divide-y divide-line">
             {recentQueries.map((q) => (
-              <Link key={q.id} href={`/queries/${q.id}`} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-surface-2 transition">
+              <Link key={q.id} href={`/queries/${q.id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                 <span className="text-ink-soft text-xs">
                   <span className="font-mono text-ink">{q.query_no}</span> — {(q.parties as unknown as PartyRef)?.legal_name ?? "—"}
                 </span>
@@ -410,7 +452,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <SectionCard title="Recent Quotations" seeAllHref="/quotations">
           <div className="divide-y divide-line">
             {recentQuotations.map((q) => (
-              <Link key={q.id} href={`/quotations/${q.id}`} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-surface-2 transition">
+              <Link key={q.id} href={`/quotations/${q.id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                 <span className="text-ink-soft text-xs">
                   <span className="font-mono text-ink">{q.quotation_no}</span> — {(q.parties as unknown as PartyRef)?.legal_name ?? "—"}
                 </span>
@@ -427,7 +469,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               {jobStatusRows.map((j) => {
                 const so = j.sales_orders as unknown as { so_no: string; parties: PartyRef } | null;
                 return (
-                  <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-surface-2 transition">
+                  <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                     <span className="text-ink-soft text-xs">
                       <span className="font-mono text-ink">{j.job_no}</span> — {so?.parties?.legal_name ?? "—"} ({j.progress_pct}%)
                     </span>
@@ -445,7 +487,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <SectionCard title="Pending Deliveries" seeAllHref="/reports/pending-orders">
           <div className="divide-y divide-line">
             {pendingDeliveryRows.map((l, i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-2 text-sm">
+              <div key={i} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg">
                 <span className="text-ink-soft text-xs">
                   <span className="font-mono text-ink">{l.so_no}</span> — {l.client}
                 </span>
@@ -459,7 +501,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <SectionCard title="Payment Follow-ups" seeAllHref="/reports/ar-aging">
           <div className="divide-y divide-line">
             {paymentFollowupRows.map((r) => (
-              <Link key={r.invoiceId} href={`/clients/${r.partyId}`} className="flex items-center justify-between px-4 py-2 text-sm hover:bg-surface-2 transition">
+              <Link key={r.invoiceId} href={`/clients/${r.partyId}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                 <span className="text-ink-soft text-xs">{r.client}</span>
                 <span className="text-xs tabular text-bad font-medium">
                   {r.amount.toLocaleString()} ({r.overdueDays}d)
@@ -474,12 +516,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       {/* ---------- OWNER CONTROL SECTIONS ---------- */}
       <SectionCard title="Action Required">
         <div className="divide-y divide-line">
-          {actionItems.map((item) => (
-            <Link key={item.key} href={item.href} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-surface-2 transition">
+          {actionItems.map((item, i) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`flex items-center justify-between px-4 py-2.5 text-sm hover:bg-surface-2 transition ${i % 2 === 1 ? "bg-bg" : ""}`}
+            >
               <span className={item.count > 0 ? "text-ink" : "text-ink-faint"}>{item.label}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${item.count > 0 ? "bg-bad-soft text-bad" : "bg-surface-2 text-ink-faint"}`}>
+              <Badge tone={item.count > 0 ? "bad" : "neutral"} dot={false}>
                 {item.count}
-              </span>
+              </Badge>
             </Link>
           ))}
         </div>
@@ -558,23 +604,61 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   );
 }
 
+const TONE_CHIP: Record<"good" | "warn" | "bad" | "neutral", string> = {
+  good: "bg-good-soft text-good",
+  warn: "bg-warn-soft text-warn",
+  bad: "bg-bad-soft text-bad",
+  neutral: "bg-accent-soft text-accent-ink",
+};
+
 function KpiCard({
   realHref,
   value,
   label,
   tone,
+  icon,
 }: {
   realHref: string;
   value: string;
   label: string;
   tone?: "good" | "warn" | "bad";
+  icon?: React.ReactNode;
 }) {
   const toneClass = tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : tone === "good" ? "text-good" : "text-ink";
   return (
-    <Link href={realHref} className="rounded-xl border border-line bg-surface p-4 hover:bg-surface-2 transition block">
-      <p className={`text-2xl font-semibold tabular ${toneClass}`}>{value}</p>
-      <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">{label}</p>
+    <Link href={realHref} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 hover:bg-surface-2 transition">
+      {icon && <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${TONE_CHIP[tone ?? "neutral"]}`}>{icon}</span>}
+      <span className="min-w-0">
+        <p className={`text-lg font-semibold tabular truncate ${toneClass}`}>{value}</p>
+        <p className="mt-0.5 text-[11px] text-ink-faint uppercase tracking-wide font-mono truncate">{label}</p>
+      </span>
     </Link>
+  );
+}
+
+function GreetingBanner({ fullName }: { fullName: string }) {
+  const karachiHour = Number(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi", hour: "2-digit", hour12: false }));
+  const { greeting, Icon } = karachiHour < 12 ? { greeting: "Good Morning", Icon: Sun } : karachiHour < 17 ? { greeting: "Good Afternoon", Icon: CloudSun } : { greeting: "Good Evening", Icon: Moon };
+  const firstName = fullName.split(" ")[0] || fullName;
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-6 py-4 text-white"
+      style={{ background: "linear-gradient(90deg, #2b3a55, #3a4d6e)" }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10">
+          <Icon size={18} />
+        </span>
+        <div>
+          <p className="text-sm font-semibold">
+            {greeting}, {firstName}!
+          </p>
+          <p className="text-xs text-white/70">Aaj ka business overview taiyar hai.</p>
+        </div>
+      </div>
+      <p className="max-w-xs text-right text-xs italic text-white/70">&quot;Consistent numbers create stronger tomorrows.&quot;</p>
+    </div>
   );
 }
 

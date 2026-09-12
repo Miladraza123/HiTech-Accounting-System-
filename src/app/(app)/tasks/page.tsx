@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { TaskActionButtons } from "@/components/TaskActionButtons";
 import { relatedEntityLink } from "@/lib/taskLinks";
+import { buttonClass } from "@/components/ui/Button";
 
 type Filter = "mine" | "all" | "overdue" | "today" | "upcoming" | "done";
 
@@ -88,8 +89,8 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           <h1 className="text-lg font-semibold text-ink">Tasks &amp; Follow-ups</h1>
           <p className="mt-1 text-sm text-ink-soft">Har order/job/client ke tasks ek jaga — plus General tasks.</p>
         </div>
-        <Link href="/tasks/new" className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-white hover:opacity-90 transition whitespace-nowrap">
-          + Naya Task
+        <Link href="/tasks/new" className={buttonClass("primary", "sm")}>
+          + New Task
         </Link>
       </div>
 

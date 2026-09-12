@@ -32,6 +32,13 @@ export const viewport: Viewport = {
   ],
 };
 
+// Applies a previously-chosen Light/Dark theme (see ThemeToggle.tsx)
+// before the page first paints, so switching pages/reloading never
+// flashes the wrong theme. "System" (no stored choice) intentionally
+// does nothing here — globals.css's prefers-color-scheme media query
+// already handles that case with zero JS.
+const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('hitech-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className={`${plexSans.variable} ${plexMono.variable} antialiased`}>
         {children}
         <ServiceWorkerRegister />

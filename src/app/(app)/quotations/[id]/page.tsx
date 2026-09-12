@@ -7,6 +7,7 @@ import { DraftQuotationEditor } from "@/components/DraftQuotationEditor";
 import { CreateRevisionPanel } from "@/components/CreateRevisionPanel";
 import { QuotationRevisionView } from "@/components/QuotationRevisionView";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
   Draft: "bg-surface-2 text-ink-faint",
@@ -133,11 +134,8 @@ export default async function QuotationDetailPage({
                   <span className="text-xs text-ink-faint">{so.status}</span>
                 </Link>
               ))}
-              <Link
-                href={`/sales-orders/new?quotation_id=${id}`}
-                className="block text-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition"
-              >
-                + Client PO Aa Gaya — Sales Order Banayen
+              <Link href={`/sales-orders/new?quotation_id=${id}`} className={`block text-center ${buttonClass()}`}>
+                + Client PO Received — New Sales Order
               </Link>
             </div>
           )}

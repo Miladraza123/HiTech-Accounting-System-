@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { QueryStatusActions } from "@/components/QueryStatusActions";
+import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
   Open: "bg-ledger-soft text-ledger",
@@ -83,11 +84,8 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ id
           {canEdit && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
               <h2 className="text-sm font-semibold text-ink">Actions</h2>
-              <Link
-                href={`/quotations/new?query_id=${id}`}
-                className="block text-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition"
-              >
-                + Quotation Banayen
+              <Link href={`/quotations/new?query_id=${id}`} className={`block text-center ${buttonClass()}`}>
+                + New Quotation
               </Link>
               <QueryStatusActions queryId={id} currentStatus={query.status} />
             </div>

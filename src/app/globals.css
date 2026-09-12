@@ -46,6 +46,32 @@
   }
 }
 
+/* Explicit dark selection (the in-app Light/Dark/System toggle) wins over
+   system preference in both directions — this block is what lets a user
+   pick Dark while their OS is set to Light. Kept byte-identical to the
+   media-query block above. */
+:root[data-theme="dark"] {
+  --bg: #171a21;
+  --surface: #1f232c;
+  --surface-2: #262b35;
+  --ink: #edebe3;
+  --ink-soft: #b4b8c2;
+  --ink-faint: #7c818c;
+  --line: #343a46;
+  --line-strong: #454c5a;
+  --accent: #e08a4f;
+  --accent-ink: #f2b383;
+  --accent-soft: #3a2a1c;
+  --ledger: #9db3d6;
+  --ledger-soft: #232b3b;
+  --good: #7fbe96;
+  --good-soft: #1e2e24;
+  --warn: #d8ae5c;
+  --warn-soft: #332a15;
+  --bad: #e08981;
+  --bad-soft: #33201d;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -96,5 +122,21 @@ body {
 }
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.input-error {
+  border-color: var(--bad) !important;
+}
+.input-error:focus {
+  box-shadow: 0 0 0 3px var(--bad-soft);
+}
+
+/* Every plain link/button in the app gets a visible focus ring for
+   keyboard navigation — previously only .input had one. */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

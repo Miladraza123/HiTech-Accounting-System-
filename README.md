@@ -8,7 +8,89 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 18 — Performance & Smart Merge (complete)
+## Status: Phase 19 — UI Polish & Visual Design System (complete)
+
+A pure presentation-layer pass across the whole app — no schema changes,
+no new tables/columns, no changed business logic, RPC signatures, or
+permission rules; every `show`/role-gating expression on every nav item
+was carried over completely unchanged. Ten pieces, each scoped and
+approved via an image-preview mockup (published as a design canvas)
+before any real code was touched:
+
+**1 — Design system foundation.** `src/components/ui/{Button,Badge,Card,
+EmptyState,Skeleton}.tsx` — a shared `buttonClass(variant, size)` helper
+(primary/secondary/danger/ghost), a `<Badge tone dot>` pill (warn/good/
+bad/neutral/ledger/accent tones), `<Card>`/`<CardHeader>`, `<EmptyState
+icon title description action>`, and skeleton placeholders
+(`<Skeleton>`, `<TableSkeleton>`, `<KpiGridSkeleton>`). `Logo.tsx` — a
+fixed-color warehouse-mark SVG replacing the plain "H" square everywhere.
+`globals.css` gained a `:root[data-theme="dark"]` block, an `.input-error`
+state, and a global `:focus-visible` outline for keyboard navigation.
+
+**2 — English action labels.** Every "+ Naya/Nayi X" create-button across
+17 files (Queries, Quotations, Sales Orders, Purchase Orders, Jobs,
+Invoices, Supplier Bills, Payments, Expenses, Delivery Challans, Journal
+Vouchers, Stock Transfers, Product Templates, Vehicles, revisions, …)
+translated to "+ New X" and moved onto the shared `buttonClass()`.
+
+**3 — Data table polish.** The 10 paginated list pages now show a shared
+"Showing X–Y of N records" summary (`PaginationControls` rewritten to
+accept `totalCount`/`pageSize`), zebra-striped rows (`even:bg-bg`), status
+pills converted to `<Badge tone=...>`, and a proper `<EmptyState>` (with
+its own "+ New X" action) in place of a bare "No records" line when a
+filtered list comes back empty.
+
+**4 — New Client/Supplier form.** `PartyForm.tsx` reorganized into
+labeled sections (Basic Info / Tax & Registration / Credit Terms) with a
+consistent `Field` label helper and a red-asterisk required indicator.
+(`ItemForm.tsx` was left as-is — out of the approved mockup set.)
+
+**5 — Loading skeletons.** A `loading.tsx` added to each of the 10
+paginated list routes plus `/reports` (deliberately generic, since
+Next.js 16 cascades a parent segment's `loading.tsx` to every nested
+child route that doesn't define its own — `/reports/ar-aging` and the
+~25 other sub-reports all inherit it).
+
+**6 — Print letterhead.** A faint full-page SVG watermark and a logo +
+company-name header block added to all 5 print templates (Quotation,
+Invoice, Delivery Challan, Purchase Order, Supplier Bill), with a bolder
+accent-colored header rule.
+
+**7 — Dark mode toggle.** A 3-way Light/Dark/Auto segmented control
+(`ThemeToggle.tsx`) in the sidebar and mobile nav footer, backed by
+`localStorage` + a `data-theme` attribute on `<html>`. An inline
+anti-flash script in the root `<head>` applies the stored choice
+synchronously before first paint, so there's never a light-mode flash on
+a dark-mode reload.
+
+**8 — Sidebar reorder & categorization.** The flat 34-item nav list
+regrouped into 8 labeled categories (Contacts, Sales & Billing,
+Purchases, Inventory/Stock, Fabrication/Jobs, Accounts & Finance,
+Settings/Administration, …) matching how the business actually thinks
+about its own workflow, each item given a `lucide-react` icon
+(`SidebarNav.tsx`, shared between desktop `<aside>` and `MobileNav`).
+Every item's original `show` visibility rule is untouched — this was a
+purely presentational regrouping.
+
+**9 — Owner Dashboard visual redesign.** A time-of-day greeting banner
+(Karachi-timezone-aware — "Good morning/afternoon/evening, {name}") on a
+fixed-navy gradient background; every KPI card now carries an icon chip;
+the "Action Required" list and five recent-activity sections (Queries,
+Quotations, Fabrication Jobs, Pending Deliveries, Payment Follow-ups)
+converted to `<Badge>` status pills with zebra-striped rows. All existing
+filters, date ranges, and KPI calculations are unchanged — this was
+visual-only.
+
+**10 — App-wide footer.** A footer below the sidebar+main layout on every
+authenticated page: `Powered by "OHT Solutions"` and a `v1.0.0` version
+tag.
+
+Verified after every task and again across the full cumulative diff:
+`npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all passing),
+and `npm run build` (full production build) all clean.
+
+<details>
+<summary>Phase 18 — Performance & Smart Merge (complete)</summary>
 
 Four independent pieces, built in dependency order (Indexes → Pagination →
 Smart Merge → PWA/Offline, since the offline queue has to replay through
@@ -134,6 +216,8 @@ overwrite just because it happened to be queued.
   changed the same field while this browser was offline) surfaces the
   identical Mera/Server resolution UI as an online save's conflict —
   never a silently-dropped edit.
+
+</details>
 
 <details>
 <summary>Phase 17 — Daily Backup & Restore (complete)</summary>

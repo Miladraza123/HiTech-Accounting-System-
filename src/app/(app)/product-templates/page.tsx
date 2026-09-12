@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { buttonClass } from "@/components/ui/Button";
 
 export default async function ProductTemplatesPage() {
   const user = await getCurrentUser();
@@ -21,8 +22,8 @@ export default async function ProductTemplatesPage() {
           <p className="mt-1 text-sm text-ink-soft">Repeat products ke liye reusable recipe — Job banate waqt select karen to material requirement khud ban jaye.</p>
         </div>
         {canCreate && (
-          <Link href="/product-templates/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">
-            + Naya Template
+          <Link href="/product-templates/new" className={buttonClass()}>
+            + New Template
           </Link>
         )}
       </div>

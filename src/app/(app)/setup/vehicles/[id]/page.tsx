@@ -89,7 +89,7 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
               <h2 className="text-sm font-semibold text-ink">Expense History</h2>
               {canManage && (
                 <Link href={`/expenses/new`} className="text-xs text-accent-ink underline underline-offset-2">
-                  + Naya Expense
+                  + New Expense
                 </Link>
               )}
             </div>

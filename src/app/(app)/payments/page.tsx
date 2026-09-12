@@ -5,10 +5,14 @@ import { hasPermission } from "@/lib/permissions";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { buttonClass } from "@/components/ui/Button";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { CreditCard } from "lucide-react";
 
-const STATUS_STYLE: Record<string, string> = {
-  Posted: "bg-good-soft text-good",
-  Cancelled: "bg-bad-soft text-bad",
+const STATUS_TONE: Record<string, BadgeTone> = {
+  Posted: "good",
+  Cancelled: "bad",
 };
 
 const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt (in)", payment: "Payment (out)" };
@@ -53,60 +57,68 @@ export default async function PaymentsPage({
           </p>
         </div>
         {canCreate && (
-          <Link href="/payments/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">
-            + Naya Payment
+          <Link href="/payments/new" className={buttonClass()}>
+            + New Payment
           </Link>
         )}
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
-              <tr>
-                <th className="text-left px-4 py-2.5">Payment #</th>
-                <th className="text-left px-4 py-2.5">Party</th>
-                <th className="text-left px-4 py-2.5">Direction</th>
-                <th className="text-right px-4 py-2.5">Amount</th>
-                <th className="text-right px-4 py-2.5">Unallocated</th>
-                <th className="text-left px-4 py-2.5">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(payments ?? []).map((p) => {
-                const party = p.parties as unknown as { legal_name: string } | null;
-                return (
-                  <tr key={p.id} className="border-t border-line hover:bg-surface-2">
-                    <td className="px-4 py-2.5">
-                      <Link href={`/payments/${p.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
-                        {p.payment_no}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{party?.legal_name}</td>
-                    <td className="px-4 py-2.5 text-ink-soft text-xs">{DIRECTION_LABEL[p.direction]}</td>
-                    <td className="px-4 py-2.5 text-right tabular text-ink">{p.amount.toLocaleString()}</td>
-                    <td className={`px-4 py-2.5 text-right tabular ${p.unallocated_amount > 0 ? "text-warn font-medium" : "text-ink-soft"}`}>
-                      {p.unallocated_amount.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[p.status] ?? ""}`}>{p.status}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!payments?.length && (
+        {payments?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Koi Payment nahi hai abhi tak.
-                  </td>
+                  <th className="text-left px-4 py-2.5">Payment #</th>
+                  <th className="text-left px-4 py-2.5">Party</th>
+                  <th className="text-left px-4 py-2.5">Direction</th>
+                  <th className="text-right px-4 py-2.5">Amount</th>
+                  <th className="text-right px-4 py-2.5">Unallocated</th>
+                  <th className="text-left px-4 py-2.5">Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {payments.map((p) => {
+                  const party = p.parties as unknown as { legal_name: string } | null;
+                  return (
+                    <tr key={p.id} className="border-t border-line even:bg-bg hover:bg-surface-2">
+                      <td className="px-4 py-2.5">
+                        <Link href={`/payments/${p.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
+                          {p.payment_no}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{party?.legal_name}</td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs">{DIRECTION_LABEL[p.direction]}</td>
+                      <td className="px-4 py-2.5 text-right tabular text-ink">{p.amount.toLocaleString()}</td>
+                      <td className={`px-4 py-2.5 text-right tabular ${p.unallocated_amount > 0 ? "text-warn font-medium" : "text-ink-soft"}`}>
+                        {p.unallocated_amount.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Badge tone={STATUS_TONE[p.status] ?? "neutral"}>{p.status}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<CreditCard size={22} />}
+            title="Koi Payment nahi hai abhi tak"
+            description="Bill-wise Payment & Recovery — client receipts aur supplier payments yahan record hote hain."
+            action={
+              canCreate ? (
+                <Link href="/payments/new" className={buttonClass()}>
+                  + New Payment
+                </Link>
+              ) : undefined
+            }
+          />
+        )}
       </div>
 
-      <PaginationControls basePath="/payments" searchParams={{ from, to, direction }} currentPage={page} totalPages={totalPages} />
+      <PaginationControls basePath="/payments" searchParams={{ from, to, direction }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

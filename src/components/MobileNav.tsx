@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-
-type NavItem = { href: string; label: string; show: boolean; badge?: number };
+import { usePathname } from "next/navigation";
+import { Logo } from "@/components/Logo";
+import { NavLink, type NavCategory } from "@/components/SidebarNav";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function MobileNav({
-  navItems,
+  categories,
   userFullName,
   userRoleLabel,
   signOutAction,
 }: {
-  navItems: NavItem[];
+  categories: NavCategory[];
   userFullName: string;
   userRoleLabel: string;
   signOutAction: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <>
@@ -24,9 +26,7 @@ export function MobileNav({
           so this is the only way to navigate on a phone. */}
       <div className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-ledger text-ledger-soft font-mono text-xs font-semibold">
-            H
-          </div>
+          <Logo size={28} />
           <span className="font-semibold text-ink text-sm">HiTech ERP</span>
         </div>
         <button
@@ -49,9 +49,7 @@ export function MobileNav({
           <div className="absolute inset-y-0 left-0 w-72 max-w-[85%] bg-surface border-r border-line flex flex-col overflow-y-auto">
             <div className="px-5 py-5 border-b border-line flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-ledger text-ledger-soft font-mono text-sm font-semibold">
-                  H
-                </div>
+                <Logo size={32} />
                 <span className="font-semibold text-ink text-sm">HiTech ERP</span>
               </div>
               <button
@@ -76,25 +74,30 @@ export function MobileNav({
               />
             </form>
 
-            <nav className="flex-1 px-3 py-4 space-y-0.5">
-              {navItems
-                .filter((n) => n.show)
-                .map((n) => (
-                  <Link
-                    key={n.href}
-                    href={n.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-ink-soft hover:bg-surface-2 hover:text-ink transition"
-                  >
-                    <span>{n.label}</span>
-                    {!!n.badge && (
-                      <span className="rounded-full bg-bad px-1.5 py-0.5 text-[10px] font-mono text-white leading-none">{n.badge}</span>
+            <nav className="flex-1 px-3 py-3 space-y-0.5">
+              {categories.map((cat) => {
+                const visible = cat.items.filter((n) => n.show);
+                if (visible.length === 0) return null;
+                return (
+                  <div key={cat.label || "_root"}>
+                    {cat.label && (
+                      <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{cat.label}</div>
                     )}
-                  </Link>
-                ))}
+                    {visible.map((n) => (
+                      <NavLink
+                        key={n.href}
+                        item={n}
+                        active={pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/"))}
+                        onClick={() => setOpen(false)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
             </nav>
 
-            <div className="border-t border-line px-3 py-4 space-y-2">
+            <div className="border-t border-line px-3 py-4 space-y-3">
+              <ThemeToggle />
               <div className="px-2">
                 <p className="text-sm text-ink truncate">{userFullName}</p>
                 <p className="text-[11px] text-ink-faint truncate">{userRoleLabel}</p>

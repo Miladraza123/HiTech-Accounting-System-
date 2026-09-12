@@ -9,10 +9,13 @@
 export function printStyles(scopeClass: string): string {
   return `
     @page { size: A4; margin: 15mm; }
-    .${scopeClass} { all: initial; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px; max-width: 210mm; margin: 0 auto; }
+    .${scopeClass} { all: initial; position: relative; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px; max-width: 210mm; margin: 0 auto; overflow: hidden; }
     .${scopeClass} * { box-sizing: border-box; }
-    .${scopeClass} .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #20242E; padding-bottom: 16px; margin-bottom: 20px; }
+    .${scopeClass} .watermark { position: absolute; right: -40px; bottom: -40px; opacity: 0.04; pointer-events: none; z-index: 0; }
+    .${scopeClass} .hdr { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #A85A28; padding-bottom: 16px; margin-bottom: 20px; }
+    .${scopeClass} .logo-block { display: flex; align-items: center; gap: 12px; }
     .${scopeClass} .co-name { font-size: 20px; font-weight: 700; }
+    .${scopeClass} .co-tagline { font-size: 11px; color: #8B8F99; margin-top: 2px; }
     .${scopeClass} .muted { color: #565B68; font-size: 12px; }
     .${scopeClass} h1 { font-size: 16px; margin: 0 0 2px; }
     .${scopeClass} table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }

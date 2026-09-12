@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createQuotationRevisionAction, type QuotationLineInput } from "@/app/actions/quotations";
 import { QuotationLineEditor, type EditableLine } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { buttonClass } from "@/components/ui/Button";
 
 function toEditable(lines: Tables<"quotation_lines">[]): EditableLine[] {
   return lines.map((l, i) => ({
@@ -63,12 +64,8 @@ export function CreateRevisionPanel({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-md border border-line-strong bg-bg px-4 py-2 text-sm text-ink hover:bg-surface-2 transition"
-      >
-        + Nayi Revision Banayen
+      <button type="button" onClick={() => setOpen(true)} className={buttonClass("secondary")}>
+        + New Revision
       </button>
     );
   }

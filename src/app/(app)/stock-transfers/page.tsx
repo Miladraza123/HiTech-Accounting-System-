@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -26,8 +27,8 @@ export default async function StockTransfersPage() {
           <p className="mt-1 text-sm text-ink-soft">Ek warehouse se doosre warehouse mein stock move karna — GL par koi asar nahi (dono ek hi company asset hain).</p>
         </div>
         {canCreate && (
-          <Link href="/stock-transfers/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">
-            + Naya Transfer
+          <Link href="/stock-transfers/new" className={buttonClass()}>
+            + New Stock Transfer
           </Link>
         )}
       </div>

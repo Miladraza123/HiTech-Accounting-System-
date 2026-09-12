@@ -5,13 +5,17 @@ import { hasPermission } from "@/lib/permissions";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { buttonClass } from "@/components/ui/Button";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { HelpCircle } from "lucide-react";
 
-const STATUS_STYLE: Record<string, string> = {
-  Open: "bg-ledger-soft text-ledger",
-  Quoted: "bg-warn-soft text-warn",
-  Won: "bg-good-soft text-good",
-  Lost: "bg-bad-soft text-bad",
-  OnHold: "bg-surface-2 text-ink-faint",
+const STATUS_TONE: Record<string, BadgeTone> = {
+  Open: "ledger",
+  Quoted: "warn",
+  Won: "good",
+  Lost: "bad",
+  OnHold: "neutral",
 };
 
 export default async function QueriesPage({
@@ -53,58 +57,63 @@ export default async function QueriesPage({
           </p>
         </div>
         {canCreate && (
-          <Link
-            href="/queries/new"
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition"
-          >
-            + Nayi Query
+          <Link href="/queries/new" className={buttonClass()}>
+            + New Query
           </Link>
         )}
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
-              <tr>
-                <th className="text-left px-4 py-2.5">Query #</th>
-                <th className="text-left px-4 py-2.5">Client</th>
-                <th className="text-left px-4 py-2.5">Requirement</th>
-                <th className="text-left px-4 py-2.5">Date</th>
-                <th className="text-left px-4 py-2.5">Follow-up</th>
-                <th className="text-left px-4 py-2.5">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(queries ?? []).map((q) => (
-                <tr key={q.id} className="border-t border-line hover:bg-surface-2">
-                  <td className="px-4 py-2.5">
-                    <Link href={`/queries/${q.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
-                      {q.query_no}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2.5 text-ink whitespace-nowrap">{(q.parties as unknown as { legal_name: string } | null)?.legal_name ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-ink-soft max-w-xs truncate">{q.requirement}</td>
-                  <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">{q.query_date}</td>
-                  <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">{q.next_followup_at ?? "—"}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[q.status] ?? ""}`}>{q.status}</span>
-                  </td>
-                </tr>
-              ))}
-              {!queries?.length && (
+        {queries?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Koi query nahi hai abhi tak.
-                  </td>
+                  <th className="text-left px-4 py-2.5">Query #</th>
+                  <th className="text-left px-4 py-2.5">Client</th>
+                  <th className="text-left px-4 py-2.5">Requirement</th>
+                  <th className="text-left px-4 py-2.5">Date</th>
+                  <th className="text-left px-4 py-2.5">Follow-up</th>
+                  <th className="text-left px-4 py-2.5">Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {queries.map((q) => (
+                  <tr key={q.id} className="border-t border-line even:bg-bg hover:bg-surface-2">
+                    <td className="px-4 py-2.5">
+                      <Link href={`/queries/${q.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
+                        {q.query_no}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-ink whitespace-nowrap">{(q.parties as unknown as { legal_name: string } | null)?.legal_name ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-ink-soft max-w-xs truncate">{q.requirement}</td>
+                    <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">{q.query_date}</td>
+                    <td className="px-4 py-2.5 text-ink-soft whitespace-nowrap">{q.next_followup_at ?? "—"}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge tone={STATUS_TONE[q.status] ?? "neutral"}>{q.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<HelpCircle size={22} />}
+            title="Koi query nahi hai abhi tak"
+            description="Har naya client inquiry yahan record hoti hai — pehli query add karke shuru karen."
+            action={
+              canCreate ? (
+                <Link href="/queries/new" className={buttonClass()}>
+                  + New Query
+                </Link>
+              ) : undefined
+            }
+          />
+        )}
       </div>
 
-      <PaginationControls basePath="/queries" searchParams={{ from, to }} currentPage={page} totalPages={totalPages} />
+      <PaginationControls basePath="/queries" searchParams={{ from, to }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { buttonClass } from "@/components/ui/Button";
 
 export default async function JournalVouchersPage() {
   const user = await getCurrentUser();
@@ -26,8 +27,8 @@ export default async function JournalVouchersPage() {
           <p className="mt-1 text-sm text-ink-soft">Manual entries — jo Payment/Expense/Transfer screens se automatic nahi bantay.</p>
         </div>
         {canCreate && (
-          <Link href="/journal-vouchers/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">
-            + Naya Journal Voucher
+          <Link href="/journal-vouchers/new" className={buttonClass()}>
+            + New Journal Voucher
           </Link>
         )}
       </div>

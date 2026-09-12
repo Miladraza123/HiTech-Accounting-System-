@@ -5,15 +5,19 @@ import { hasPermission } from "@/lib/permissions";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { buttonClass } from "@/components/ui/Button";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Wrench } from "lucide-react";
 
-const STATUS_STYLE: Record<string, string> = {
-  MaterialPending: "bg-warn-soft text-warn",
-  MaterialAvailable: "bg-ledger-soft text-ledger",
-  FabricationStarted: "bg-accent-soft text-accent-ink",
-  InProcess: "bg-accent-soft text-accent-ink",
-  ReadyForDispatch: "bg-good-soft text-good",
-  Delivered: "bg-good-soft text-good",
-  Cancelled: "bg-bad-soft text-bad",
+const STATUS_TONE: Record<string, BadgeTone> = {
+  MaterialPending: "warn",
+  MaterialAvailable: "ledger",
+  FabricationStarted: "accent",
+  InProcess: "accent",
+  ReadyForDispatch: "good",
+  Delivered: "good",
+  Cancelled: "bad",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -59,7 +63,7 @@ export default async function JobsPage({
         return health?.label === healthFilter;
       });
       const [sliceFrom, sliceTo] = pageRange(page);
-      return { jobs: filtered.slice(sliceFrom, sliceTo + 1), totalPages: computeTotalPages(filtered.length) };
+      return { jobs: filtered.slice(sliceFrom, sliceTo + 1), totalPages: computeTotalPages(filtered.length), total: filtered.length };
     }
 
     let pagedQuery = supabase
@@ -69,9 +73,9 @@ export default async function JobsPage({
     if (statusFilter) pagedQuery = pagedQuery.eq("status", statusFilter);
     const [rangeFrom, rangeTo] = pageRange(page);
     const { data, count } = await pagedQuery.range(rangeFrom, rangeTo);
-    return { jobs: data ?? [], totalPages: computeTotalPages(count ?? 0) };
+    return { jobs: data ?? [], totalPages: computeTotalPages(count ?? 0), total: count ?? 0 };
   }
-  const { jobs, totalPages } = await loadJobs();
+  const { jobs, totalPages, total } = await loadJobs();
 
   return (
     <div className="space-y-6">
@@ -92,73 +96,81 @@ export default async function JobsPage({
           </p>
         </div>
         {canCreate && (
-          <Link href="/jobs/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">
-            + Nayi Job
+          <Link href="/jobs/new" className={buttonClass()}>
+            + New Job
           </Link>
         )}
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
-              <tr>
-                <th className="text-left px-4 py-2.5">Job #</th>
-                <th className="text-left px-4 py-2.5">Client / SO</th>
-                <th className="text-left px-4 py-2.5">Description</th>
-                <th className="text-right px-4 py-2.5">Qty</th>
-                <th className="text-right px-4 py-2.5">Progress</th>
-                <th className="text-left px-4 py-2.5">Warehouse</th>
-                <th className="text-left px-4 py-2.5">Status</th>
-                <th className="text-left px-4 py-2.5">Health</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(jobs ?? []).map((j) => {
-                const so = j.sales_orders as unknown as { so_no: string; parties: { legal_name: string } | null } | null;
-                const wh = j.warehouses as unknown as { name: string } | null;
-                const health = computeHealth({
-                  isOpen: !["Delivered", "Cancelled"].includes(j.status),
-                  promisedDate: j.required_delivery_date,
-                  updatedAt: j.updated_at,
-                });
-                return (
-                  <tr key={j.id} className="border-t border-line hover:bg-surface-2">
-                    <td className="px-4 py-2.5">
-                      <Link href={`/jobs/${j.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
-                        {j.job_no}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">
-                      {so?.parties?.legal_name} <span className="text-ink-faint">({so?.so_no})</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-ink">{j.description}</td>
-                    <td className="px-4 py-2.5 text-right tabular text-ink-soft">{j.job_qty}</td>
-                    <td className="px-4 py-2.5 text-right tabular text-ink-soft">{j.progress_pct}%</td>
-                    <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{wh?.name ?? "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[j.status] ?? ""}`}>{STATUS_LABEL[j.status] ?? j.status}</span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {health && (
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${HEALTH_BADGE_STYLE[health.label]}`} title={health.reason}>
-                          {HEALTH_LABEL_TEXT[health.label]}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {!jobs?.length && (
+        {jobs.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-ink-faint">
-                    Koi Job nahi hai abhi tak.
-                  </td>
+                  <th className="text-left px-4 py-2.5">Job #</th>
+                  <th className="text-left px-4 py-2.5">Client / SO</th>
+                  <th className="text-left px-4 py-2.5">Description</th>
+                  <th className="text-right px-4 py-2.5">Qty</th>
+                  <th className="text-right px-4 py-2.5">Progress</th>
+                  <th className="text-left px-4 py-2.5">Warehouse</th>
+                  <th className="text-left px-4 py-2.5">Status</th>
+                  <th className="text-left px-4 py-2.5">Health</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {jobs.map((j) => {
+                  const so = j.sales_orders as unknown as { so_no: string; parties: { legal_name: string } | null } | null;
+                  const wh = j.warehouses as unknown as { name: string } | null;
+                  const health = computeHealth({
+                    isOpen: !["Delivered", "Cancelled"].includes(j.status),
+                    promisedDate: j.required_delivery_date,
+                    updatedAt: j.updated_at,
+                  });
+                  return (
+                    <tr key={j.id} className="border-t border-line even:bg-bg hover:bg-surface-2">
+                      <td className="px-4 py-2.5">
+                        <Link href={`/jobs/${j.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
+                          {j.job_no}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">
+                        {so?.parties?.legal_name} <span className="text-ink-faint">({so?.so_no})</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-ink">{j.description}</td>
+                      <td className="px-4 py-2.5 text-right tabular text-ink-soft">{j.job_qty}</td>
+                      <td className="px-4 py-2.5 text-right tabular text-ink-soft">{j.progress_pct}%</td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{wh?.name ?? "—"}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge tone={STATUS_TONE[j.status] ?? "neutral"}>{STATUS_LABEL[j.status] ?? j.status}</Badge>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {health && (
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${HEALTH_BADGE_STYLE[health.label]}`} title={health.reason}>
+                            {HEALTH_LABEL_TEXT[health.label]}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Wrench size={22} />}
+            title="Koi Job active nahi hai"
+            description="Sales Order confirm hone ke baad yahan se fabrication job start hoti hai."
+            action={
+              canCreate ? (
+                <Link href="/jobs/new" className={buttonClass()}>
+                  + New Job
+                </Link>
+              ) : undefined
+            }
+          />
+        )}
       </div>
 
       <PaginationControls
@@ -166,6 +178,7 @@ export default async function JobsPage({
         searchParams={{ status: statusFilter, health: healthFilter }}
         currentPage={page}
         totalPages={totalPages}
+        totalCount={total}
       />
     </div>
   );
