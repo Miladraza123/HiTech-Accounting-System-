@@ -8,7 +8,60 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 13 — Order Health, Stage Aging & Tasks/Follow-ups (complete)
+## Status: Phase 14 — Sales & Purchase Returns (complete)
+
+Closing the sixth item on the gap list found by the Phase 9 re-audit:
+**Returns / Rejection / Replacement** (prompt's Sales Return and Purchase
+Return asks). "Rejection" at receiving time was already covered by GRN
+short/excess tracking since Phase 3; "Replacement" is deliberately **not**
+a separate transaction type — it's a Return followed by a normal new
+Delivery Challan/GRN of the replacement stock, reusing everything that
+already exists instead of duplicating the reversal logic for what is
+really the same reverse-then-forward flow.
+
+- **Design**: both Return types are tied to the specific financial
+  document that first booked the money — a **Sales Return** (credit
+  note) always references a Posted **Invoice**; a **Purchase Return**
+  (debit note) always references a Posted **Supplier Bill** — exactly
+  mirroring how a real credit/debit note works, and reusing the same
+  `invoiced_qty`/`delivered_qty`-style running-counter pattern already
+  used everywhere in this schema (`invoice_lines.returned_qty`,
+  `supplier_bill_lines.returned_qty`). Purchase Return is scoped to
+  `stock`-type purchases only — the only type that goes through a
+  separate Supplier Bill and actually moves inventory; a `direct`/
+  `general` purchase books its Payable straight off the GRN with no
+  stock effect, so a correction there is a Journal Voucher (already
+  exists from Phase 9), not a stock-reversing Return.
+- **`fn_create_sales_return`** — reverses Sales Revenue + Output GST +
+  Trade Receivables at the invoice's own rate, and adds the returned
+  stock back at the warehouse's **current average cost** (persisted per
+  line so a later cancellation reverses the exact same amount rather
+  than recomputing against a since-changed avg cost).
+  **`fn_create_purchase_return`** — reverses Trade Payables + Input GST
+  + Raw Material Inventory at the bill's own rate (the return is a
+  precise reversal of a specific already-recorded transaction, not a
+  weighted-average-cost event, so no avg-cost lookup is needed on this
+  side). Both have a matching `fn_cancel_*` function, and `fn_cancel_invoice`
+  / `fn_cancel_supplier_bill` now refuse to cancel a document that still
+  has a Posted return against it.
+- **`invoice_outstanding` / `supplier_bill_outstanding` widened** (one
+  new `returned_amount` column, existing columns untouched) to net
+  Posted returns against their document — AR/AP Aging, Customer 360,
+  credit-limit checks, and the Owner Dashboard's receivable/payable
+  totals all pick this up automatically with no changes of their own,
+  since they only ever read `outstanding_amount`.
+- **`/sales-returns`** and **`/purchase-returns`** — list + detail pages;
+  creation happens contextually via a **`SalesReturnPanel`** /
+  **`PurchaseReturnPanel`** embedded directly on the Invoice / Supplier
+  Bill detail page (pick qty per line, same "receive what actually
+  happened" pattern `ReceiveGrnPanel` already uses for GRNs).
+
+**Scope note:** Rate History, Period Lock, Daily Snapshot, Stock
+Transfer between warehouses, and the configurable permission matrix
+remain as separate upcoming phases.
+
+<details>
+<summary>Phase 13 — Order Health, Stage Aging &amp; Tasks/Follow-ups (complete)</summary>
 
 Closing the fifth item on the gap list found by the Phase 9 re-audit:
 **Order Health Indicators, Stage-wise Aging, and Tasks & Follow-ups**.
@@ -61,6 +114,8 @@ computation off existing columns; Tasks & Follow-ups is one new table.
 **Scope note:** Returns/Rejection/Replacement, Rate History, Period
 Lock, Daily Snapshot, Stock Transfer between warehouses, and the
 configurable permission matrix remain as separate upcoming phases.
+
+</details>
 
 <details>
 <summary>Phase 12 — Reports &amp; Global Search (complete)</summary>
@@ -851,9 +906,13 @@ src/
       delivery-challans/       — DC list, create (from a Sales Order), detail —
                                   Client Acceptance/POD, dispute, cancel
       invoices/                — GST Invoice list, create (against delivered qty), detail —
-                                  payment history, cancel
+                                  payment history, Sales Return panel, cancel
+      sales-returns/           — Sales Return (credit note) list + [id]/ detail, cancel —
+                                  created contextually from the Invoice detail page
       supplier-bills/          — Supplier Bill list, create (from a 'stock'-type GRN), detail —
-                                  payment history, cancel
+                                  payment history, Purchase Return panel, cancel
+      purchase-returns/        — Purchase Return (debit note) list + [id]/ detail, cancel —
+                                  created contextually from the Supplier Bill detail page
       payments/                — Payment list, create (receipt or payment, bill-wise
                                   allocation, Cash/Bank/Petty-Cash source), detail — allocate
                                   remainder, cancel
@@ -895,9 +954,10 @@ src/
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
-                                  cashBank, vehicles, parties, attachments, tasks)
+                                  cashBank, vehicles, parties, attachments, tasks, returns)
   components/                  — client-side form/UI components (incl. TasksPanel,
-                                  TaskActionButtons, NewTaskForm, EditTaskForm)
+                                  TaskActionButtons, NewTaskForm, EditTaskForm,
+                                  SalesReturnPanel, PurchaseReturnPanel)
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers

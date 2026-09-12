@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton";
+import { PurchaseReturnPanel } from "@/components/PurchaseReturnPanel";
+import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -15,23 +17,26 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
   const canManage = isOwner(user) || hasRole(user, "accounts");
 
   const supabase = await createClient();
-  const [{ data: bill }, { data: lines }, { data: outstandingRow }, { data: allocations }] = await Promise.all([
+  const [{ data: bill }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }] = await Promise.all([
     supabase
       .from("supplier_bills")
-      .select("*, parties(legal_name, billing_address), grns(grn_no, received_date)")
+      .select("*, parties(legal_name, billing_address), grns(grn_no, received_date, warehouse_id)")
       .eq("id", id)
       .maybeSingle(),
     supabase.from("supplier_bill_lines").select("*, items(item_code, description)").eq("supplier_bill_id", id).order("sort_order"),
     supabase.from("supplier_bill_outstanding").select("*").eq("supplier_bill_id", id).maybeSingle(),
     supabase.from("payment_allocations").select("*, payments(payment_no, payment_date, status)").eq("supplier_bill_id", id).order("created_at", { ascending: false }),
+    supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
+    supabase.from("purchase_returns").select("*").eq("supplier_bill_id", id).order("created_at", { ascending: false }),
   ]);
 
   if (!bill) notFound();
 
   const party = bill.parties as unknown as { legal_name: string; billing_address: string | null } | null;
-  const grn = bill.grns as unknown as { grn_no: string; received_date: string } | null;
+  const grn = bill.grns as unknown as { grn_no: string; received_date: string; warehouse_id: string | null } | null;
   const outstanding = outstandingRow?.outstanding_amount ?? 0;
   const canCancel = canManage && bill.status === "Posted";
+  const canReturn = canManage && bill.status === "Posted";
 
   return (
     <div className="space-y-6">
@@ -121,6 +126,40 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
               </div>
             </div>
           )}
+
+          {!!returns?.length && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-ink">Purchase Returns</h2>
+              <div className="rounded-xl border border-line bg-surface overflow-hidden divide-y divide-line">
+                {returns.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <div>
+                      <Link href={`/purchase-returns/${r.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
+                        {r.return_no}
+                      </Link>
+                      <span className="text-ink-faint text-xs ml-2">{r.return_date}</span>
+                      {r.status === "Cancelled" && <span className="ml-2 rounded-full bg-bad-soft px-2 py-0.5 text-xs text-bad">Cancelled</span>}
+                    </div>
+                    <span className="tabular text-ink">{r.grand_total.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {canReturn && (
+            <PurchaseReturnPanel
+              supplierBillId={id}
+              defaultWarehouseId={grn?.warehouse_id ?? null}
+              warehouses={warehouses ?? []}
+              lines={(lines ?? []).map((l) => ({
+                ...l,
+                itemLabel: (l.items as unknown as { item_code: string; description: string } | null)
+                  ? `${(l.items as unknown as { item_code: string; description: string }).item_code} — ${(l.items as unknown as { item_code: string; description: string }).description}`
+                  : l.description,
+              }))}
+            />
+          )}
         </div>
 
         <div className="space-y-6">
@@ -143,6 +182,20 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
             <div className="rounded-xl border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               <CancelSupplierBillButton billId={id} />
+            </div>
+          )}
+
+          {!!returns?.filter((r) => r.status === "Posted").length && canManage && (
+            <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+              <h2 className="text-sm font-semibold text-ink mb-1">Purchase Return Actions</h2>
+              {returns
+                .filter((r) => r.status === "Posted")
+                .map((r) => (
+                  <div key={r.id} className="space-y-1">
+                    <p className="text-xs text-ink-faint font-mono">{r.return_no}</p>
+                    <CancelPurchaseReturnButton returnId={r.id} supplierBillId={id} />
+                  </div>
+                ))}
             </div>
           )}
         </div>

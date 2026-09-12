@@ -921,6 +921,7 @@ export type Database = {
           item_id: string | null
           qty: number
           rate: number
+          returned_qty: number
           sales_order_line_id: string
           sort_order: number
           tax_pct: number
@@ -934,6 +935,7 @@ export type Database = {
           item_id?: string | null
           qty: number
           rate?: number
+          returned_qty?: number
           sales_order_line_id: string
           sort_order?: number
           tax_pct?: number
@@ -947,6 +949,7 @@ export type Database = {
           item_id?: string | null
           qty?: number
           rate?: number
+          returned_qty?: number
           sales_order_line_id?: string
           sort_order?: number
           tax_pct?: number
@@ -2175,6 +2178,153 @@ export type Database = {
           },
         ]
       }
+      purchase_return_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          id: string
+          item_id: string | null
+          qty: number
+          rate: number
+          return_id: string
+          sort_order: number
+          supplier_bill_line_id: string
+          tax_pct: number
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          id?: string
+          item_id?: string | null
+          qty: number
+          rate?: number
+          return_id: string
+          sort_order?: number
+          supplier_bill_line_id: string
+          tax_pct?: number
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          id?: string
+          item_id?: string | null
+          qty?: number
+          rate?: number
+          return_id?: string
+          sort_order?: number
+          supplier_bill_line_id?: string
+          tax_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_return_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_return_lines_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_return_lines_supplier_bill_line_id_fkey"
+            columns: ["supplier_bill_line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bill_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_returns: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          grand_total: number
+          id: string
+          reason: string
+          return_date: string
+          return_no: string
+          status: string
+          subtotal: number
+          supplier_bill_id: string
+          supplier_id: string
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          reason: string
+          return_date?: string
+          return_no: string
+          status?: string
+          subtotal?: number
+          supplier_bill_id: string
+          supplier_id: string
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          reason?: string
+          return_date?: string
+          return_no?: string
+          status?: string
+          subtotal?: number
+          supplier_bill_id?: string
+          supplier_id?: string
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_returns_supplier_bill_id_fkey"
+            columns: ["supplier_bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bill_outstanding"
+            referencedColumns: ["supplier_bill_id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_supplier_bill_id_fkey"
+            columns: ["supplier_bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       queries: {
         Row: {
           created_at: string
@@ -2653,6 +2803,169 @@ export type Database = {
           },
         ]
       }
+      sales_return_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          id: string
+          invoice_line_id: string
+          item_id: string | null
+          qty: number
+          rate: number
+          return_id: string
+          sort_order: number
+          stock_value: number
+          tax_pct: number
+          unit: string | null
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          id?: string
+          invoice_line_id: string
+          item_id?: string | null
+          qty: number
+          rate?: number
+          return_id: string
+          sort_order?: number
+          stock_value?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          id?: string
+          invoice_line_id?: string
+          item_id?: string | null
+          qty?: number
+          rate?: number
+          return_id?: string
+          sort_order?: number
+          stock_value?: number
+          tax_pct?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_return_lines_invoice_line_id_fkey"
+            columns: ["invoice_line_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_lines_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sales_returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_returns: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          grand_total: number
+          id: string
+          invoice_id: string
+          party_id: string
+          reason: string
+          return_date: string
+          return_no: string
+          sales_order_id: string
+          status: string
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_id: string
+          party_id: string
+          reason: string
+          return_date?: string
+          return_no: string
+          sales_order_id: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_id?: string
+          party_id?: string
+          reason?: string
+          return_date?: string
+          return_no?: string
+          sales_order_id?: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_outstanding"
+            referencedColumns: ["invoice_id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_adjustments: {
         Row: {
           decided_at: string | null
@@ -2840,6 +3153,7 @@ export type Database = {
           item_id: string | null
           qty: number
           rate: number
+          returned_qty: number
           sort_order: number
           supplier_bill_id: string
           tax_pct: number
@@ -2852,6 +3166,7 @@ export type Database = {
           item_id?: string | null
           qty: number
           rate?: number
+          returned_qty?: number
           sort_order?: number
           supplier_bill_id: string
           tax_pct?: number
@@ -2864,6 +3179,7 @@ export type Database = {
           item_id?: string | null
           qty?: number
           rate?: number
+          returned_qty?: number
           sort_order?: number
           supplier_bill_id?: string
           tax_pct?: number
@@ -3271,6 +3587,7 @@ export type Database = {
           invoice_id: string | null
           outstanding_amount: number | null
           party_id: string | null
+          returned_amount: number | null
         }
         Relationships: [
           {
@@ -3401,6 +3718,7 @@ export type Database = {
           allocated_amount: number | null
           grand_total: number | null
           outstanding_amount: number | null
+          returned_amount: number | null
           supplier_bill_id: string | null
           supplier_id: string | null
         }
@@ -3555,10 +3873,12 @@ export type Database = {
         Args: { p_purchase_order_id: string; p_reason: string }
         Returns: undefined
       }
+      fn_cancel_purchase_return: { Args: { p_reason: string; p_return_id: string }; Returns: undefined }
       fn_cancel_sales_order: {
         Args: { p_reason: string; p_sales_order_id: string }
         Returns: undefined
       }
+      fn_cancel_sales_return: { Args: { p_reason: string; p_return_id: string }; Returns: undefined }
       fn_cancel_supplier_bill: {
         Args: { p_reason: string; p_supplier_bill_id: string }
         Returns: undefined
@@ -3708,6 +4028,16 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_purchase_return: {
+        Args: {
+          p_lines: Json
+          p_reason: string
+          p_return_date: string
+          p_supplier_bill_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_quotation: {
         Args: {
           p_delivery_terms: string
@@ -3741,6 +4071,16 @@ export type Database = {
           p_payment_terms: string
           p_po_date: string
           p_quotation_id: string
+        }
+        Returns: string
+      }
+      fn_create_sales_return: {
+        Args: {
+          p_invoice_id: string
+          p_lines: Json
+          p_reason: string
+          p_return_date: string
+          p_warehouse_id: string
         }
         Returns: string
       }

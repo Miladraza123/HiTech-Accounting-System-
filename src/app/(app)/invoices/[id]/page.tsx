@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { CancelInvoiceButton } from "@/components/CancelInvoiceButton";
+import { SalesReturnPanel } from "@/components/SalesReturnPanel";
+import { CancelSalesReturnButton } from "@/components/CancelSalesReturnButton";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -15,7 +17,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const canManage = isOwner(user) || hasRole(user, "accounts");
 
   const supabase = await createClient();
-  const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }] = await Promise.all([
+  const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }] = await Promise.all([
     supabase
       .from("invoices")
       .select("*, parties(legal_name, billing_address, ntn, strn, cnic), sales_orders(so_no, client_po_number)")
@@ -24,6 +26,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     supabase.from("invoice_lines").select("*").eq("invoice_id", id).order("sort_order"),
     supabase.from("invoice_outstanding").select("*").eq("invoice_id", id).maybeSingle(),
     supabase.from("payment_allocations").select("*, payments(payment_no, payment_date, status)").eq("invoice_id", id).order("created_at", { ascending: false }),
+    supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
+    supabase.from("sales_returns").select("*").eq("invoice_id", id).order("created_at", { ascending: false }),
   ]);
 
   if (!invoice) notFound();
@@ -32,6 +36,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const so = invoice.sales_orders as unknown as { so_no: string; client_po_number: string } | null;
   const outstanding = outstandingRow?.outstanding_amount ?? 0;
   const canCancel = canManage && invoice.status === "Posted";
+  const canReturn = canManage && invoice.status === "Posted";
 
   return (
     <div className="space-y-6">
@@ -126,6 +131,28 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
           )}
+
+          {!!returns?.length && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-ink">Sales Returns</h2>
+              <div className="rounded-xl border border-line bg-surface overflow-hidden divide-y divide-line">
+                {returns.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <div>
+                      <Link href={`/sales-returns/${r.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
+                        {r.return_no}
+                      </Link>
+                      <span className="text-ink-faint text-xs ml-2">{r.return_date}</span>
+                      {r.status === "Cancelled" && <span className="ml-2 rounded-full bg-bad-soft px-2 py-0.5 text-xs text-bad">Cancelled</span>}
+                    </div>
+                    <span className="tabular text-ink">{r.grand_total.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {canReturn && <SalesReturnPanel invoiceId={id} warehouses={warehouses ?? []} lines={lines ?? []} />}
         </div>
 
         <div className="space-y-6">
@@ -148,6 +175,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <div className="rounded-xl border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               <CancelInvoiceButton invoiceId={id} />
+            </div>
+          )}
+
+          {!!returns?.filter((r) => r.status === "Posted").length && canManage && (
+            <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+              <h2 className="text-sm font-semibold text-ink mb-1">Sales Return Actions</h2>
+              {returns
+                .filter((r) => r.status === "Posted")
+                .map((r) => (
+                  <div key={r.id} className="space-y-1">
+                    <p className="text-xs text-ink-faint font-mono">{r.return_no}</p>
+                    <CancelSalesReturnButton returnId={r.id} invoiceId={id} />
+                  </div>
+                ))}
             </div>
           )}
         </div>

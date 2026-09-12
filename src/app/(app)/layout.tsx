@@ -38,7 +38,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/product-templates", label: "BOM Templates", show: true },
     { href: "/delivery-challans", label: "Delivery Challans", show: true },
     { href: "/invoices", label: "GST Invoices", show: true },
+    { href: "/sales-returns", label: "Sales Returns", show: owner || user.roles.includes("accounts") || user.roles.includes("sales") || user.roles.includes("auditor") },
     { href: "/supplier-bills", label: "Supplier Bills", show: true },
+    { href: "/purchase-returns", label: "Purchase Returns", show: owner || user.roles.includes("accounts") || user.roles.includes("store") || user.roles.includes("auditor") },
     { href: "/payments", label: "Payments", show: true },
     {
       href: "/cash-bank",
@@ -79,7 +81,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 13 — Order Health &amp; Tasks</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 14 — Sales &amp; Purchase Returns</p>
           </div>
 
           <form action="/search" className="px-3 pt-3">
