@@ -49,7 +49,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   function submit() {
     setError(null);
     if (!soId) {
-      setError("Sales Order select karen.");
+      setError("Select Sales Order.");
       return;
     }
     const lines: InvoiceLineInput[] = (so?.lines ?? [])
@@ -61,7 +61,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
       }))
       .filter((l) => l.qty > 0);
     if (!lines.length) {
-      setError("Kam az kam ek line mein qty likhen.");
+      setError("Enter qty in at least one line.");
       return;
     }
     startTransition(async () => {
@@ -173,7 +173,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Invoice Banayen"}
+        {pending ? "Saving…" : "Create Invoice"}
       </button>
     </div>
   );

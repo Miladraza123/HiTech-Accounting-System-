@@ -9,7 +9,7 @@ import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 const initialState: ActionResult = { error: null };
 
 const FIELD_LABEL: Record<string, string> = {
-  legal_name: "Company ka naam",
+  legal_name: "Company Name",
   ntn: "NTN",
   strn: "STRN",
   address: "Address",
@@ -127,22 +127,22 @@ export function CompanyForm({
       {conflicts.length > 0 && (
         <div className="space-y-2 rounded-md border border-warn bg-warn-soft p-3 text-xs text-ink">
           <p className="font-medium text-warn">
-            Aap ke save karne ke dauran kisi aur ne yeh field(s) badal di thi — baaqi sab kuch already save ho chuka hai,
-            sirf yeh decide karen:
+            Someone else changed this field(s) while you were saving — everything else has already been saved,
+            you just need to decide:
           </p>
           {conflicts.map((c) => (
             <div key={c.field} className="space-y-1 rounded border border-line-strong bg-bg p-2">
               <p className="text-ink-soft">
                 <span className="font-medium">{FIELD_LABEL[c.field] ?? c.field}</span> — Server:{" "}
-                <span className="font-mono">{String(c.server_value ?? "—")}</span>, Aap ka value:{" "}
+                <span className="font-mono">{String(c.server_value ?? "—")}</span>, Your value:{" "}
                 <span className="font-mono">{String(c.my_value ?? "—")}</span>
               </p>
               <div className="flex gap-2">
                 <button type="button" onClick={() => resolveConflict(c, "mine")} className="flex-1 rounded-md bg-accent px-2 py-1 text-[11px] font-medium text-white">
-                  Mera value rakhen
+                  Keep my value
                 </button>
                 <button type="button" onClick={() => resolveConflict(c, "theirs")} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-[11px]">
-                  Server ka value rakhen
+                  Keep server value
                 </button>
               </div>
             </div>
@@ -150,7 +150,7 @@ export function CompanyForm({
         </div>
       )}
 
-      <Field label="Company ka qanooni naam *">
+      <Field label="Company's legal name *">
         <input name="legal_name" value={values.legal_name} onChange={(e) => setField("legal_name", e.target.value)} required className="input" />
       </Field>
 
@@ -201,15 +201,15 @@ export function CompanyForm({
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
       {state.success && (
-        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Save ho gaya.</p>
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Saved.</p>
       )}
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
-          ⚠ Aap offline hain — save karne par yeh change queue ho jayega aur internet wapis aane par khud sync ho jayega.
+          ⚠ You are offline — saving will queue this change, and it will sync automatically once your connection returns.
         </p>
       )}
       {queuedOffline && (
-        <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">⏳ Offline save ho gaya — sync hone ka intezar.</p>
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">⏳ Saved offline — waiting to sync.</p>
       )}
 
       <button
@@ -217,7 +217,7 @@ export function CompanyForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Save karen"}
+        {pending ? "Saving…" : "Save"}
       </button>
     </form>
   );

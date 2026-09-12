@@ -28,14 +28,14 @@ export default async function NewInvoicePage() {
         <Link href="/invoices" className="text-xs text-ink-faint hover:text-ink">
           ← GST Invoices
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Invoice</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Invoice</h1>
       </div>
 
       {!eligible.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Koi Sales Order nahi mili jis mein delivered ho chuka lekin invoice na hui ho. Invoice sirf delivered qty par banti hai.{" "}
+          No Sales Order found with delivered but not yet invoiced quantity. Invoices are created only for delivered quantity.{" "}
           <Link href="/delivery-challans" className="underline underline-offset-2 font-medium">
-            Delivery Challans dekhen
+            View Delivery Challans
           </Link>
           .
         </div>

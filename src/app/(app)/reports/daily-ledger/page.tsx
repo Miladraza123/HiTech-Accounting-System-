@@ -43,16 +43,16 @@ export default async function DailyLedgerPage({ searchParams }: { searchParams: 
 
       <div className="flex items-center gap-2 flex-wrap">
         <Link href={`/reports/daily-ledger?date=${prevDate.toISOString().slice(0, 10)}`} className="rounded-md border border-line-strong bg-bg px-3 py-1.5 text-xs text-ink hover:bg-surface-2 transition">
-          ← Pichla din
+          ← Previous Day
         </Link>
         <form className="flex items-center gap-2">
           <input type="date" name="date" defaultValue={selectedDate} className="input !py-1.5 text-xs" />
           <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
-            Jayen
+            Go
           </button>
         </form>
         <Link href={`/reports/daily-ledger?date=${nextDate.toISOString().slice(0, 10)}`} className="rounded-md border border-line-strong bg-bg px-3 py-1.5 text-xs text-ink hover:bg-surface-2 transition">
-          Agla din →
+          Next Day →
         </Link>
       </div>
 
@@ -104,7 +104,7 @@ export default async function DailyLedgerPage({ searchParams }: { searchParams: 
               {!entries?.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Is din koi journal entry nahi hai.
+                    No journal entries for this day.
                   </td>
                 </tr>
               )}

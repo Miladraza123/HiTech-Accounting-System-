@@ -122,7 +122,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
           <p className="text-xs text-ink-soft">Credit Days: {party.credit_days ?? 0} — invoice due date = invoice date + credit days.</p>
           {overLimit && (
             <p className="rounded-md bg-bad-soft px-3 py-2 text-xs text-bad">
-              ⚠ Yeh client apni credit limit se {(totalReceivable - creditLimit).toLocaleString()} zyada outstanding rakhta hai.
+              ⚠ This client&apos;s outstanding balance exceeds their credit limit by {(totalReceivable - creditLimit).toLocaleString()}.
             </p>
           )}
         </div>
@@ -137,10 +137,10 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             {(
               [
                 ["current", "Current"],
-                ["d1_30", "1-30 din"],
-                ["d31_60", "31-60 din"],
-                ["d61_90", "61-90 din"],
-                ["d90_plus", "90+ din"],
+                ["d1_30", "1-30 days"],
+                ["d31_60", "31-60 days"],
+                ["d61_90", "61-90 days"],
+                ["d90_plus", "90+ days"],
               ] as const
             ).map(([key, label]) => (
               <div key={key} className="px-3 py-3 border-r border-line last:border-r-0">
@@ -261,7 +261,7 @@ function RecordSection({
             </div>
           </li>
         ))}
-        {!rows.length && <li className="px-4 py-4 text-center text-ink-faint text-xs">Koi record nahi hai.</li>}
+        {!rows.length && <li className="px-4 py-4 text-center text-ink-faint text-xs">No records found.</li>}
       </ul>
     </div>
   );

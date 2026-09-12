@@ -60,7 +60,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {expense.status === "Cancelled" && expense.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {expense.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancellation reason: {expense.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

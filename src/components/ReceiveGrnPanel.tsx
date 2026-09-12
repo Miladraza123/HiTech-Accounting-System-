@@ -39,7 +39,7 @@ export function ReceiveGrnPanel({
         onClick={() => setOpen(true)}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition"
       >
-        Goods Receive Karen (GRN)
+        Receive Goods (GRN)
       </button>
     );
   }
@@ -51,11 +51,11 @@ export function ReceiveGrnPanel({
       .filter((l) => l.this_receipt_qty > 0);
 
     if (!grnLines.length) {
-      setError("Kam az kam ek line mein qty likhen.");
+      setError("Enter qty in at least one line.");
       return;
     }
     if (purchaseType === "stock" && !warehouseId) {
-      setError("Warehouse select karen.");
+      setError("Select Warehouse.");
       return;
     }
 
@@ -79,7 +79,7 @@ export function ReceiveGrnPanel({
 
   return (
     <div className="space-y-4 rounded-xl border border-accent bg-accent-soft/30 p-5">
-      <p className="text-sm font-medium text-ink">Goods Receive Karen — jitna asal mein aaya wahi likhen, order qty nahi.</p>
+      <p className="text-sm font-medium text-ink">Receive Goods — enter the quantity actually received, not the ordered qty.</p>
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block space-y-1.5">
@@ -152,7 +152,7 @@ export function ReceiveGrnPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "GRN Save Karen"}
+          {pending ? "…" : "Save GRN"}
         </button>
       </div>
     </div>

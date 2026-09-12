@@ -35,8 +35,8 @@ export default async function TrialBalancePage() {
 
       {!balanced && (
         <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">
-          ⚠ Trial Balance balance nahi ho raha (Debit {totalDebit.toLocaleString()} ≠ Credit {totalCredit.toLocaleString()}) — yeh sirf tab ho sakta hai
-          jab koi database-level issue ho, kyunke har journal entry post hote waqt hi balanced hone ka constraint enforce hota hai.
+          ⚠ Trial Balance is not balanced (Debit {totalDebit.toLocaleString()} ≠ Credit {totalCredit.toLocaleString()}) — this can only happen
+          if there is a database-level issue, since every journal entry is constrained to be balanced at the time it is posted.
         </div>
       )}
 
@@ -74,7 +74,7 @@ export default async function TrialBalancePage() {
               {!active.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Abhi koi posted journal entry nahi hai.
+                    No posted journal entries yet.
                   </td>
                 </tr>
               )}

@@ -25,7 +25,7 @@ export default async function ItemsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Item Master</h1>
-        <p className="mt-1 text-sm text-ink-soft">Raw material, stocked goods aur fabrication products — sab isi list se select hote hain.</p>
+        <p className="mt-1 text-sm text-ink-soft">Raw material, stocked goods, and fabrication products are all selected from this list.</p>
       </div>
 
       {canManage && <ItemForm units={units ?? []} />}
@@ -60,7 +60,7 @@ export default async function ItemsPage() {
                   <td className="px-4 py-2.5 text-ink-soft">{it.category ?? "—"}</td>
                   <td className="px-4 py-2.5 text-ink-soft font-mono text-xs">{it.base_unit}</td>
                   <td className="px-4 py-2.5 text-ink-soft text-xs">{TAX_LABEL[it.tax_category]}</td>
-                  <td className="px-4 py-2.5 text-xs">{it.is_stocked ? "Haan" : "Nahi"}</td>
+                  <td className="px-4 py-2.5 text-xs">{it.is_stocked ? "Yes" : "No"}</td>
                   <td className="px-4 py-2.5">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-mono ${it.is_active ? "bg-good-soft text-good" : "bg-surface-2 text-ink-faint"}`}
@@ -78,7 +78,7 @@ export default async function ItemsPage() {
               {!items?.length && (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-ink-faint">
-                    Koi item nahi bana abhi tak.
+                    No items created yet.
                   </td>
                 </tr>
               )}

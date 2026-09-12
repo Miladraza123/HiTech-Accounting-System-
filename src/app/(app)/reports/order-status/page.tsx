@@ -70,12 +70,12 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Order-wise Status</h1>
-        <p className="text-sm text-ink-soft">Ek Sales Order ka poora safar — Query se Payment tak, ek hi jaga.</p>
+        <p className="text-sm text-ink-soft">The complete journey of a Sales Order — from Query to Payment, all in one place.</p>
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">
         <select name="so_id" defaultValue={so_id ?? ""} className="input !py-1.5 text-sm max-w-sm">
-          <option value="">— Sales Order select karen —</option>
+          <option value="">— Select Sales Order —</option>
           {(salesOrders ?? []).map((s) => (
             <option key={s.id} value={s.id}>
               {s.so_no} — {(s.parties as unknown as { legal_name: string } | null)?.legal_name} (PO: {s.client_po_number})
@@ -83,17 +83,17 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
           ))}
         </select>
         <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
-          Dekhen
+          View
         </button>
       </form>
 
       {chain && (
         <div className="space-y-4">
-          <Stage title="Query" items={chain.query ? [{ label: chain.query.query_no, status: chain.query.status }] : []} empty="Koi Query linked nahi." />
+          <Stage title="Query" items={chain.query ? [{ label: chain.query.query_no, status: chain.query.status }] : []} empty="No Query linked." />
           <Stage
             title="Quotation"
             items={chain.quotation ? [{ label: chain.quotation.quotation_no, status: chain.quotation.status }] : []}
-            empty="Koi Quotation linked nahi."
+            empty="No Quotation linked."
           />
           <Stage
             title="Sales Order"
@@ -101,22 +101,22 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
             empty="—"
           />
           {chain.so?.business_line === "fabrication" && (
-            <Stage title="Fabrication Jobs" items={chain.jobs.map((j) => ({ label: j.job_no, status: j.status }))} empty="Koi Job nahi bani abhi tak." />
+            <Stage title="Fabrication Jobs" items={chain.jobs.map((j) => ({ label: j.job_no, status: j.status }))} empty="No Job created yet." />
           )}
           <Stage
             title="Delivery Challans"
             items={chain.dcs.map((d) => ({ label: d.dc_no, status: `${d.status} / ${d.acceptance_status}` }))}
-            empty="Koi Delivery Challan nahi bani abhi tak."
+            empty="No Delivery Challan created yet."
           />
           <Stage
             title="Invoices"
             items={chain.invoices.map((i) => ({ label: `${i.invoice_no} — ${i.grand_total.toLocaleString()}`, status: i.status }))}
-            empty="Koi Invoice nahi bani abhi tak."
+            empty="No Invoice created yet."
           />
           <Stage
             title="Payments"
             items={chain.payments.map((p) => ({ label: `${p.payment_no} (${p.payment_date})`, status: p.amount.toLocaleString() }))}
-            empty="Koi Payment allocate nahi hui abhi tak."
+            empty="No Payment allocated yet."
           />
         </div>
       )}

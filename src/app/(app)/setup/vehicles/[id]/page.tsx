@@ -122,7 +122,7 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
                   {!expenses?.length && (
                     <tr>
                       <td colSpan={4} className="px-4 py-6 text-center text-ink-faint">
-                        Is vehicle ka koi expense nahi hai abhi tak.
+                        No expense has been recorded for this vehicle yet.
                       </td>
                     </tr>
                   )}

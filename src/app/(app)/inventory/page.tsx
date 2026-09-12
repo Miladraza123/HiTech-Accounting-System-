@@ -31,7 +31,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-ink">Inventory</h1>
-          <p className="mt-1 text-sm text-ink-soft">Current stock — GRN, Issue, Return, Adjustment se live update hota hai.</p>
+          <p className="mt-1 text-sm text-ink-soft">Current stock — updated live from GRN, Issue, Return, Adjustment.</p>
         </div>
         {canRequest && (
           <Link href="/inventory/adjustments" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition">
@@ -42,7 +42,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
 
       <form className="flex items-center gap-2 flex-wrap">
         <select name="warehouse" defaultValue={warehouseFilter ?? ""} className="input !py-1.5 text-sm max-w-xs">
-          <option value="">— Sab Warehouses —</option>
+          <option value="">— All Warehouses —</option>
           {(warehouses ?? []).map((w) => (
             <option key={w.id} value={w.id}>
               {w.name}
@@ -50,7 +50,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
           ))}
         </select>
         <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
-          Filter Karen
+          Filter
         </button>
       </form>
 
@@ -109,7 +109,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
               {!rows.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Abhi koi stock nahi hai — GRN receive hone ke baad yahan nazar aayega.
+                    No stock yet — it will appear here once a GRN is received.
                   </td>
                 </tr>
               )}

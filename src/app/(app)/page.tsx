@@ -53,12 +53,12 @@ export default async function HomePage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-ink">
-          Assalam-o-Alaikum, {user?.fullName?.split(" ")[0] ?? "there"}
+          Hello, {user?.fullName?.split(" ")[0] ?? "there"}
         </h1>
         <p className="mt-1 text-sm text-ink-soft">
-          {company?.legal_name ? company.legal_name : "Ab tak koi company set nahi hui"} — Query se
-          lekar Customer 360, Credit Control aur standard Reports (Phase 6 tak) chal rahe hain.
-          System hardening agle/last phase mein hogi.
+          {company?.legal_name ? company.legal_name : "No company has been set up yet"} — Everything from
+          Query through Customer 360, Credit Control, and standard Reports (through Phase 6) is up and running.
+          System hardening will happen in the next/final phase.
         </p>
       </div>
 
@@ -79,7 +79,7 @@ export default async function HomePage() {
               </div>
               {!item.done && isOwner(user) && (
                 <Link href={item.href} className="text-xs text-accent-ink underline underline-offset-2">
-                  Complete karen
+                  Complete
                 </Link>
               )}
             </li>
@@ -104,10 +104,10 @@ export default async function HomePage() {
       </div>
 
       <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
-        <p className="font-medium text-ink mb-1">Aage kya?</p>
+        <p className="font-medium text-ink mb-1">What&apos;s next?</p>
         <p>
-          Phase 7 mein system hardening hogi — end-to-end testing, edge cases, performance aur
-          security ka final review.
+          Phase 7 will bring system hardening — end-to-end testing, edge cases, and a final review of
+          performance and security.
         </p>
       </div>
     </div>

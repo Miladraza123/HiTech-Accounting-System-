@@ -22,7 +22,7 @@ export default async function SalesReturnsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Sales Returns</h1>
-        <p className="mt-1 text-sm text-ink-soft">Client se wapis aane wali goods ke credit notes — har Posted Invoice se create hote hain.</p>
+        <p className="mt-1 text-sm text-ink-soft">Credit notes for goods returned by the client — created from a Posted Invoice each time.</p>
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
@@ -66,7 +66,7 @@ export default async function SalesReturnsPage() {
               {!returns?.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Koi Sales Return nahi hai abhi tak.
+                    No Sales Returns yet.
                   </td>
                 </tr>
               )}

@@ -40,13 +40,13 @@ export default async function QuotationsPage({
       <div>
         <h1 className="text-lg font-semibold text-ink">Quotations</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Har Quotation ek Query se link hoti hai, revision history ke sath.
+          Every Quotation is linked to a Query, with revision history.
           {(from && to) || status ? (
             <>
               {" "}
               — filtered{" "}
               <Link href="/quotations" className="text-accent-ink underline underline-offset-2">
-                (sab dekhen)
+                (view all)
               </Link>
             </>
           ) : null}
@@ -92,11 +92,11 @@ export default async function QuotationsPage({
         ) : (
           <EmptyState
             icon={<FileText size={22} />}
-            title="Koi quotation nahi hai abhi tak"
-            description="Quotation kisi Query se link ho kar banti hai — pehle ek Query kholen aur wahan se quotation banayen."
+            title="No quotations yet"
+            description="A Quotation is created by linking to a Query — open a Query first and create the quotation from there."
             action={
               <Link href="/queries" className={buttonClass("secondary")}>
-                Queries dekhen
+                View Queries
               </Link>
             }
           />

@@ -124,7 +124,7 @@ export function QuotationLineEditor({
                       onChange={(e) => update(l.key, { description: e.target.value })}
                       required
                       className="input !py-1 text-xs"
-                      placeholder="Kya cheez / service"
+                      placeholder="Item / service"
                     />
                   </td>
                   <td className="px-2 py-1.5">
@@ -171,7 +171,7 @@ export function QuotationLineEditor({
                   </td>
                   <td className="px-3 py-1.5 text-right text-ink tabular whitespace-nowrap">{amount.toFixed(2)}</td>
                   <td className="px-1">
-                    <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Line hatayen">
+                    <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Remove line">
                       ×
                     </button>
                   </td>
@@ -183,7 +183,7 @@ export function QuotationLineEditor({
       </div>
       <div className="flex items-center justify-between border-t border-line px-3 py-2">
         <button type="button" onClick={addRow} className="text-xs text-accent-ink underline underline-offset-2">
-          + Line add karen
+          + Add Line
         </button>
         <div className="text-xs text-ink-soft space-x-4 tabular">
           <span>Subtotal: {subtotal.toFixed(2)}</span>

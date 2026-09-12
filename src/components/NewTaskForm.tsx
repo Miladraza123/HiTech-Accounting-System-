@@ -7,7 +7,7 @@ import { createTaskAction, type TaskPriority } from "@/app/actions/tasks";
 type LinkType = "none" | "sales_orders" | "purchase_orders" | "jobs" | "parties";
 
 const LINK_TYPE_LABEL: Record<LinkType, string> = {
-  none: "Koi link nahi (General Task)",
+  none: "No link (General Task)",
   sales_orders: "Sales Order",
   purchase_orders: "Purchase Order",
   jobs: "Job",
@@ -45,15 +45,15 @@ export function NewTaskForm({
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
     if (!title) {
-      setError("Task title zaroori hai.");
+      setError("Task title is required.");
       return;
     }
     if (!assignedTo) {
-      setError("Assign karne ke liye koi user chunen.");
+      setError("Select a user to assign to.");
       return;
     }
     if (linkType !== "none" && !linkId) {
-      setError("Link kiya hua record chunen, ya 'Koi link nahi' select karen.");
+      setError("Select a record to link, or choose 'No link'.");
       return;
     }
     startTransition(async () => {
@@ -78,7 +78,7 @@ export function NewTaskForm({
     <form ref={formRef} action={submit} className="rounded-xl border border-line bg-surface p-5 space-y-3 max-w-xl">
       <div>
         <label className="text-xs text-ink-faint">Title</label>
-        <input name="title" required placeholder="e.g. Client se advance payment follow-up" className="input mt-1" />
+        <input name="title" required placeholder="e.g. Follow up with client for advance payment" className="input mt-1" />
       </div>
       <div>
         <label className="text-xs text-ink-faint">Description (optional)</label>
@@ -130,7 +130,7 @@ export function NewTaskForm({
           <div>
             <label className="text-xs text-ink-faint">Record</label>
             <select value={linkId} onChange={(e) => setLinkId(e.target.value)} className="input mt-1">
-              <option value="">— Chunen —</option>
+              <option value="">— Select —</option>
               {linkOptions.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.label}
@@ -146,7 +146,7 @@ export function NewTaskForm({
         disabled={pending}
         className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Ban raha hai…" : "Task Banayen"}
+        {pending ? "Creating…" : "Create Task"}
       </button>
     </form>
   );

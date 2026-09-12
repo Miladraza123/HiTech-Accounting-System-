@@ -19,7 +19,7 @@ export function TrendLineChart({
   if (!labels.length || !hasData) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-dashed border-line text-xs text-ink-faint" style={{ height }}>
-        Is period mein trend data available nahi hai.
+        No trend data available for this period.
       </div>
     );
   }

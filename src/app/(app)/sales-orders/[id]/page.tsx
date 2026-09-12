@@ -73,7 +73,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
 
       {so.status === "Cancelled" && so.cancel_reason && (
         <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">
-          Cancel wajah: {so.cancel_reason}
+          Cancellation reason: {so.cancel_reason}
         </div>
       )}
 
@@ -180,7 +180,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
                     Rev-{r.rev_no} — {new Date(r.created_at).toLocaleDateString("en-PK")}
                   </summary>
                   <p className="mt-1.5 text-xs text-ink-soft">{r.reason}</p>
-                  <p className="mt-1 text-[11px] text-ink-faint">Is se pehle wali state mehfooz hai (audit record).</p>
+                  <p className="mt-1 text-[11px] text-ink-faint">The prior state is preserved (audit record).</p>
                 </details>
               ))}
             </div>

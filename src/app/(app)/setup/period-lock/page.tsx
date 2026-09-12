@@ -15,16 +15,16 @@ export default async function PeriodLockPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Period Lock</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Books close karne ke liye ek date lock karen — us se pehle ki koi bhi nayi entry post nahi ho sakegi.
+          Lock a date to close the books — no new entry before that date can be posted.
         </p>
       </div>
 
       {company?.period_lock_date ? (
         <div className="rounded-md bg-warn-soft border border-warn px-4 py-2 text-sm text-warn">
-          Currently locked: <span className="font-semibold">{company.period_lock_date}</span> tak ki tareekh par koi nayi entry post nahi ho sakti.
+          Currently locked: no new entry can be posted on or before <span className="font-semibold">{company.period_lock_date}</span>.
         </div>
       ) : (
-        <div className="rounded-md bg-good-soft border border-good px-4 py-2 text-sm text-good">Abhi koi Period Lock nahi hai — sab dates open hain.</div>
+        <div className="rounded-md bg-good-soft border border-good px-4 py-2 text-sm text-good">There is no Period Lock yet — all dates are open.</div>
       )}
 
       <PeriodLockForm currentLockDate={company?.period_lock_date ?? null} />

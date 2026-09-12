@@ -71,7 +71,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {invoice.status === "Cancelled" && invoice.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {invoice.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancellation reason: {invoice.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -167,7 +167,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </div>
             {invoice.status === "Posted" && outstanding > 0 && canManage && (
               <Link href={`/payments/new?party=${invoice.party_id}&direction=receipt`} className="block text-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
-                Payment Record Karen
+                Record Payment
               </Link>
             )}
           </div>

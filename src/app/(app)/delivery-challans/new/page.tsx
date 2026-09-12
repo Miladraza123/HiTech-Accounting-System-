@@ -33,22 +33,22 @@ export default async function NewDeliveryChallanPage() {
         <Link href="/delivery-challans" className="text-xs text-ink-faint hover:text-ink">
           ← Delivery Challans
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Delivery Challan</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Delivery Challan</h1>
       </div>
 
       {!eligible.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Koi Sales Order nahi mili jis mein delivery ke liye pending qty ho.{" "}
+          No Sales Order found with pending quantity for delivery.{" "}
           <Link href="/sales-orders" className="underline underline-offset-2 font-medium">
-            Sales Orders dekhen
+            View Sales Orders
           </Link>
           .
         </div>
       ) : !warehouses?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Pehle kam az kam ek warehouse honi chahiye.{" "}
+          At least one warehouse must exist first.{" "}
           <Link href="/setup/warehouses" className="underline underline-offset-2 font-medium">
-            Warehouse add karen
+            Add a warehouse
           </Link>
           .
         </div>

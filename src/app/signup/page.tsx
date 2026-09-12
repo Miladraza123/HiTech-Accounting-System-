@@ -16,9 +16,9 @@ export default function SignUpPage() {
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-ledger text-ledger-soft font-mono text-lg font-semibold">
             H
           </div>
-          <h1 className="mt-4 text-xl font-semibold text-ink">Naya Account</h1>
+          <h1 className="mt-4 text-xl font-semibold text-ink">New Account</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Pehla account banane wala system ka Owner bantа hai.
+            The person who creates the first account becomes the system Owner.
           </p>
         </div>
 
@@ -26,14 +26,14 @@ export default function SignUpPage() {
           <div className="rounded-xl border border-line bg-surface p-6 shadow-sm text-center space-y-3">
             <p className="text-sm text-ink">{state.message}</p>
             <Link href="/login" className="inline-block text-sm text-accent-ink underline underline-offset-2">
-              Login page par jayen
+              Go to login page
             </Link>
           </div>
         ) : (
           <form action={formAction} className="rounded-xl border border-line bg-surface p-6 shadow-sm space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="full_name" className="text-xs font-medium text-ink-soft">
-                Pura naam
+                Full name
               </label>
               <input
                 id="full_name"
@@ -71,7 +71,7 @@ export default function SignUpPage() {
             </div>
             <div className="space-y-1.5">
               <label htmlFor="confirm" className="text-xs font-medium text-ink-soft">
-                Password dobara likhen
+                Re-enter password
               </label>
               <input
                 id="confirm"
@@ -92,15 +92,15 @@ export default function SignUpPage() {
               disabled={pending}
               className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
             >
-              {pending ? "Ban raha hai…" : "Account banayen"}
+              {pending ? "Creating…" : "Create Account"}
             </button>
           </form>
         )}
 
         <p className="mt-4 text-center text-sm text-ink-soft">
-          Pehle se account hai?{" "}
+          Already have an account?{" "}
           <Link href="/login" className="text-accent-ink underline underline-offset-2">
-            Login karen
+            Login
           </Link>
         </p>
       </div>

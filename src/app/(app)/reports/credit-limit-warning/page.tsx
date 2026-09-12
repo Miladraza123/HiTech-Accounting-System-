@@ -37,7 +37,7 @@ export default async function CreditLimitWarningPage() {
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Credit Limit Warning</h1>
-        <p className="text-sm text-ink-soft">Har client jiska outstanding uske Credit Limit ke 90% ya usse zyada tak pohanch gaya hai.</p>
+        <p className="text-sm text-ink-soft">Every client whose outstanding has reached 90% or more of their Credit Limit.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -86,7 +86,7 @@ export default async function CreditLimitWarningPage() {
               {!rows.length && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                    Koi client apni Credit Limit ke qareeb/upar nahi hai.
+                    No client is near or over their Credit Limit.
                   </td>
                 </tr>
               )}

@@ -116,7 +116,7 @@ export function MaterialLineEditor({
                       className="input !py-1 text-xs text-right tabular"
                     />
                     {altUnitsByItem && nonBaseUnit && (
-                      <p className="text-[10px] text-ink-faint text-right mt-0.5">base unit mein convert hoga</p>
+                      <p className="text-[10px] text-ink-faint text-right mt-0.5">will be converted to base unit</p>
                     )}
                   </td>
                   <td className="px-2 py-1.5">
@@ -130,7 +130,7 @@ export function MaterialLineEditor({
                     </select>
                   </td>
                   <td className="px-1">
-                    <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Line hatayen">
+                    <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Remove line">
                       ×
                     </button>
                   </td>
@@ -142,7 +142,7 @@ export function MaterialLineEditor({
       </div>
       <div className="border-t border-line px-3 py-2">
         <button type="button" onClick={addRow} className="text-xs text-accent-ink underline underline-offset-2">
-          + Line add karen
+          + Add line
         </button>
       </div>
     </div>

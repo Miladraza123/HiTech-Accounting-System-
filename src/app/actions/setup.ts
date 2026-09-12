@@ -22,7 +22,7 @@ export async function saveCompanyAction(
   const supabase = await createClient();
 
   const legal_name = String(formData.get("legal_name") ?? "").trim();
-  if (!legal_name) return { error: "Company ka naam zaroori hai." };
+  if (!legal_name) return { error: "Company name is required." };
 
   const field = (name: string) => String(formData.get(name) ?? "").trim() || null;
   const next = {
@@ -83,7 +83,7 @@ export async function addWarehouseAction(
   const name = String(formData.get("name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim() || null;
 
-  if (!code || !name) return { error: "Code aur naam zaroori hain." };
+  if (!code || !name) return { error: "Code and name are required." };
 
   const { error } = await supabase.from("warehouses").insert({ code, name, address });
   if (error) return { error: error.message };
@@ -110,7 +110,7 @@ export async function addAccountAction(
   const account_type = String(formData.get("account_type") ?? "");
   const parent_id = String(formData.get("parent_id") ?? "") || null;
 
-  if (!code || !name || !account_type) return { error: "Code, naam aur type zaroori hain." };
+  if (!code || !name || !account_type) return { error: "Code, name and type are required." };
 
   const { error } = await supabase
     .from("chart_of_accounts")
@@ -124,7 +124,11 @@ export async function addAccountAction(
 // ---------- Period Lock ----------
 export async function setPeriodLockAction(lockDate: string | null): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("fn_set_period_lock", { p_lock_date: lockDate });
+  // `fn_set_period_lock`'s `p_lock_date date` param has no SQL default, so
+  // the generated RPC type is non-nullable `string` — but Postgres and
+  // this function both happily accept a literal NULL (that's exactly how
+  // the lock gets cleared), so this cast is purely for the type checker.
+  const { error } = await supabase.rpc("fn_set_period_lock", { p_lock_date: lockDate as string });
   if (error) return { error: error.message };
   revalidatePath("/setup/period-lock");
   return { error: null, success: true };

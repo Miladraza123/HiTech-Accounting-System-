@@ -26,7 +26,7 @@ export function AddAccountForm({ accounts }: { accounts: Tables<"chart_of_accoun
     <form ref={formRef} action={formAction} className="rounded-xl border border-line bg-surface p-5 space-y-3">
       <div className="grid grid-cols-[100px_1fr] gap-3">
         <input name="code" placeholder="Code" required className="input font-mono" />
-        <input name="name" placeholder="Account ka naam" required className="input" />
+        <input name="name" placeholder="Account name" required className="input" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <select name="account_type" required defaultValue="" className="input">
@@ -54,7 +54,7 @@ export function AddAccountForm({ accounts }: { accounts: Tables<"chart_of_accoun
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Add ho raha hai…" : "Account Add Karen"}
+        {pending ? "Adding…" : "Add Account"}
       </button>
     </form>
   );

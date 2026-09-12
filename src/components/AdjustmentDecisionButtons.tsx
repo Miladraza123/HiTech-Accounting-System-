@@ -32,11 +32,11 @@ export function AdjustmentDecisionButtons({ adjustmentId }: { adjustmentId: stri
   if (rejecting) {
     return (
       <div className="space-y-1.5">
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reject ki wajah…" className="input !py-1 text-xs" />
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason for rejection…" className="input !py-1 text-xs" />
         {error && <p className="text-xs text-bad">{error}</p>}
         <div className="flex gap-1.5">
           <button type="button" onClick={() => setRejecting(false)} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-xs">
-            Wapis
+            Back
           </button>
           <button type="button" onClick={reject} disabled={pending} className="flex-1 rounded-md bg-bad px-2 py-1 text-xs text-white disabled:opacity-60">
             Confirm

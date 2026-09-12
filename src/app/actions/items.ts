@@ -12,7 +12,7 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
   const description = String(formData.get("description") ?? "").trim();
   const base_unit = String(formData.get("base_unit") ?? "");
   if (!item_code || !description || !base_unit) {
-    return { error: "Item code, description aur unit zaroori hain." };
+    return { error: "Item code, description, and unit are required." };
   }
 
   const { error } = await supabase.from("items").insert({
@@ -43,8 +43,8 @@ export async function toggleItemActiveAction(id: string, isActive: boolean) {
 
 export async function addItemAltUnitAction(itemId: string, unit: string, factor: number): Promise<ActionResult> {
   const supabase = await createClient();
-  if (!unit) return { error: "Unit select karen." };
-  if (!factor || factor <= 0) return { error: "Factor zero se zyada hona chahiye." };
+  if (!unit) return { error: "Select a unit." };
+  if (!factor || factor <= 0) return { error: "Factor must be greater than zero." };
 
   const { error } = await supabase.from("item_alt_units").insert({ item_id: itemId, unit, factor });
   if (error) return { error: error.message };

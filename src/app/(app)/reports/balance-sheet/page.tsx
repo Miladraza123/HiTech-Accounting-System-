@@ -31,12 +31,12 @@ export default async function BalanceSheetPage() {
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Balance Sheet</h1>
-        <p className="text-sm text-ink-soft">As of today — poore ledger ka live snapshot (koi historical &quot;as of date&quot; abhi supported nahi).</p>
+        <p className="text-sm text-ink-soft">As of today — a live snapshot of the entire ledger (a historical &quot;as of date&quot; is not yet supported).</p>
       </div>
 
       {!balanced && (
         <div className="rounded-md border border-bad bg-bad-soft px-4 py-2.5 text-sm text-bad">
-          Balance Sheet balance nahi ho raha — difference: {difference.toLocaleString()}. Trial Balance check karen.
+          Balance Sheet is not balancing — difference: {difference.toLocaleString()}. Check the Trial Balance.
         </div>
       )}
 

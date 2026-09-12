@@ -36,7 +36,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Expenses</h1>
-          <p className="mt-1 text-sm text-ink-soft">Fuel, transport, office, site waghera — Cash/Bank/Petty Cash se book honay wale kharche.</p>
+          <p className="mt-1 text-sm text-ink-soft">Fuel, transport, office, site, etc. — expenses booked through Cash/Bank/Petty Cash.</p>
         </div>
         {canCreate && (
           <Link href="/expenses/new" className={buttonClass()}>
@@ -88,8 +88,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         ) : (
           <EmptyState
             icon={<Wallet size={22} />}
-            title="Koi expense record nahi hai abhi tak"
-            description="Fuel, transport, office, site waghera — Cash/Bank/Petty Cash se book honay wale kharche."
+            title="No expense records yet"
+            description="Fuel, transport, office, site, etc. — expenses booked through Cash/Bank/Petty Cash."
             action={
               canCreate ? (
                 <Link href="/expenses/new" className={buttonClass()}>

@@ -47,7 +47,7 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
 
       <form className="flex items-center gap-2 flex-wrap">
         <select name="party_id" defaultValue={party_id ?? ""} className="input !py-1.5 text-sm max-w-sm">
-          <option value="">— Party select karen —</option>
+          <option value="">— Select Party —</option>
           {(parties ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.legal_name} ({p.party_type})
@@ -55,7 +55,7 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
           ))}
         </select>
         <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
-          Dekhen
+          View
         </button>
       </form>
 
@@ -94,7 +94,7 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
                 {!rows.length && (
                   <tr>
                     <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                      Is party ki koi ledger entry nahi hai.
+                      No ledger entries for this party.
                     </td>
                   </tr>
                 )}

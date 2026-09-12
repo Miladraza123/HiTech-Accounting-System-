@@ -7,7 +7,7 @@ import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null };
 
-const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
+const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 export async function requestStockAdjustmentAction(
   itemId: string,

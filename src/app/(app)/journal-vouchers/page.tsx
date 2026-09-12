@@ -24,7 +24,7 @@ export default async function JournalVouchersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Journal Vouchers</h1>
-          <p className="mt-1 text-sm text-ink-soft">Manual entries — jo Payment/Expense/Transfer screens se automatic nahi bantay.</p>
+          <p className="mt-1 text-sm text-ink-soft">Manual entries — those not created automatically by the Payment/Expense/Transfer screens.</p>
         </div>
         {canCreate && (
           <Link href="/journal-vouchers/new" className={buttonClass()}>
@@ -60,7 +60,7 @@ export default async function JournalVouchersPage() {
               {!entries?.length && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-ink-faint">
-                    Koi manual Journal Voucher nahi bana abhi tak.
+                    No manual Journal Voucher created yet.
                   </td>
                 </tr>
               )}
@@ -70,11 +70,11 @@ export default async function JournalVouchersPage() {
       </div>
 
       <p className="text-xs text-ink-faint">
-        Sab transactions (manual + automatic) ek din ke liye{" "}
+        All transactions (manual + automatic) for a day can be viewed in the{" "}
         <Link href="/reports/daily-ledger" className="text-accent-ink underline underline-offset-2">
           Daily Ledger
-        </Link>{" "}
-        mein dekh sakte hain.
+        </Link>
+        .
       </p>
     </div>
   );

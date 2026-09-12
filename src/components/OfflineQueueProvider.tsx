@@ -33,6 +33,24 @@ export function useOfflineQueue() {
   return ctx;
 }
 
+// `navigator.onLine` only reflects whether a network *interface* is up
+// (Wi-Fi/cellular radio active) — not whether the device can actually
+// reach anything. On some mobile carriers/proxies/VPNs it reports
+// `false` with a perfectly working internet connection, which used to
+// make this banner falsely claim "Offline" while the rest of the app
+// worked fine. This does a real same-origin fetch to confirm.
+async function verifyRealConnectivity(): Promise<boolean> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+  try {
+    const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: AbortSignal.timeout(5000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+const RECHECK_INTERVAL_MS = 15000;
+
 export function OfflineQueueProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
   const [pendingCount, setPendingCount] = useState(0);
@@ -49,8 +67,8 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
     await refreshPendingCount();
     if (synced.length > 0 || conflicts.length > 0) {
       const parts = [
-        synced.length > 0 ? `${synced.length} offline change${synced.length > 1 ? "s" : ""} sync ho gaye` : null,
-        conflicts.length > 0 ? `${conflicts.length} ko review chahiye` : null,
+        synced.length > 0 ? `${synced.length} offline change${synced.length > 1 ? "s" : ""} synced` : null,
+        conflicts.length > 0 ? `${conflicts.length} need${conflicts.length > 1 ? "" : "s"} review` : null,
       ].filter(Boolean);
       setSyncMessage(parts.join(" — "));
     }
@@ -58,28 +76,58 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
   }, [refreshPendingCount]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Re-verifies actual connectivity (not just the interface flag) and
+    // reconciles `isOnline` state — corrects a stale/wrong initial guess,
+    // and lets the app recover from a false "Offline" without waiting on
+    // a browser `online` event that may never fire.
+    async function reconcile() {
+      const reallyOnline = await verifyRealConnectivity();
+      if (cancelled) return;
+      setIsOnline((prev) => {
+        if (reallyOnline && !prev) runFlush();
+        return reallyOnline;
+      });
+      if (!reallyOnline) await refreshPendingCount();
+    }
+
     // Deferred to a microtask (rather than called directly in the effect
-    // body) so the state updates these two async functions eventually
-    // make happen strictly after this render has committed.
-    queueMicrotask(() => {
-      if (navigator.onLine) runFlush();
-      else refreshPendingCount();
-    });
+    // body) so the state updates this async function eventually makes
+    // happen strictly after this render has committed.
+    queueMicrotask(reconcile);
 
     function handleOnline() {
-      setIsOnline(true);
-      runFlush();
+      reconcile();
     }
     function handleOffline() {
-      setIsOnline(false);
+      // Don't trust the event alone — verify before showing "Offline",
+      // since this event fires on plenty of false negatives.
+      reconcile();
+    }
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") reconcile();
     }
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // While marked offline, keep re-checking periodically so the banner
+    // clears itself the moment real connectivity returns.
+    const interval = setInterval(() => {
+      setIsOnline((prev) => {
+        if (!prev) reconcile();
+        return prev;
+      });
+    }, RECHECK_INTERVAL_MS);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -133,7 +181,7 @@ function OfflineStatusBanner({ isOnline, pendingCount }: { isOnline: boolean; pe
           ⚠ Offline{pendingCount > 0 ? ` — ${pendingCount} change${pendingCount > 1 ? "s" : ""} pending sync` : ""}
         </span>
       ) : (
-        <span className="text-ink-soft">{pendingCount} pending change{pendingCount > 1 ? "s" : ""} sync ho rahe hain…</span>
+        <span className="text-ink-soft">Syncing {pendingCount} pending change{pendingCount > 1 ? "s" : ""}…</span>
       )}
     </div>
   );
@@ -144,7 +192,7 @@ function SyncToast({ message, onDismiss }: { message: string; onDismiss: () => v
     <div className="fixed inset-x-0 bottom-4 z-50 mx-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm shadow-lg">
       <span className="text-ink">{message}</span>
       <button type="button" onClick={onDismiss} className="shrink-0 text-xs text-ink-faint underline underline-offset-2">
-        Band karen
+        Dismiss
       </button>
     </div>
   );
@@ -153,7 +201,7 @@ function SyncToast({ message, onDismiss }: { message: string; onDismiss: () => v
 const CONFLICT_FIELD_LABEL: Record<string, string> = {
   credit_limit: "Credit Limit",
   credit_days: "Credit Days",
-  legal_name: "Company ka naam",
+  legal_name: "Company Name",
   ntn: "NTN",
   strn: "STRN",
   address: "Address",
@@ -176,25 +224,25 @@ function SyncConflictBanner({
     <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md space-y-2 rounded-lg border border-warn bg-warn-soft p-3 text-xs shadow-lg">
       <div className="flex items-center justify-between">
         <p className="font-medium text-warn">
-          &quot;{conflict.label}&quot; offline sync hote waqt kisi aur ne yeh field(s) badal di thi:
+          Someone else changed these field(s) on &quot;{conflict.label}&quot; while it was syncing offline:
         </p>
         <button type="button" onClick={onDismiss} className="shrink-0 text-ink-faint underline underline-offset-2">
-          Baad mein
+          Later
         </button>
       </div>
       {conflict.conflicts.map((c: SmartMergeConflict) => (
         <div key={c.field} className="space-y-1 rounded border border-line-strong bg-bg p-2">
           <p className="text-ink-soft">
             <span className="font-medium">{CONFLICT_FIELD_LABEL[c.field] ?? c.field}</span> — Server:{" "}
-            <span className="font-mono">{String(c.server_value ?? "—")}</span>, Aap ka (offline) value:{" "}
+            <span className="font-mono">{String(c.server_value ?? "—")}</span>, your (offline) value:{" "}
             <span className="font-mono">{String(c.my_value ?? "—")}</span>
           </p>
           <div className="flex gap-2">
             <button type="button" onClick={() => onResolve(conflict, c.field, "mine")} className="flex-1 rounded-md bg-accent px-2 py-1 text-[11px] font-medium text-white">
-              Mera value rakhen
+              Keep mine
             </button>
             <button type="button" onClick={() => onResolve(conflict, c.field, "theirs")} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-[11px]">
-              Server ka value rakhen
+              Keep server&apos;s
             </button>
           </div>
         </div>

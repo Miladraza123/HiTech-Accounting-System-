@@ -25,14 +25,14 @@ export default async function NewExpensePage() {
         <Link href="/expenses" className="text-xs text-ink-faint hover:text-ink">
           ← Expenses
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Expense</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Expense</h1>
       </div>
 
       {!expenseHeads?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Pehle kam az kam ek Expense Head honi chahiye.{" "}
+          At least one Expense Head must exist first.{" "}
           <Link href="/setup/expense-heads" className="underline underline-offset-2 font-medium">
-            Expense Head add karen
+            Add an Expense Head
           </Link>
           .
         </div>

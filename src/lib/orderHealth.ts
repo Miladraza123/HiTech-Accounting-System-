@@ -54,16 +54,16 @@ export function computeHealth(input: { isOpen: boolean; promisedDate: string | n
   if (input.promisedDate) {
     const until = daysUntil(input.promisedDate);
     if (until < 0) {
-      return { label: "Delayed", tone: "bad", reason: `Promised date ${Math.abs(until)} din pehle guzar chuki hai.` };
+      return { label: "Delayed", tone: "bad", reason: `Promised date passed ${Math.abs(until)} day(s) ago.` };
     }
     if (until <= AT_RISK_WINDOW_DAYS) {
-      return { label: "AtRisk", tone: "warn", reason: `Promised date sirf ${until} din door hai.` };
+      return { label: "AtRisk", tone: "warn", reason: `Promised date is only ${until} day(s) away.` };
     }
   }
 
   const stageDays = daysSince(input.updatedAt);
   if (stageDays > STALLED_DAYS) {
-    return { label: "Stalled", tone: "warn", reason: `${stageDays} din se is stage mein koi progress nahi hui.` };
+    return { label: "Stalled", tone: "warn", reason: `No progress in this stage for ${stageDays} day(s).` };
   }
 
   return { label: "OnTrack", tone: "good", reason: "" };

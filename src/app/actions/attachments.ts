@@ -13,11 +13,11 @@ export async function uploadAttachmentAction(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Login zaroori hai." };
+  if (!user) return { error: "Login is required." };
 
   const file = formData.get("file") as File | null;
   const label = String(formData.get("label") ?? "").trim() || null;
-  if (!file || file.size === 0) return { error: "Koi file nahi mili." };
+  if (!file || file.size === 0) return { error: "No file found." };
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${ownerTable}/${ownerId}/${Date.now()}-${safeName}`;

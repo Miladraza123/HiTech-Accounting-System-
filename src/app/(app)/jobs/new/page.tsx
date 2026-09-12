@@ -31,22 +31,22 @@ export default async function NewJobPage() {
         <Link href="/jobs" className="text-xs text-ink-faint hover:text-ink">
           ← Jobs
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Job</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Job</h1>
       </div>
 
       {!soLines?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Koi open Fabrication Sales Order line nahi mili. Job sirf Fabrication business line ki Sales Order par ban sakti hai.{" "}
+          No open Fabrication Sales Order line found. A Job can only be created against a Sales Order in the Fabrication business line.{" "}
           <Link href="/sales-orders" className="underline underline-offset-2 font-medium">
-            Sales Orders dekhen
+            View Sales Orders
           </Link>
           .
         </div>
       ) : !warehouses?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Pehle kam az kam ek warehouse honi chahiye.{" "}
+          At least one warehouse must exist first.{" "}
           <Link href="/setup/warehouses" className="underline underline-offset-2 font-medium">
-            Warehouse add karen
+            Add a Warehouse
           </Link>
           .
         </div>

@@ -19,7 +19,7 @@ export default async function ProductTemplatesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">BOM / Product Templates</h1>
-          <p className="mt-1 text-sm text-ink-soft">Repeat products ke liye reusable recipe — Job banate waqt select karen to material requirement khud ban jaye.</p>
+          <p className="mt-1 text-sm text-ink-soft">Reusable recipes for repeat products — select one while creating a Job so the material requirement is generated automatically.</p>
         </div>
         {canCreate && (
           <Link href="/product-templates/new" className={buttonClass()}>
@@ -65,7 +65,7 @@ export default async function ProductTemplatesPage() {
               {!templates?.length && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                    Koi Template nahi hai abhi tak — repeat products ke liye bana lein.
+                    No Templates yet — create one for repeat products.
                   </td>
                 </tr>
               )}

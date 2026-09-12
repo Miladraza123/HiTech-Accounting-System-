@@ -321,7 +321,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Owner Dashboard</h1>
-        <p className="mt-1 text-sm text-ink-soft">Business ka live management view — Sales, Fabrication, Accounts aur Owner action items ek jaga.</p>
+        <p className="mt-1 text-sm text-ink-soft">Live management view of the business — Sales, Fabrication, Accounts, and Owner action items all in one place.</p>
       </div>
 
       <GreetingBanner fullName={user.fullName} />
@@ -329,7 +329,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-ink-faint font-mono">
-            {resolved.label} — {from === to ? from : `${from} se ${to}`}
+            {resolved.label} — {from === to ? from : `${from} to ${to}`}
           </p>
           <div className="flex flex-wrap gap-2">
             <div className="flex gap-1 rounded-md border border-line bg-bg p-1">
@@ -369,9 +369,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </form>
         )}
         <p className="text-[11px] text-ink-faint pt-1 border-t border-line">
-          Note: Query/Quotation ka business line Sales Order banne ke baad tay hota hai — Material Supply/Fabrication filter ka asar Sales
-          Order, Job, Delivery aur Receivable numbers par hota hai; Queries, Quotations, Payables, Cash &amp; Bank aur Stock Value company-wide
-          rehte hain.
+          Note: A Query/Quotation&apos;s business line is determined only after it becomes a Sales Order — the Material Supply/Fabrication
+          filter affects Sales Order, Job, Delivery, and Receivable numbers; Queries, Quotations, Payables, Cash &amp; Bank, and Stock Value
+          remain company-wide.
         </p>
       </div>
 
@@ -422,7 +422,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           {selectedLine === "combined" ? (
             <CompareBarChart bars={materialVsFabricationBars} />
           ) : (
-            <p className="text-xs text-ink-faint">Yeh comparison sirf &quot;All&quot; view mein dikhta hai.</p>
+            <p className="text-xs text-ink-faint">This comparison is only shown in the &quot;All&quot; view.</p>
           )}
         </ChartCard>
         <ChartCard title="Receivables vs Payables">
@@ -445,7 +445,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <span className="text-ink-faint text-xs whitespace-nowrap">{q.status}</span>
               </Link>
             ))}
-            {!recentQueries.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">Koi query nahi hai.</p>}
+            {!recentQueries.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No queries found.</p>}
           </div>
         </SectionCard>
 
@@ -459,7 +459,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <span className="text-ink-faint text-xs whitespace-nowrap">{q.status}</span>
               </Link>
             ))}
-            {!recentQuotations.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">Koi quotation nahi hai.</p>}
+            {!recentQuotations.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No quotations found.</p>}
           </div>
         </SectionCard>
 
@@ -479,7 +479,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   </Link>
                 );
               })}
-              {!jobStatusRows.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">Koi active Job nahi hai.</p>}
+              {!jobStatusRows.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No active Jobs found.</p>}
             </div>
           </SectionCard>
         )}
@@ -491,10 +491,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <span className="text-ink-soft text-xs">
                   <span className="font-mono text-ink">{l.so_no}</span> — {l.client}
                 </span>
-                <span className={`text-xs tabular ${l.days > 30 ? "text-bad font-medium" : "text-warn"}`}>{l.days} din se</span>
+                <span className={`text-xs tabular ${l.days > 30 ? "text-bad font-medium" : "text-warn"}`}>{l.days} days</span>
               </div>
             ))}
-            {!pendingDeliveryRows.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">Koi pending delivery nahi hai.</p>}
+            {!pendingDeliveryRows.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No pending deliveries found.</p>}
           </div>
         </SectionCard>
 
@@ -508,7 +508,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 </span>
               </Link>
             ))}
-            {!paymentFollowupRows.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">Koi overdue payment nahi hai.</p>}
+            {!paymentFollowupRows.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No overdue payments found.</p>}
           </div>
         </SectionCard>
       </div>
@@ -558,7 +558,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-ink">Daily Owner Summary {latestSnapshot ? `— ${latestSnapshot.snapshot_date}` : ""}</h2>
           <Link href="/reports/daily-snapshot" className="text-xs text-accent-ink underline underline-offset-2">
-            Poori History →
+            Full History →
           </Link>
         </div>
         {latestSnapshot ? (
@@ -569,35 +569,35 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <SummaryStat label="Expenses" value={latestSnapshot.expenses_today} tone="bad" />
           </div>
         ) : (
-          <p className="text-sm text-ink-faint">Abhi koi Daily Snapshot generate nahi hui — pehla snapshot aaj raat 00:10 baje khud ban jayega.</p>
+          <p className="text-sm text-ink-faint">No Daily Snapshot generated yet — the first snapshot will be generated automatically tonight at 00:10.</p>
         )}
       </div>
 
       {/* ---------- REPORT DIRECTORY ---------- */}
       <div>
-        <h2 className="text-sm font-semibold text-ink mb-3">Sab Reports</h2>
+        <h2 className="text-sm font-semibold text-ink mb-3">All Reports</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ReportLink href="/reports/daily-ledger" title="Daily Ledger / Day Book" desc="Kisi bhi din ki saari journal entries, debit/credit ke sath." />
+          <ReportLink href="/reports/daily-ledger" title="Daily Ledger / Day Book" desc="All journal entries for any given day, with debit/credit." />
           <ReportLink href="/reports/ar-aging" title="AR Aging" desc="Client-wise outstanding, aging buckets (Current, 1-30, 31-60, 61-90, 90+)." />
           <ReportLink href="/reports/ap-aging" title="AP Aging" desc="Supplier-wise outstanding, aging buckets." />
           <ReportLink href="/reports/trial-balance" title="Trial Balance" desc="Har account ka debit/credit total — poore ledger ka summary." />
           <ReportLink href="/reports/profit-loss" title="Profit &amp; Loss Statement" desc="Revenue, COGS, Gross Profit, Operating Expenses, Net Profit — date range ke sath." />
           <ReportLink href="/reports/balance-sheet" title="Balance Sheet" desc="Assets = Liabilities + Equity, live snapshot." />
           <ReportLink href="/reports/cash-flow" title="Cash Flow &amp; Position" desc="Cash in Hand + Bank + Petty Cash — opening/receipts/payments/closing, combined Cash/Bank Book." />
-          <ReportLink href="/reports/party-ledger" title="Customer / Supplier Ledger" desc="Kisi bhi client/supplier ki poori running-balance ledger." />
-          <ReportLink href="/reports/general-ledger" title="General Ledger" desc="Kisi bhi account ki poori running-balance ledger." />
+          <ReportLink href="/reports/party-ledger" title="Customer / Supplier Ledger" desc="The complete running-balance ledger for any client or supplier." />
+          <ReportLink href="/reports/general-ledger" title="General Ledger" desc="The complete running-balance ledger for any account." />
           <ReportLink href="/reports/vehicle-expenses" title="Vehicle &amp; Rider Expenses" desc="Vehicle-wise fuel/maintenance/cost-per-KM, aur Engineer/Rider-wise field expense totals." />
-          <ReportLink href="/reports/pending-orders" title="Pending Order &amp; Delivery Report" desc="Har SO line jahan delivery/invoicing baki hai, purane order pehle." />
-          <ReportLink href="/reports/purchase-pending" title="Purchase Pending Report" desc="Har PO line jahan receiving baki hai, overdue pehle." />
-          <ReportLink href="/reports/grn-report" title="GRN / Receiving Report" desc="Date range ke GRNs, short/excess ke sath." />
-          <ReportLink href="/reports/payment-collection" title="Payment Collection Report" desc="Date range ki collection, method-wise aur top clients." />
-          <ReportLink href="/reports/customer-business" title="Customer-wise Business Report" desc="Har client ka order value, invoiced, outstanding — ek jaga." />
-          <ReportLink href="/reports/order-status" title="Order-wise Status" desc="Ek Sales Order ka poora safar — Query se Payment tak." />
-          <ReportLink href="/reports/order-health" title="Order Health &amp; Stage Aging" desc="Har open SO/PO/Job ka health flag (On Track/At Risk/Delayed/Stalled) aur current stage mein kitne din se hai." />
-          <ReportLink href="/reports/daily-snapshot" title="Daily Snapshot" desc="Har din ka Cash/Bank/Stock/AR/AP position — khud-b-khud raat ko generate hota hai, manually bhi ban sakta hai." />
-          <ReportLink href="/reports/credit-limit-warning" title="Credit Limit Warning" desc="Woh clients jinka outstanding Credit Limit ke 90% ya usse zyada tak pohanch gaya hai." />
-          <ReportLink href="/reports/quotation-followups" title="Quotation Follow-up Due" desc="Sent quotations jinki linked Query par follow-up date aa/guzar chuki hai." />
-          <ReportLink href="/reports/raw-material-shortage" title="Raw Material Shortage" desc="Woh items jinki kami ki wajah se Job(s) Material Pending par ruki hui hain." />
+          <ReportLink href="/reports/pending-orders" title="Pending Order &amp; Delivery Report" desc="Every SO line with pending delivery/invoicing, oldest orders first." />
+          <ReportLink href="/reports/purchase-pending" title="Purchase Pending Report" desc="Every PO line with pending receiving, most overdue first." />
+          <ReportLink href="/reports/grn-report" title="GRN / Receiving Report" desc="GRNs for the date range, with short/excess." />
+          <ReportLink href="/reports/payment-collection" title="Payment Collection Report" desc="Collections for the date range, by method and top clients." />
+          <ReportLink href="/reports/customer-business" title="Customer-wise Business Report" desc="Order value, invoiced amount, and outstanding for each client — all in one place." />
+          <ReportLink href="/reports/order-status" title="Order-wise Status" desc="The complete journey of a Sales Order — from Query to Payment." />
+          <ReportLink href="/reports/order-health" title="Order Health &amp; Stage Aging" desc="Health flag (On Track/At Risk/Delayed/Stalled) and days in current stage for every open SO/PO/Job." />
+          <ReportLink href="/reports/daily-snapshot" title="Daily Snapshot" desc="Daily Cash/Bank/Stock/AR/AP position — generated automatically at night, and can also be generated manually." />
+          <ReportLink href="/reports/credit-limit-warning" title="Credit Limit Warning" desc="Clients whose outstanding has reached 90% or more of their Credit Limit." />
+          <ReportLink href="/reports/quotation-followups" title="Quotation Follow-up Due" desc="Sent quotations whose linked Query follow-up date has arrived or passed." />
+          <ReportLink href="/reports/raw-material-shortage" title="Raw Material Shortage" desc="Items whose shortage has left Job(s) stuck at Material Pending." />
         </div>
       </div>
     </div>
@@ -654,7 +654,7 @@ function GreetingBanner({ fullName }: { fullName: string }) {
           <p className="text-sm font-semibold">
             {greeting}, {firstName}!
           </p>
-          <p className="text-xs text-white/70">Aaj ka business overview taiyar hai.</p>
+          <p className="text-xs text-white/70">Today&apos;s business overview is ready.</p>
         </div>
       </div>
       <p className="max-w-xs text-right text-xs italic text-white/70">&quot;Consistent numbers create stronger tomorrows.&quot;</p>
@@ -678,7 +678,7 @@ function SectionCard({ title, seeAllHref, children }: { title: string; seeAllHre
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
         {seeAllHref && (
           <Link href={seeAllHref} className="text-xs text-accent-ink underline underline-offset-2">
-            Sab dekhen →
+            View all →
           </Link>
         )}
       </div>

@@ -28,15 +28,15 @@ export default async function NewSupplierBillPage() {
         <Link href="/supplier-bills" className="text-xs text-ink-faint hover:text-ink">
           ← Supplier Bills
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Supplier Bill</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Supplier Bill</h1>
       </div>
 
       {!eligible.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Koi &quot;stock&quot; type GRN nahi mili jiski Supplier Bill abhi book na hui ho. (&quot;direct&quot;/&quot;general&quot; GRN ki Trade Payables
-          receiving ke waqt hi book ho chuki hoti hai — unke liye alag Bill zaroori nahi.){" "}
+          No &quot;stock&quot; type GRN found without a Supplier Bill booked yet. (&quot;direct&quot;/&quot;general&quot; GRNs have their Trade Payables
+          booked at the time of receiving — a separate Bill isn&apos;t needed for those.){" "}
           <Link href="/purchase-orders" className="underline underline-offset-2 font-medium">
-            Purchase Orders dekhen
+            View Purchase Orders
           </Link>
           .
         </div>

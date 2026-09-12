@@ -70,7 +70,7 @@ export function NewSalesOrderForm({
   function submit(confirmDuplicate: boolean) {
     setError(null);
     if (!clientPoNumber.trim()) {
-      setError("Client PO Number zaroori hai.");
+      setError("Client PO Number is required.");
       return;
     }
     startTransition(async () => {
@@ -100,7 +100,7 @@ export function NewSalesOrderForm({
     <div className="space-y-4">
       {creditWarning && (
         <div className="rounded-md border border-warn bg-warn-soft px-4 py-2.5 text-sm text-warn">
-          ⚠ {creditWarning} — is se aage order continue kiya ja sakta hai, sirf aagahi ke liye hai.
+          ⚠ {creditWarning} — this is informational only, the order can still proceed.
         </div>
       )}
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
@@ -162,8 +162,8 @@ export function NewSalesOrderForm({
       {duplicateWarning && (
         <div className="rounded-md border border-warn bg-warn-soft px-4 py-3 text-sm text-warn space-y-2">
           <p>
-            Is client ke liye PO number <strong>{clientPoNumber}</strong> pehle se istemal ho chuka hai. Alag clients same PO
-            number use kar sakte hain — lekin ek hi client ka yeh number dobara aana ghalti ho sakti hai.
+            PO number <strong>{clientPoNumber}</strong> has already been used for this client. Different clients can use the
+            same PO number — but the same client reusing this number may be a mistake.
           </p>
           <button
             type="button"
@@ -171,7 +171,7 @@ export function NewSalesOrderForm({
             disabled={pending}
             className="rounded-md border border-warn bg-bg px-3 py-1.5 text-xs font-medium text-warn hover:bg-surface-2 transition"
           >
-            Phir bhi Proceed Karen
+            Proceed Anyway
           </button>
         </div>
       )}
@@ -184,7 +184,7 @@ export function NewSalesOrderForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Sales Order Banayen"}
+        {pending ? "Saving…" : "Create Sales Order"}
       </button>
     </div>
   );

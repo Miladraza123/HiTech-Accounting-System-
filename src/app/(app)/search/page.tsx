@@ -80,7 +80,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Search</h1>
-        <p className="mt-1 text-sm text-ink-soft">Client, Supplier, Query#, Quotation#, PO#, Job#, DC#, Invoice#, Item, Vehicle — sab ek jaga.</p>
+        <p className="mt-1 text-sm text-ink-soft">Client, Supplier, Query#, Quotation#, PO#, Job#, DC#, Invoice#, Item, Vehicle — all in one place.</p>
       </div>
 
       <form className="max-w-lg">
@@ -88,18 +88,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           type="text"
           name="q"
           defaultValue={query}
-          placeholder="Search karen…"
+          placeholder="Search…"
           autoFocus
           className="input"
         />
       </form>
 
-      {query.length > 0 && query.length < 2 && <p className="text-sm text-ink-faint">Kam az kam 2 characters likhen.</p>}
+      {query.length > 0 && query.length < 2 && <p className="text-sm text-ink-faint">Enter at least 2 characters.</p>}
 
       {query.length >= 2 && (
         <>
           <p className="text-xs text-ink-faint">
-            &quot;{query}&quot; ke liye {totalResults} result{totalResults === 1 ? "" : "s"} mile.
+            {totalResults} result{totalResults === 1 ? "" : "s"} found for &quot;{query}&quot;.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {groups.map((g) => (
@@ -120,7 +120,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               </div>
             ))}
             {!groups.length && (
-              <p className="text-sm text-ink-faint col-span-2">Koi result nahi mila &quot;{query}&quot; ke liye.</p>
+              <p className="text-sm text-ink-faint col-span-2">No results found for &quot;{query}&quot;.</p>
             )}
           </div>
         </>

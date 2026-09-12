@@ -7,7 +7,7 @@ import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
 
-const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
+const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 export type StockTransferLineInput = { item_id: string; qty: number };
 
@@ -26,7 +26,11 @@ export async function createStockTransferAction(input: {
     p_from_warehouse_id: input.from_warehouse_id,
     p_to_warehouse_id: input.to_warehouse_id,
     p_transfer_date: input.transfer_date,
-    p_remarks: input.remarks,
+    // `fn_create_stock_transfer`'s `p_remarks text` param has no SQL
+    // default, so the generated RPC type is non-nullable `string` — the
+    // column itself is nullable and the function accepts a literal NULL
+    // fine, so this cast is purely for the type checker.
+    p_remarks: input.remarks as string,
     p_lines: input.lines,
   });
   if (error) return { error: error.message };

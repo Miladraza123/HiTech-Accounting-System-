@@ -44,13 +44,13 @@ export default async function QueriesPage({
         <div>
           <h1 className="text-lg font-semibold text-ink">Queries</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Har naya client inquiry yahan se shuru hota hai.
+            Every new client inquiry starts here.
             {from && to && (
               <>
                 {" "}
-                — <span className="text-ink">{from}</span> se <span className="text-ink">{to}</span> tak{" "}
+                — from <span className="text-ink">{from}</span> to <span className="text-ink">{to}</span>{" "}
                 <Link href="/queries" className="text-accent-ink underline underline-offset-2">
-                  (sab dekhen)
+                  (view all)
                 </Link>
               </>
             )}
@@ -100,8 +100,8 @@ export default async function QueriesPage({
         ) : (
           <EmptyState
             icon={<HelpCircle size={22} />}
-            title="Koi query nahi hai abhi tak"
-            description="Har naya client inquiry yahan record hoti hai — pehli query add karke shuru karen."
+            title="No queries yet"
+            description="Every new client inquiry is recorded here — start by adding your first query."
             action={
               canCreate ? (
                 <Link href="/queries/new" className={buttonClass()}>

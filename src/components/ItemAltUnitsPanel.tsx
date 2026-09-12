@@ -74,8 +74,8 @@ export function ItemAltUnitsPanel({
       <div className="px-4 py-2.5 border-b border-line">
         <h2 className="text-sm font-semibold text-ink">Alternate Units</h2>
         <p className="text-xs text-ink-faint mt-0.5">
-          Base unit <span className="font-mono">{baseUnit}</span> ke ilawa is item ko kis aur unit mein Sale/Issue/Deliver kiya ja sakta hai
-          — Purchase hamesha base unit mein hi hoti hai.
+          Besides the base unit <span className="font-mono">{baseUnit}</span>, this item can be Sold/Issued/Delivered in these other units
+          — Purchases always stay in the base unit.
         </p>
       </div>
 
@@ -109,7 +109,7 @@ export function ItemAltUnitsPanel({
                       disabled={pending}
                       className="text-xs text-accent-ink underline underline-offset-2 mr-3 disabled:opacity-60"
                     >
-                      {pendingId === a.id ? "…" : a.is_active ? "Inactive Karen" : "Active Karen"}
+                      {pendingId === a.id ? "…" : a.is_active ? "Deactivate" : "Activate"}
                     </button>
                     <button
                       type="button"
@@ -117,7 +117,7 @@ export function ItemAltUnitsPanel({
                       disabled={pending}
                       className="text-xs text-bad underline underline-offset-2 disabled:opacity-60"
                     >
-                      Hatayen
+                      Remove
                     </button>
                   </td>
                 )}
@@ -126,7 +126,7 @@ export function ItemAltUnitsPanel({
             {!altUnits.length && (
               <tr>
                 <td colSpan={canManage ? 4 : 3} className="px-4 py-6 text-center text-ink-faint">
-                  Koi alternate unit nahi bana abhi tak — sirf base unit ({baseUnit}) mein Sale/Deliver hoga.
+                  No alternate unit has been created yet — Sale/Deliver will only happen in the base unit ({baseUnit}).
                 </td>
               </tr>
             )}
@@ -138,7 +138,7 @@ export function ItemAltUnitsPanel({
         <div className="border-t border-line p-4 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
             <select value={unit} onChange={(e) => setUnit(e.target.value)} className="input !py-1.5 text-sm">
-              <option value="">— Nayi Alt Unit —</option>
+              <option value="">— New Alt Unit —</option>
               {availableUnits.map((u) => (
                 <option key={u.code} value={u.code}>
                   {u.code} — {u.name}
@@ -151,7 +151,7 @@ export function ItemAltUnitsPanel({
               min="0.000001"
               value={factor}
               onChange={(e) => setFactor(e.target.value)}
-              placeholder={`1 ${unit || "unit"} = kitne ${baseUnit}?`}
+              placeholder={`How many ${baseUnit} = 1 ${unit || "unit"}?`}
               className="input !py-1.5 text-sm"
             />
             <button
@@ -160,11 +160,11 @@ export function ItemAltUnitsPanel({
               disabled={pending || !unit || !factor}
               className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition disabled:opacity-60"
             >
-              {pending ? "…" : "Add Karen"}
+              {pending ? "…" : "Add"}
             </button>
           </div>
           <p className="text-xs text-ink-faint">
-            Misal: base unit KG hai, agar item PCS mein bhi becha jata hai aur 1 PCS = 12 KG hai, to unit = PCS, factor = 12 likhen.
+            Example: base unit is KG, and the item is also sold in PCS where 1 PCS = 12 KG — enter unit = PCS, factor = 12.
           </p>
           {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
         </div>

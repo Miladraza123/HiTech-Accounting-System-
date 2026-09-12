@@ -24,8 +24,8 @@ export default async function ChartOfAccountsPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Chart of Accounts</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Har transaction (Purchase, Invoice, Payment) khud inhi accounts mein double-entry post
-          karta hai — manual journal entry ki zaroorat nahi.
+          Every transaction (Purchase, Invoice, Payment) automatically posts a double-entry into these
+          accounts — no manual journal entry is needed.
         </p>
       </div>
 

@@ -18,7 +18,7 @@ export function NewBankAccountForm() {
   function submit() {
     setError(null);
     if (!accountName.trim()) {
-      setError("Account name zaroori hai.");
+      setError("Account name is required.");
       return;
     }
     startTransition(async () => {
@@ -82,7 +82,7 @@ export function NewBankAccountForm() {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Bank Account Banayen"}
+        {pending ? "Saving…" : "Create Bank Account"}
       </button>
     </div>
   );

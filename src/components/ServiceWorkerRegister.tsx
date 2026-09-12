@@ -47,7 +47,7 @@ export function ServiceWorkerRegister() {
 
   return (
     <div className="fixed inset-x-0 bottom-4 z-50 mx-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm shadow-lg">
-      <span className="text-ink">Naya version available hai.</span>
+      <span className="text-ink">A new version is available.</span>
       <button
         type="button"
         onClick={() => {
@@ -56,7 +56,7 @@ export function ServiceWorkerRegister() {
         }}
         className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition"
       >
-        Refresh karen
+        Refresh
       </button>
     </div>
   );

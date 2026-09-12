@@ -87,7 +87,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-ink">Tasks &amp; Follow-ups</h1>
-          <p className="mt-1 text-sm text-ink-soft">Har order/job/client ke tasks ek jaga — plus General tasks.</p>
+          <p className="mt-1 text-sm text-ink-soft">All tasks for every order/job/client in one place — plus General tasks.</p>
         </div>
         <Link href="/tasks/new" className={buttonClass("primary", "sm")}>
           + New Task
@@ -170,7 +170,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               {!filtered.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Is filter mein koi task nahi hai.
+                    No tasks match this filter.
                   </td>
                 </tr>
               )}

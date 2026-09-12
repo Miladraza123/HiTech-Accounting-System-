@@ -15,7 +15,7 @@ export default async function ExpenseHeadsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Expense Heads</h1>
-        <p className="mt-1 text-sm text-ink-soft">Har head ke liye alag se P&amp;L account khud ban jata hai — Expenses in categories mein book hote hain.</p>
+        <p className="mt-1 text-sm text-ink-soft">A separate P&amp;L account is created automatically for each head — Expenses are booked under these categories.</p>
       </div>
 
       <NewExpenseHeadForm />
@@ -50,7 +50,7 @@ export default async function ExpenseHeadsPage() {
             {!heads?.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                  Koi expense head nahi bana abhi tak.
+                  No expense head has been created yet.
                 </td>
               </tr>
             )}

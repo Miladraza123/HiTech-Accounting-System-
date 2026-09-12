@@ -31,14 +31,14 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Basic Info</p>
         <div className="grid grid-cols-[1fr_140px] gap-3">
-          <Field label="Client/Supplier ka naam" required>
+          <Field label="Client/Supplier Name" required>
             <input name="legal_name" required className="input" />
           </Field>
           <Field label="Type">
             <select name="party_type" defaultValue={defaultType} className="input">
               <option value="client">Client</option>
               <option value="supplier">Supplier</option>
-              <option value="both">Dono</option>
+              <option value="both">Both</option>
             </select>
           </Field>
         </div>
@@ -53,7 +53,7 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
           <Field label="STRN">
             <input name="strn" className="input" />
           </Field>
-          <Field label="CNIC (agar individual ho)">
+          <Field label="CNIC (if individual)">
             <input name="cnic" className="input" />
           </Field>
         </div>
@@ -85,11 +85,11 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
       </div>
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
-      {state.success && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Add ho gaya.</p>}
+      {state.success && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
 
       <div className="border-t border-line pt-4">
         <button type="submit" disabled={pending} className={buttonClass("primary", "md", "disabled:opacity-60")}>
-          {pending ? "Add ho raha hai…" : "Add Karen"}
+          {pending ? "Adding…" : "Add"}
         </button>
       </div>
     </form>

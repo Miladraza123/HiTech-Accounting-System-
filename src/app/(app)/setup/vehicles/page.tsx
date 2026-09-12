@@ -26,7 +26,7 @@ export default async function VehiclesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Vehicles / Fleet</h1>
-        <p className="mt-1 text-sm text-ink-soft">Engineers/Riders ko diye gaye vehicles — fuel/maintenance expenses in se link hote hain.</p>
+        <p className="mt-1 text-sm text-ink-soft">Vehicles assigned to Engineers/Riders — fuel/maintenance expenses are linked to these.</p>
       </div>
 
       <NewVehicleForm profiles={profiles ?? []} />
@@ -67,7 +67,7 @@ export default async function VehiclesPage() {
               {!vehicles?.length && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                    Koi vehicle nahi bana abhi tak.
+                    No vehicle has been created yet.
                   </td>
                 </tr>
               )}

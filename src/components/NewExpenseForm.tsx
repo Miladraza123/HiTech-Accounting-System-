@@ -45,20 +45,20 @@ export function NewExpenseForm({
   function submit() {
     setError(null);
     if (!expenseHeadId) {
-      setError("Expense Head select karen.");
+      setError("Select Expense Head.");
       return;
     }
     const amt = Number(amount);
     if (!amt || amt <= 0) {
-      setError("Amount zero se zyada hona chahiye.");
+      setError("Amount must be greater than zero.");
       return;
     }
     if (paymentSource === "bank" && !bankAccountId) {
-      setError("Bank Account select karen.");
+      setError("Select Bank Account.");
       return;
     }
     if (paymentSource === "petty_cash" && !pettyCashFundId) {
-      setError("Petty Cash Fund select karen.");
+      setError("Select Petty Cash Fund.");
       return;
     }
     startTransition(async () => {
@@ -233,7 +233,7 @@ export function NewExpenseForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Expense Record Karen"}
+        {pending ? "Saving…" : "Record Expense"}
       </button>
     </div>
   );

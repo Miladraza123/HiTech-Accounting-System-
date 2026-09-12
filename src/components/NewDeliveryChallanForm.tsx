@@ -51,16 +51,16 @@ export function NewDeliveryChallanForm({
   function submit() {
     setError(null);
     if (!soId) {
-      setError("Sales Order select karen.");
+      setError("Select Sales Order.");
       return;
     }
     if (!warehouseId) {
-      setError("Warehouse select karen.");
+      setError("Select Warehouse.");
       return;
     }
     const candidateLines = (so?.lines ?? []).filter((l) => Number(qtys[l.id] ?? 0) > 0);
     if (!candidateLines.length) {
-      setError("Kam az kam ek line mein delivered qty likhen.");
+      setError("Enter delivered qty in at least one line.");
       return;
     }
 
@@ -72,7 +72,7 @@ export function NewDeliveryChallanForm({
       if (issue) {
         const item = items.find((i) => i.id === l.item_id);
         if (!item) {
-          setError(`"${l.description}" ka item nahi mila — stock se issue nahi ho sakta.`);
+          setError(`Item for "${l.description}" not found — cannot issue from stock.`);
           return;
         }
         if (!l.unit || l.unit === item.base_unit) {
@@ -81,7 +81,7 @@ export function NewDeliveryChallanForm({
           const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
           if (!alt) {
             setError(
-              `"${l.description}" ki unit (${l.unit}) ka is item ke base unit (${item.base_unit}) mein conversion factor set nahi hai — Item Master mein "Alternate Units" add karen, ya "Issue from Stock" uncheck karen.`
+              `No conversion factor is set from "${l.description}"'s unit (${l.unit}) to this item's base unit (${item.base_unit}) — add "Alternate Units" in the Item Master, or uncheck "Issue from Stock".`
             );
             return;
           }
@@ -214,7 +214,7 @@ export function NewDeliveryChallanForm({
                           disabled={!l.item_id}
                           checked={!!issueFlags[l.id]}
                           onChange={(e) => setIssueFlags((f) => ({ ...f, [l.id]: e.target.checked }))}
-                          title={!l.item_id ? "Is line ka item nahi hai" : "Warehouse stock se qty kam ho jayegi"}
+                          title={!l.item_id ? "This line has no item" : "Quantity will be deducted from warehouse stock"}
                         />
                       </td>
                     </tr>
@@ -224,8 +224,8 @@ export function NewDeliveryChallanForm({
             </table>
           </div>
           <p className="px-3 py-2 text-xs text-ink-faint border-t border-line">
-            &quot;Issue from Stock&quot; sirf tab check karen jab yeh material pehle se warehouse stock mein para ho (GRN se aaya ho). Agar yeh Direct
-            Purchase se seedha client ko gaya tha, ya Fabrication ka finished output hai, to unchecked rehne den — uska cost pehle hi book ho chuka hai.
+            Only check &quot;Issue from Stock&quot; when this material is already sitting in warehouse stock (received via GRN). If it went directly from a
+            Direct Purchase to the client, or is Fabrication finished output, leave it unchecked — its cost has already been booked.
           </p>
         </div>
       )}
@@ -238,7 +238,7 @@ export function NewDeliveryChallanForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Delivery Challan Banayen"}
+        {pending ? "Saving…" : "Create Delivery Challan"}
       </button>
     </div>
   );

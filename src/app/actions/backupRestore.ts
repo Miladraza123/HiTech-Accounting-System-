@@ -7,7 +7,7 @@ import type { Json } from "@/lib/supabase/database.types";
 
 export type ActionResult = { error: string | null };
 
-const NO_PERMISSION: ActionResult = { error: "Sirf Owner Backup/Restore feature use kar sakta hai." };
+const NO_PERMISSION: ActionResult = { error: "Only the Owner can use the Backup/Restore feature." };
 
 // Shape of the JSON file backup.js (and getSafetySnapshotAction below) produce.
 type RestoreFile = {
@@ -27,17 +27,17 @@ function parseRestoreFile(fileText: string): { file: RestoreFile } | { error: st
   try {
     parsed = JSON.parse(fileText);
   } catch {
-    return { error: "Yeh valid JSON file nahi hai." };
+    return { error: "This is not a valid JSON file." };
   }
   const file = parsed as Partial<RestoreFile>;
   if (file.format !== "hitech-restore") {
-    return { error: `Yeh file is system ki restore file nahi lagti (format: "${String(file.format)}").` };
+    return { error: `This file doesn't look like a restore file for this system (format: "${String(file.format)}").` };
   }
   if (file.version !== 1) {
-    return { error: `Is file ka version (${String(file.version)}) is app se support nahi hota.` };
+    return { error: `This file's version (${String(file.version)}) is not supported by this app.` };
   }
   if (!file.tables || typeof file.tables !== "object") {
-    return { error: "File mein 'tables' data nahi mila." };
+    return { error: "No 'tables' data found in the file." };
   }
   return { file: file as RestoreFile };
 }
@@ -122,7 +122,7 @@ export async function commitRestoreAction(fileText: string, mode: "merge" | "rep
   }
 
   const anyFailed = outcomes.some((o) => !o.ok);
-  return { error: anyFailed ? "Kuch tables restore nahi ho sakin — neeche report dekhen." : null, outcomes };
+  return { error: anyFailed ? "Some tables could not be restored — see the report below." : null, outcomes };
 }
 
 /** Full current-state export, in the exact same "hitech-restore" shape backup.js produces — used as the

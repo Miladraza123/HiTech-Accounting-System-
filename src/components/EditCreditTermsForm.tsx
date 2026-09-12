@@ -40,9 +40,9 @@ export function EditCreditTermsForm({
     return (
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setOpen(true)} className="text-xs text-accent-ink underline underline-offset-2">
-          Credit terms edit karen
+          Edit credit terms
         </button>
-        {queuedOffline && <span className="text-[11px] text-warn">⏳ Offline save — sync hone ka intezar</span>}
+        {queuedOffline && <span className="text-[11px] text-warn">⏳ Saved offline — waiting to sync</span>}
       </div>
     );
   }
@@ -108,13 +108,13 @@ export function EditCreditTermsForm({
       {conflicts.length > 0 && (
         <div className="space-y-2 rounded-md border border-warn bg-warn-soft p-2 text-xs text-ink">
           <p className="font-medium text-warn">
-            Kisi aur ne is dauran yeh field change kar di hai — ek waqt mein sirf ek value rakh sakte hain:
+            Someone else changed this field in the meantime — you can only keep one value at a time:
           </p>
           {conflicts.map((c) => (
             <div key={c.field} className="space-y-1 rounded border border-line-strong bg-bg p-2">
               <p className="text-ink-soft">
                 <span className="font-medium">{FIELD_LABEL[c.field] ?? c.field}</span> — Server:{" "}
-                <span className="font-mono">{String(c.server_value)}</span>, Aap ka value:{" "}
+                <span className="font-mono">{String(c.server_value)}</span>, Your value:{" "}
                 <span className="font-mono">{String(c.my_value)}</span>
               </p>
               <div className="flex gap-2">
@@ -123,19 +123,19 @@ export function EditCreditTermsForm({
                   onClick={() => resolveConflict(c, "mine")}
                   className="flex-1 rounded-md bg-accent px-2 py-1 text-[11px] font-medium text-white"
                 >
-                  Mera value rakhen
+                  Keep my value
                 </button>
                 <button
                   type="button"
                   onClick={() => resolveConflict(c, "theirs")}
                   className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-[11px]"
                 >
-                  Server ka value rakhen
+                  Keep server value
                 </button>
               </div>
             </div>
           ))}
-          <p className="text-ink-faint">Faisla karne ke baad dobara &quot;Save&quot; dabayen.</p>
+          <p className="text-ink-faint">Once you decide, click &quot;Save&quot; again.</p>
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">
@@ -158,7 +158,7 @@ export function EditCreditTermsForm({
           }}
           className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-xs"
         >
-          Wapis
+          Back
         </button>
         <button type="button" onClick={submit} disabled={pending} className="flex-1 rounded-md bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-60">
           {pending ? "…" : "Save"}

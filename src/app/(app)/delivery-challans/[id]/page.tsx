@@ -68,14 +68,14 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
       </div>
 
       {dc.status === "Cancelled" && dc.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {dc.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancellation reason: {dc.cancel_reason}</div>
       )}
       {dc.acceptance_status === "Disputed" && dc.dispute_note && (
         <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Dispute note: {dc.dispute_note}</div>
       )}
       {dc.acceptance_status === "Accepted" && (
         <div className="rounded-md bg-good-soft border border-good px-4 py-2 text-sm text-good">
-          Accept kiya: {dc.accepted_by_name} — {dc.accepted_at ? new Date(dc.accepted_at).toLocaleString("en-PK") : ""}
+          Accepted by: {dc.accepted_by_name} — {dc.accepted_at ? new Date(dc.accepted_at).toLocaleString("en-PK") : ""}
         </div>
       )}
 

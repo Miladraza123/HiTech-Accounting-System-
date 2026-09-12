@@ -79,7 +79,7 @@ export default async function StockLedgerPage({
               {!entries?.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Koi movement nahi hai.
+                    No movement found.
                   </td>
                 </tr>
               )}

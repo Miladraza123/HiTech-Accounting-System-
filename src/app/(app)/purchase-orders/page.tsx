@@ -46,13 +46,13 @@ export default async function PurchaseOrdersPage({
         <div>
           <h1 className="text-lg font-semibold text-ink">Purchase Orders</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Supplier se khareed — client order (direct), warehouse stock, ya general.
+            Purchases from suppliers — client order (direct), warehouse stock, or general.
             {open === "1" && (
               <>
                 {" "}
-                — sirf open POs{" "}
+                — open POs only{" "}
                 <Link href="/purchase-orders" className="text-accent-ink underline underline-offset-2">
-                  (sab dekhen)
+                  (view all)
                 </Link>
               </>
             )}
@@ -115,8 +115,8 @@ export default async function PurchaseOrdersPage({
         ) : (
           <EmptyState
             icon={<Truck size={22} />}
-            title="Koi Purchase Order nahi hai abhi tak"
-            description="Supplier se khareed — client order (direct), warehouse stock, ya general."
+            title="No Purchase Orders yet"
+            description="Purchases from suppliers — client order (direct), warehouse stock, or general."
             action={
               canCreate ? (
                 <Link href="/purchase-orders/new" className={buttonClass()}>

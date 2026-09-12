@@ -29,14 +29,14 @@ export default async function NewPurchaseOrderPage() {
         <Link href="/purchase-orders" className="text-xs text-ink-faint hover:text-ink">
           ← Purchase Orders
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Purchase Order</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Purchase Order</h1>
       </div>
 
       {!suppliers?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Pehle koi supplier honi chahiye.{" "}
+          A supplier must exist first.{" "}
           <Link href="/clients" className="underline underline-offset-2 font-medium">
-            Supplier add karen
+            Add Supplier
           </Link>
           .
         </div>

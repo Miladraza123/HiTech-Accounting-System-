@@ -27,11 +27,11 @@ export function AllocatePaymentPanel({
   function submit() {
     setError(null);
     if (total <= 0) {
-      setError("Kam az kam ek line mein amount likhen.");
+      setError("Enter an amount in at least one line.");
       return;
     }
     if (total > unallocatedAmount) {
-      setError("Total unallocated amount se zyada nahi ho sakta.");
+      setError("Total cannot exceed the unallocated amount.");
       return;
     }
     const allocations: PaymentAllocationInput[] = rows
@@ -52,8 +52,8 @@ export function AllocatePaymentPanel({
   if (!rows.length) {
     return (
       <div className="rounded-xl border border-line bg-surface p-4">
-        <h2 className="text-sm font-semibold text-ink mb-1">Unallocated Amount Allocate Karen</h2>
-        <p className="text-xs text-ink-faint">Is party ka koi outstanding {direction === "receipt" ? "invoice" : "bill"} nahi hai abhi.</p>
+        <h2 className="text-sm font-semibold text-ink mb-1">Allocate Unallocated Amount</h2>
+        <p className="text-xs text-ink-faint">This party has no outstanding {direction === "receipt" ? "invoice" : "bill"} right now.</p>
       </div>
     );
   }
@@ -61,7 +61,7 @@ export function AllocatePaymentPanel({
   return (
     <div className="rounded-xl border border-line bg-surface overflow-hidden">
       <div className="px-4 py-2.5 border-b border-line">
-        <h2 className="text-sm font-semibold text-ink">Unallocated Amount Allocate Karen</h2>
+        <h2 className="text-sm font-semibold text-ink">Allocate Unallocated Amount</h2>
         <p className="text-xs text-ink-faint mt-0.5">Unallocated: {unallocatedAmount.toLocaleString()}</p>
       </div>
       <div className="overflow-x-auto">
@@ -103,7 +103,7 @@ export function AllocatePaymentPanel({
           disabled={pending}
           className="w-full rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Allocate Karen"}
+          {pending ? "…" : "Allocate"}
         </button>
       </div>
     </div>

@@ -53,7 +53,7 @@ export function AttachmentsPanel({
             disabled={pending}
             className="rounded-md border border-line-strong bg-bg px-3 py-1.5 text-xs text-ink hover:bg-surface-2 transition disabled:opacity-50"
           >
-            {pending ? "Upload ho raha…" : "Upload"}
+            {pending ? "Uploading…" : "Upload"}
           </button>
         </form>
       )}
@@ -76,12 +76,12 @@ export function AttachmentsPanel({
                 onClick={() => startTransition(() => deleteAttachmentAction(a.id, a.file_path, revalidateTo))}
                 className="text-xs text-bad shrink-0"
               >
-                Hatayen
+                Remove
               </button>
             )}
           </li>
         ))}
-        {!attachments.length && <li className="text-xs text-ink-faint">Koi attachment nahi.</li>}
+        {!attachments.length && <li className="text-xs text-ink-faint">No attachments.</li>}
       </ul>
     </div>
   );

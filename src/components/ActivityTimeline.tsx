@@ -49,7 +49,7 @@ export function ActivityTimeline({
     <div className="space-y-4">
       {canAdd && (
         <form ref={formRef} action={submit} className="rounded-xl border border-line bg-surface p-4 space-y-2">
-          <textarea name="note" rows={2} placeholder="Follow-up note likhen…" required className="input resize-none" />
+          <textarea name="note" rows={2} placeholder="Enter follow-up note…" required className="input resize-none" />
           <div className="flex items-center gap-3">
             <label className="text-xs text-ink-faint">Next follow-up:</label>
             <input
@@ -63,7 +63,7 @@ export function ActivityTimeline({
               disabled={pending}
               className="ml-auto rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition disabled:opacity-60"
             >
-              {pending ? "…" : "Add karen"}
+              {pending ? "…" : "Add"}
             </button>
           </div>
         </form>
@@ -83,7 +83,7 @@ export function ActivityTimeline({
             </div>
           </li>
         ))}
-        {!events.length && <li className="text-xs text-ink-faint">Koi activity nahi hui abhi tak.</li>}
+        {!events.length && <li className="text-xs text-ink-faint">No activity yet.</li>}
       </ul>
     </div>
   );

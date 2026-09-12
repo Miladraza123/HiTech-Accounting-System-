@@ -32,7 +32,7 @@ export function MobileNav({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Menu kholen"
+          aria-label="Open menu"
           className="rounded-md border border-line-strong p-2 text-ink-soft hover:bg-surface-2 transition"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -55,7 +55,7 @@ export function MobileNav({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Menu band karen"
+                aria-label="Close menu"
                 className="rounded-md p-1.5 text-ink-faint hover:bg-surface-2 hover:text-ink transition"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">

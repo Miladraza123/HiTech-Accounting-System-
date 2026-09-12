@@ -12,14 +12,14 @@ export default async function ImportPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Import Wizard</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Apne purane clients, suppliers, bakaya (outstanding) balances aur warehouse stock ek CSV
-          ya Excel file se load karen — har import ek batch ke tor par record hoti hai, review ke
-          sath.
+          Load your existing clients, suppliers, outstanding balances, and warehouse stock from a
+          CSV or Excel file — each import is recorded as a batch, with a review
+          step.
         </p>
         <p className="mt-1 text-xs text-ink-faint">
-          Opening Stock import se pehle Item Master mein item code aur Warehouses mein warehouse
-          code maujood hone chahiye — import sirf link karta hai, naye items/warehouses nahi
-          banata.
+          Before importing Opening Stock, the item code must already exist in Item Master and the
+          warehouse code in Warehouses — the import only links records, it does not
+          create new items/warehouses.
         </p>
       </div>
 

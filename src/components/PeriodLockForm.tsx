@@ -36,7 +36,7 @@ export function PeriodLockForm({ currentLockDate }: { currentLockDate: string | 
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
       </label>
       <p className="text-xs text-ink-faint">
-        Is date ya is se pehle koi bhi nayi financial entry (Invoice, Payment, Expense, GRN, Return, Journal Voucher, waghera) post nahi ho sakegi — Owner ke liye bhi. Khali chhor kar Clear karen to lock hat jayega.
+        No new financial entry (Invoice, Payment, Expense, GRN, Return, Journal Voucher, etc.) can be posted on or before this date — not even for the Owner. Leave it blank and click Clear to remove the lock.
       </p>
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
       <div className="flex gap-2">
@@ -46,7 +46,7 @@ export function PeriodLockForm({ currentLockDate }: { currentLockDate: string | 
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Lock Save Karen"}
+          {pending ? "…" : "Save Lock"}
         </button>
         {currentLockDate && (
           <button
@@ -55,7 +55,7 @@ export function PeriodLockForm({ currentLockDate }: { currentLockDate: string | 
             disabled={pending}
             className="rounded-md border border-line-strong bg-bg px-4 py-2 text-sm text-ink hover:bg-surface-2 transition disabled:opacity-60"
           >
-            Lock Hataen
+            Remove Lock
           </button>
         )}
       </div>

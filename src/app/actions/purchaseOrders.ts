@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
+const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 export type PurchaseOrderLineInput = {
   item_id?: string;

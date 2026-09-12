@@ -16,7 +16,7 @@ export async function signInAction(
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
-    return { error: "Email aur password dono likhen." };
+    return { error: "Enter both email and password." };
   }
 
   const supabase = await createClient();
@@ -59,13 +59,13 @@ export async function signUpAction(
   const confirm = String(formData.get("confirm") ?? "");
 
   if (!fullName || !email || !password) {
-    return { error: "Sab fields zaroori hain.", message: null };
+    return { error: "All fields are required.", message: null };
   }
   if (password.length < 8) {
-    return { error: "Password kam az kam 8 characters ka hona chahiye.", message: null };
+    return { error: "Password must be at least 8 characters.", message: null };
   }
   if (password !== confirm) {
-    return { error: "Password aur confirmation match nahi karte.", message: null };
+    return { error: "Password and confirmation don't match.", message: null };
   }
 
   const supabase = await createClient();
@@ -83,7 +83,7 @@ export async function signUpAction(
     return {
       error: null,
       message:
-        "Account ban gaya. Apna email check karen — confirmation link pe click karne ke baad login kar sakte hain.",
+        "Account created. Check your email — you can log in after clicking the confirmation link.",
     };
   }
 

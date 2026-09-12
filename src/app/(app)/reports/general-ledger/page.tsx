@@ -50,7 +50,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
 
       <form className="flex items-center gap-2 flex-wrap">
         <select name="code" defaultValue={code ?? ""} className="input !py-1.5 text-sm max-w-sm">
-          <option value="">— Account select karen —</option>
+          <option value="">— Select Account —</option>
           {(accounts ?? []).map((a) => (
             <option key={a.code} value={a.code}>
               {a.code} — {a.name}
@@ -58,7 +58,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
           ))}
         </select>
         <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
-          Dekhen
+          View
         </button>
       </form>
 
@@ -99,7 +99,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
                 {!rows.length && (
                   <tr>
                     <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                      Is account ki koi entry nahi hai.
+                      No entries for this account.
                     </td>
                   </tr>
                 )}

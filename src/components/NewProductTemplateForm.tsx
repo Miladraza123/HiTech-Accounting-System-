@@ -23,7 +23,7 @@ function serialize(lines: EditableMaterialLine[], items: Tables<"items">[], altU
       if (!alt) {
         return {
           result: null,
-          error: `"${item.item_code}" ki unit (${l.unit}) ka base unit (${item.base_unit}) mein conversion factor set nahi hai — Item Master mein "Alternate Units" add karen.`,
+          error: `No conversion factor is set from unit (${l.unit}) to base unit (${item.base_unit}) for "${item.item_code}" — add "Alternate Units" in Item Master.`,
         };
       }
       baseQty = Math.round(qtyEntered * alt.factor * 1000) / 1000;
@@ -52,7 +52,7 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
   function submit() {
     setError(null);
     if (!templateCode.trim() || !name.trim()) {
-      setError("Template code aur naam zaroori hai.");
+      setError("Template code and name are required.");
       return;
     }
     const { result, error: convErr } = serialize(lines, items, altUnits);
@@ -62,7 +62,7 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
     }
     const materialLines = result ?? [];
     if (!materialLines.length) {
-      setError("Kam az kam ek raw material line honi chahiye.");
+      setError("At least one raw material line is required.");
       return;
     }
     startTransition(async () => {
@@ -137,7 +137,7 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Template Banayen"}
+        {pending ? "Saving…" : "Create Template"}
       </button>
     </div>
   );

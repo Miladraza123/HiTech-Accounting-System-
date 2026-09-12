@@ -243,16 +243,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <main className="flex-1 min-w-0">
             {noOwnerYet && (
               <div className="bg-warn-soft border-b border-warn px-4 py-2.5 text-sm text-warn">
-                Is system ka koi Owner abhi tak set nahi hua.{" "}
+                This system doesn&apos;t have an Owner set up yet.{" "}
                 <Link href="/bootstrap" className="underline underline-offset-2 font-medium">
-                  Owner access le lein
+                  Claim Owner access
                 </Link>
                 .
               </div>
             )}
             {noRoleYet && (
               <div className="bg-warn-soft border-b border-warn px-4 py-2.5 text-sm text-warn">
-                Aapko abhi koi role assign nahi hua — Owner se apna role assign karwayen.
+                You don&apos;t have a role assigned yet — ask the Owner to assign you one.
               </div>
             )}
             <div className="max-w-5xl mx-auto px-5 py-8">{children}</div>

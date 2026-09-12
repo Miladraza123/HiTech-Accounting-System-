@@ -32,7 +32,7 @@ export function RoleAssignRow({
           }}
           className="text-xs rounded-md border border-line bg-bg px-2 py-1 text-ink"
         >
-          <option value="">+ Role assign karen</option>
+          <option value="">+ Assign Role</option>
           {available.map((r) => (
             <option key={r.id} value={r.id}>
               {ROLE_LABELS[r.code] ?? r.code}
@@ -59,7 +59,7 @@ export function RevokeRoleChip({
       type="button"
       disabled={pending}
       onClick={() => startTransition(() => revokeRoleAction(userId, roleId))}
-      title="Hatane ke liye click karen"
+      title="Click to remove"
       className="inline-flex items-center gap-1 rounded-full bg-ledger-soft px-2 py-0.5 text-xs text-ledger disabled:opacity-50"
     >
       {label} <span aria-hidden>×</span>

@@ -17,7 +17,7 @@ export function NewPettyCashFundForm({ profiles }: { profiles: Tables<"profiles"
   function submit() {
     setError(null);
     if (!fundName.trim()) {
-      setError("Fund name zaroori hai.");
+      setError("Fund name is required.");
       return;
     }
     startTransition(async () => {
@@ -74,7 +74,7 @@ export function NewPettyCashFundForm({ profiles }: { profiles: Tables<"profiles"
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Petty Cash Fund Banayen"}
+        {pending ? "Saving…" : "Create Petty Cash Fund"}
       </button>
     </div>
   );

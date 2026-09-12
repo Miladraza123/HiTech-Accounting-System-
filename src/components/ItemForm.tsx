@@ -46,7 +46,7 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
       </div>
       <label className="flex items-center gap-2 text-sm text-ink-soft">
         <input type="checkbox" name="is_stocked" defaultChecked />
-        Yeh item warehouse stock mein rakha jayega (raw material / stocked goods)
+        This item will be kept in warehouse stock (raw material / stocked goods)
       </label>
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
@@ -56,7 +56,7 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Add ho raha hai…" : "Item Add Karen"}
+        {pending ? "Adding…" : "Add Item"}
       </button>
     </form>
   );

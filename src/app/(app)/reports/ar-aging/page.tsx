@@ -97,7 +97,7 @@ export default async function ArAgingPage() {
               {!rows.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Koi outstanding invoice nahi hai.
+                    No outstanding invoices.
                   </td>
                 </tr>
               )}

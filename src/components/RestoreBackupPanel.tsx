@@ -72,7 +72,7 @@ export function RestoreBackupPanel() {
     startTransition(async () => {
       const res = await getSafetySnapshotAction();
       if (res.error || !res.json) {
-        setError(res.error ?? "Safety snapshot nahi ban saka.");
+        setError(res.error ?? "Failed to create safety snapshot.");
         return;
       }
       downloadJson(`HiTech-Before-Restore-${new Date().toISOString().slice(0, 10)}.json`, res.json);
@@ -101,9 +101,9 @@ export function RestoreBackupPanel() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-sm font-semibold text-ink mb-3">Restore File Upload Karen</h2>
+        <h2 className="text-sm font-semibold text-ink mb-3">Upload Restore File</h2>
         <p className="text-sm text-ink-soft mb-3">
-          Daily Backup email se mila <code className="font-mono text-xs">HiTech-Restore-YYYY-MM-DD.json</code> file yahan upload karen.
+          Upload the <code className="font-mono text-xs">HiTech-Restore-YYYY-MM-DD.json</code> file received from the Daily Backup email here.
         </p>
         <input
           type="file"
@@ -119,11 +119,11 @@ export function RestoreBackupPanel() {
       {meta && (
         <div className="rounded-xl border border-line bg-surface p-5 text-sm">
           <p className="text-ink-soft">
-            Yeh file <span className="text-ink font-medium">{meta.data_date ?? "—"}</span> ka data hai — liya gaya:{" "}
+            This file contains data for <span className="text-ink font-medium">{meta.data_date ?? "—"}</span> — taken at:{" "}
             <span className="text-ink">{meta.taken_at_karachi ?? "—"}</span>
           </p>
           {!!meta.missed?.length && (
-            <p className="mt-1 text-warn">⚠ Is file mein yeh tables shamil nahi thin (backup ke waqt fail hui thin): {meta.missed.join(", ")}</p>
+            <p className="mt-1 text-warn">⚠ This file does not include the following tables (they failed during the backup): {meta.missed.join(", ")}</p>
           )}
         </div>
       )}
@@ -131,34 +131,34 @@ export function RestoreBackupPanel() {
       {plan && totals && (
         <>
           <div className="rounded-xl border border-line bg-surface p-5">
-            <h2 className="text-sm font-semibold text-ink mb-3">Restore Plan — Commit Karne Se Pehle Review Karen</h2>
+            <h2 className="text-sm font-semibold text-ink mb-3">Restore Plan — Review Before Committing</h2>
             <div className="flex gap-2 mb-4">
               <label className={`flex-1 rounded-md border px-3 py-2 text-sm cursor-pointer ${mode === "merge" ? "border-accent bg-accent-soft/30" : "border-line"}`}>
                 <input type="radio" name="mode" checked={mode === "merge"} onChange={() => setMode("merge")} className="mr-2 accent-accent" />
                 <span className="font-medium text-ink">Merge (Safe)</span>
-                <p className="text-xs text-ink-faint mt-0.5">Sirf jo missing hai wahi add hoga — koi existing row chhui nahi jayegi.</p>
+                <p className="text-xs text-ink-faint mt-0.5">Only what is missing will be added — no existing row will be touched.</p>
               </label>
               <label className={`flex-1 rounded-md border px-3 py-2 text-sm cursor-pointer ${mode === "replace" ? "border-bad bg-bad-soft/30" : "border-line"}`}>
                 <input type="radio" name="mode" checked={mode === "replace"} onChange={() => setMode("replace")} className="mr-2 accent-bad" />
                 <span className="font-medium text-bad">Replace (Destructive)</span>
-                <p className="text-xs text-ink-faint mt-0.5">Database bilkul file jaisa ban jayega — file mein jo nahi hai wo delete ho jayega.</p>
+                <p className="text-xs text-ink-faint mt-0.5">The database will become an exact match of the file — anything not in the file will be deleted.</p>
               </label>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="rounded-lg border border-line bg-bg p-3 text-center">
                 <p className="text-xl font-semibold text-good tabular">+{totals.to_add}</p>
-                <p className="text-[11px] text-ink-faint uppercase font-mono">Rows Add Hongi</p>
+                <p className="text-[11px] text-ink-faint uppercase font-mono">Rows To Be Added</p>
               </div>
               <div className="rounded-lg border border-line bg-bg p-3 text-center">
                 <p className="text-xl font-semibold text-warn tabular">{mode === "replace" ? totals.to_update : 0}</p>
-                <p className="text-[11px] text-ink-faint uppercase font-mono">{mode === "replace" ? "Rows Update Hongi" : "Skip Hongi (already exist)"}</p>
+                <p className="text-[11px] text-ink-faint uppercase font-mono">{mode === "replace" ? "Rows To Be Updated" : "Will Be Skipped (already exist)"}</p>
               </div>
               <div className="rounded-lg border border-line bg-bg p-3 text-center">
                 <p className={`text-xl font-semibold tabular ${mode === "replace" && totals.to_delete > 0 ? "text-bad" : "text-ink-faint"}`}>
                   {mode === "replace" ? totals.to_delete : 0}
                 </p>
-                <p className="text-[11px] text-ink-faint uppercase font-mono">Rows Delete Hongi</p>
+                <p className="text-[11px] text-ink-faint uppercase font-mono">Rows To Be Deleted</p>
               </div>
             </div>
 
@@ -193,7 +193,7 @@ export function RestoreBackupPanel() {
           </div>
 
           <div className="rounded-xl border border-bad bg-bad-soft/20 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-bad">Commit Karne Se Pehle</h2>
+            <h2 className="text-sm font-semibold text-bad">Before You Commit</h2>
             {!snapshotDownloaded ? (
               <button
                 type="button"
@@ -201,16 +201,16 @@ export function RestoreBackupPanel() {
                 disabled={pending}
                 className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-50"
               >
-                1. Pehle Current Data Ka Safety Snapshot Download Karen
+                1. First Download a Safety Snapshot of Current Data
               </button>
             ) : (
-              <p className="text-sm text-good">✓ Safety snapshot download ho chuki hai.</p>
+              <p className="text-sm text-good">✓ Safety snapshot has been downloaded.</p>
             )}
 
             {snapshotDownloaded && (
               <div>
                 <label className="block text-sm text-ink mb-1.5">
-                  2. Confirm karne ke liye neeche <span className="font-mono font-semibold">RESTORE</span> type karen:
+                  2. Type <span className="font-mono font-semibold">RESTORE</span> below to confirm:
                 </label>
                 <input
                   type="text"
@@ -228,7 +228,7 @@ export function RestoreBackupPanel() {
               disabled={!snapshotDownloaded || confirmText !== "RESTORE" || pending}
               className="rounded-md bg-bad px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {pending ? "Restore Ho Raha Hai…" : `3. ${mode === "replace" ? "Replace" : "Merge"} Restore Commit Karen`}
+              {pending ? "Restoring…" : `3. Commit ${mode === "replace" ? "Replace" : "Merge"} Restore`}
             </button>
           </div>
         </>

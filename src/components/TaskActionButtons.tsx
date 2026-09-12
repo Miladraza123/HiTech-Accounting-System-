@@ -47,13 +47,13 @@ export function TaskActionButtons({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={2}
-          placeholder="Cancel karne ki wajah (optional)…"
+          placeholder="Reason for cancelling (optional)…"
           className="input resize-none text-xs"
         />
         {error && <p className="text-xs text-bad">{error}</p>}
         <div className="flex gap-1.5">
           <button type="button" onClick={() => setCancelling(false)} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-[11px]">
-            Wapis
+            Back
           </button>
           <button
             type="button"

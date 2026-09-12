@@ -17,7 +17,7 @@ export async function createPartyAction(
 
   const legal_name = String(formData.get("legal_name") ?? "").trim();
   const party_type = String(formData.get("party_type") ?? "client");
-  if (!legal_name) return { error: "Naam zaroori hai." };
+  if (!legal_name) return { error: "Name is required." };
 
   const { error } = await supabase.from("parties").insert({
     legal_name,
@@ -56,7 +56,7 @@ export async function updateCreditTermsAction(
   base: { creditLimit: number; creditDays: number },
   next: { creditLimit: number; creditDays: number }
 ): Promise<ActionResult> {
-  if (next.creditLimit < 0 || next.creditDays < 0) return { error: "Negative value nahi ho sakti." };
+  if (next.creditLimit < 0 || next.creditDays < 0) return { error: "Value cannot be negative." };
 
   const supabase = await createClient();
   const changes = diffFields(

@@ -40,7 +40,7 @@ export function QueryForm({
 
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Requirement *</span>
-        <textarea name="requirement" required rows={3} className="input resize-none" placeholder="Client ko kya chahiye…" />
+        <textarea name="requirement" required rows={3} className="input resize-none" placeholder="What does the client need…" />
       </label>
 
       <div className="grid grid-cols-2 gap-4">
@@ -73,7 +73,7 @@ export function QueryForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Query Save Karen"}
+        {pending ? "Saving…" : "Save Query"}
       </button>
     </form>
   );

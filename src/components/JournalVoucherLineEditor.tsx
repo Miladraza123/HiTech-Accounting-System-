@@ -87,7 +87,7 @@ export function JournalVoucherLineEditor({
               <tr key={l.key} className="border-t border-line">
                 <td className="px-2 py-1.5">
                   <select value={l.account_code} onChange={(e) => update(l.key, { account_code: e.target.value })} className="input !py-1 text-xs">
-                    <option value="">— Account select karen —</option>
+                    <option value="">— Select account —</option>
                     {accounts.map((a) => (
                       <option key={a.code} value={a.code}>
                         {a.code} — {a.name}
@@ -145,7 +145,7 @@ export function JournalVoucherLineEditor({
                   />
                 </td>
                 <td className="px-1">
-                  <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Line hatayen">
+                  <button type="button" onClick={() => remove(l.key)} className="text-ink-faint hover:text-bad" title="Remove line">
                     ×
                   </button>
                 </td>
@@ -156,12 +156,12 @@ export function JournalVoucherLineEditor({
       </div>
       <div className="flex items-center justify-between border-t border-line px-3 py-2">
         <button type="button" onClick={addRow} className="text-xs text-accent-ink underline underline-offset-2">
-          + Line add karen
+          + Add line
         </button>
         <div className="text-xs space-x-4 tabular">
           <span className="text-ink-soft">Debit: {totalDebit.toFixed(2)}</span>
           <span className="text-ink-soft">Credit: {totalCredit.toFixed(2)}</span>
-          <span className={`font-semibold ${balanced ? "text-good" : "text-bad"}`}>{balanced ? "Balanced ✓" : "Balanced nahi"}</span>
+          <span className={`font-semibold ${balanced ? "text-good" : "text-bad"}`}>{balanced ? "Balanced ✓" : "Not balanced"}</span>
         </div>
       </div>
     </div>

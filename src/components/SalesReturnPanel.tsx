@@ -33,7 +33,7 @@ export function SalesReturnPanel({
         onClick={() => setOpen(true)}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition"
       >
-        Sales Return Karen
+        Sales Return
       </button>
     );
   }
@@ -45,15 +45,15 @@ export function SalesReturnPanel({
       .filter((l) => l.qty > 0);
 
     if (!returnLines.length) {
-      setError("Kam az kam ek line mein return qty likhen.");
+      setError("Enter return qty in at least one line.");
       return;
     }
     if (!warehouseId) {
-      setError("Warehouse select karen (jahan stock wapis jayega).");
+      setError("Select Warehouse (where the stock will be returned to).");
       return;
     }
     if (!reason.trim()) {
-      setError("Return ki wajah likhna zaroori hai.");
+      setError("A reason for the return is required.");
       return;
     }
 
@@ -77,7 +77,7 @@ export function SalesReturnPanel({
 
   return (
     <div className="space-y-4 rounded-xl border border-accent bg-accent-soft/30 p-5">
-      <p className="text-sm font-medium text-ink">Client se wapis aane wali qty likhen — invoice rate par hi credit note banega.</p>
+      <p className="text-sm font-medium text-ink">Enter the qty being returned by the client — the credit note will be created at the invoice rate.</p>
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block space-y-1.5">
@@ -136,7 +136,7 @@ export function SalesReturnPanel({
         </div>
       </div>
 
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Return ki wajah… (e.g. quality issue, excess qty)" className="input resize-none" />
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason for return… (e.g. quality issue, excess qty)" className="input resize-none" />
 
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
@@ -150,7 +150,7 @@ export function SalesReturnPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Sales Return Save Karen"}
+          {pending ? "…" : "Save Sales Return"}
         </button>
       </div>
     </div>

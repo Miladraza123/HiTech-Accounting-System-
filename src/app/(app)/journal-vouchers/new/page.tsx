@@ -23,8 +23,8 @@ export default async function NewJournalVoucherPage() {
         <Link href="/journal-vouchers" className="text-xs text-ink-faint hover:text-ink">
           ← Journal Vouchers
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Naya Journal Voucher</h1>
-        <p className="text-sm text-ink-soft">Manual entry — sirf tab use karen jab koi doosra transaction screen (Payment, Expense, Transfer) applicable na ho.</p>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Journal Voucher</h1>
+        <p className="text-sm text-ink-soft">Manual entry — use this only when no other transaction screen (Payment, Expense, Transfer) applies.</p>
       </div>
 
       <NewJournalVoucherForm accounts={accounts ?? []} parties={parties ?? []} bankAccounts={bankAccounts ?? []} pettyCashFunds={pettyCashFunds ?? []} />

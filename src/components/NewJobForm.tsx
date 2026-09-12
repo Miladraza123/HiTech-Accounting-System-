@@ -31,7 +31,7 @@ function serialize(lines: EditableMaterialLine[], items: Tables<"items">[], altU
       if (!alt) {
         return {
           result: null,
-          error: `"${item.item_code}" ki unit (${l.unit}) ka base unit (${item.base_unit}) mein conversion factor set nahi hai — Item Master mein "Alternate Units" add karen.`,
+          error: `No conversion factor is set from "${item.item_code}"'s unit (${l.unit}) to the base unit (${item.base_unit}) — add "Alternate Units" in the Item Master.`,
         };
       }
       baseQty = Math.round(qtyEntered * alt.factor * 1000) / 1000;
@@ -88,20 +88,20 @@ export function NewJobForm({
   function submit() {
     setError(null);
     if (!soLineId) {
-      setError("Sales Order line select karen.");
+      setError("Select Sales Order line.");
       return;
     }
     if (!warehouseId) {
-      setError("Warehouse select karen.");
+      setError("Select Warehouse.");
       return;
     }
     if (!description.trim()) {
-      setError("Description zaroori hai.");
+      setError("Description is required.");
       return;
     }
     const qty = Number(jobQty);
     if (!qty || qty <= 0) {
-      setError("Job qty zero se zyada honi chahiye.");
+      setError("Job qty must be greater than zero.");
       return;
     }
     let materialLines: MaterialLineInput[] = [];
@@ -113,7 +113,7 @@ export function NewJobForm({
       }
       materialLines = result ?? [];
       if (!materialLines.length) {
-        setError("Template select karen ya material requirement manually likhen.");
+        setError("Select a Template or enter the material requirement manually.");
         return;
       }
     }
@@ -207,7 +207,7 @@ export function NewJobForm({
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
-        <span className="text-xs font-medium text-ink-soft">Product hai repeat (template) ya custom?</span>
+        <span className="text-xs font-medium text-ink-soft">Is the product a repeat (template) or custom?</span>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -217,7 +217,7 @@ export function NewJobForm({
             }`}
           >
             <span className="block font-medium">Custom</span>
-            <span className="block text-xs text-ink-faint">Material requirement khud likhen</span>
+            <span className="block text-xs text-ink-faint">Enter material requirement manually</span>
           </button>
           <div className="space-y-1.5">
             <select
@@ -238,7 +238,7 @@ export function NewJobForm({
 
         {templateId && templatePreview ? (
           <p className="text-xs text-ink-soft">
-            Template se material requirement khud calculate hoga: <span className="tabular">qty_per_unit × {templatePreview.qty}</span>.
+            Material requirement will be calculated automatically from the template: <span className="tabular">qty_per_unit × {templatePreview.qty}</span>.
           </p>
         ) : (
           <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Required Qty" altUnitsByItem={altUnitsByItem} />
@@ -253,7 +253,7 @@ export function NewJobForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Job Banayen"}
+        {pending ? "Saving…" : "Create Job"}
       </button>
     </div>
   );

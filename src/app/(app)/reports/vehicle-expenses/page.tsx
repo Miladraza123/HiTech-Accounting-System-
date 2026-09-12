@@ -22,7 +22,7 @@ export default async function VehicleExpensesReportPage() {
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Vehicle &amp; Engineer/Rider Expense Report</h1>
-        <p className="text-sm text-ink-soft">Vehicle-wise / Fuel / Maintenance / Cost-per-KM, aur person-wise field expense totals.</p>
+        <p className="text-sm text-ink-soft">Vehicle-wise / Fuel / Maintenance / Cost-per-KM, and person-wise field expense totals.</p>
       </div>
 
       {highestVehicle && (highestVehicle.total_expense ?? 0) > 0 && (
@@ -71,7 +71,7 @@ export default async function VehicleExpensesReportPage() {
               {!vehicleSummary?.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Koi vehicle nahi bana abhi tak.
+                    No vehicles created yet.
                   </td>
                 </tr>
               )}
@@ -112,7 +112,7 @@ export default async function VehicleExpensesReportPage() {
               {!personSummary?.length && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-ink-faint">
-                    Koi person-linked expense nahi hai abhi tak.
+                    No person-linked expenses yet.
                   </td>
                 </tr>
               )}

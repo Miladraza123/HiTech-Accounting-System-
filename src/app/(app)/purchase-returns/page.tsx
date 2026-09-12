@@ -22,7 +22,7 @@ export default async function PurchaseReturnsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Purchase Returns</h1>
-        <p className="mt-1 text-sm text-ink-soft">Supplier ko wapis ki gayi goods ke debit notes — har Posted Supplier Bill se create hote hain.</p>
+        <p className="mt-1 text-sm text-ink-soft">Debit notes for goods returned to suppliers — created from a Posted Supplier Bill.</p>
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
@@ -66,7 +66,7 @@ export default async function PurchaseReturnsPage() {
               {!returns?.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Koi Purchase Return nahi hai abhi tak.
+                    No Purchase Returns yet.
                   </td>
                 </tr>
               )}

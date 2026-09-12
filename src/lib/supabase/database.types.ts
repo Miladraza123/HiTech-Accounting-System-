@@ -1408,6 +1408,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "jobs_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "jobs_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
@@ -3537,6 +3551,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "responsible_person_expense_summary"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       unit_conversions: {
@@ -3584,6 +3605,39 @@ export type Database = {
         Update: {
           code?: string
           name?: string
+        }
+        Relationships: []
+      }
+      user_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          invited_by: string
+          revoked_at: string | null
+          role_ids: string[]
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          invited_by: string
+          revoked_at?: string | null
+          role_ids?: string[]
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          invited_by?: string
+          revoked_at?: string | null
+          role_ids?: string[]
         }
         Relationships: []
       }
@@ -3954,6 +4008,7 @@ export type Database = {
       }
     }
     Functions: {
+      _fn_cron_generate_daily_snapshot: { Args: never; Returns: undefined }
       _fn_insert_quotation_lines: {
         Args: { p_lines: Json; p_revision_id: string }
         Returns: {
@@ -4000,6 +4055,18 @@ export type Database = {
       _fn_recalc_so_totals: {
         Args: { p_sales_order_id: string }
         Returns: undefined
+      }
+      _fn_restore_pk_columns: {
+        Args: { p_table_name: string }
+        Returns: string[]
+      }
+      _fn_smart_merge_editable_columns: {
+        Args: { p_table_name: string }
+        Returns: string[]
+      }
+      _fn_smart_merge_values_equal: {
+        Args: { a: string; b: string }
+        Returns: boolean
       }
       fn_admin_restore_delete_orphans: {
         Args: { p_rows: Json; p_table_name: string }
@@ -4062,13 +4129,22 @@ export type Database = {
         Args: { p_purchase_order_id: string; p_reason: string }
         Returns: undefined
       }
-      fn_cancel_purchase_return: { Args: { p_reason: string; p_return_id: string }; Returns: undefined }
+      fn_cancel_purchase_return: {
+        Args: { p_reason: string; p_return_id: string }
+        Returns: undefined
+      }
       fn_cancel_sales_order: {
         Args: { p_reason: string; p_sales_order_id: string }
         Returns: undefined
       }
-      fn_cancel_sales_return: { Args: { p_reason: string; p_return_id: string }; Returns: undefined }
-      fn_cancel_stock_transfer: { Args: { p_reason: string; p_transfer_id: string }; Returns: undefined }
+      fn_cancel_sales_return: {
+        Args: { p_reason: string; p_return_id: string }
+        Returns: undefined
+      }
+      fn_cancel_stock_transfer: {
+        Args: { p_reason: string; p_transfer_id: string }
+        Returns: undefined
+      }
       fn_cancel_supplier_bill: {
         Args: { p_reason: string; p_supplier_bill_id: string }
         Returns: undefined
@@ -4278,7 +4354,7 @@ export type Database = {
         Args: {
           p_from_warehouse_id: string
           p_lines: Json
-          p_remarks: string | null
+          p_remarks: string
           p_to_warehouse_id: string
           p_transfer_date: string
         }
@@ -4317,6 +4393,10 @@ export type Database = {
           p_ref_table: string
           p_warehouse_code: string
         }
+        Returns: string
+      }
+      fn_invite_user: {
+        Args: { p_email: string; p_full_name: string; p_role_ids: string[] }
         Returns: string
       }
       fn_issue_job_material: {
@@ -4385,14 +4465,23 @@ export type Database = {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined
       }
-      fn_set_period_lock: { Args: { p_lock_date: string | null }; Returns: undefined }
+      fn_revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
+      fn_set_period_lock: { Args: { p_lock_date: string }; Returns: undefined }
       fn_set_query_status: {
         Args: { p_note: string; p_query_id: string; p_status: string }
         Returns: undefined
       }
-      fn_set_role_permission: { Args: { p_permission_key: string; p_role_codes: string[] }; Returns: undefined }
+      fn_set_role_permission: {
+        Args: { p_permission_key: string; p_role_codes: string[] }
+        Returns: undefined
+      }
       fn_smart_merge_update: {
-        Args: { p_base: Json; p_changes: Json; p_row_id: string; p_table_name: string }
+        Args: {
+          p_base: Json
+          p_changes: Json
+          p_row_id: string
+          p_table_name: string
+        }
         Returns: Json
       }
       fn_update_draft_quotation: {

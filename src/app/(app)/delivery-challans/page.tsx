@@ -46,13 +46,13 @@ export default async function DeliveryChallansPage({
         <div>
           <h1 className="text-lg font-semibold text-ink">Delivery Challans</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Dispatch aur Client Acceptance / POD.
+            Dispatch and Client Acceptance / POD.
             {acceptance && (
               <>
                 {" "}
                 — filtered{" "}
                 <Link href="/delivery-challans" className="text-accent-ink underline underline-offset-2">
-                  (sab dekhen)
+                  (view all)
                 </Link>
               </>
             )}
@@ -108,8 +108,8 @@ export default async function DeliveryChallansPage({
         ) : (
           <EmptyState
             icon={<Package size={22} />}
-            title="Koi Delivery Challan nahi hai abhi tak"
-            description="Dispatch aur Client Acceptance / POD yahan record hote hain."
+            title="No Delivery Challans yet"
+            description="Dispatch and Client Acceptance / POD are recorded here."
             action={
               canCreate ? (
                 <Link href="/delivery-challans/new" className={buttonClass()}>

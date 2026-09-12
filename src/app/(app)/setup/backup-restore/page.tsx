@@ -15,9 +15,9 @@ export default async function BackupRestorePage() {
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Backup &amp; Restore</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Har raat &quot;Backup Bot&quot; account se khud-b-khud ek Excel (padhne ke liye) aur ek JSON (restore ke liye) file
-          email ho jati hai. Yahan se woh JSON file upload karke, plan review karke, aur typed confirmation ke sath,
-          database restore kiya ja sakta hai — Owner-only.
+          Every night, an Excel file (for reading) and a JSON file (for restoring) are automatically emailed from the
+          &quot;Backup Bot&quot; account. From here, that JSON file can be uploaded, the plan reviewed, and the database
+          restored with a typed confirmation — Owner-only.
         </p>
       </div>
 

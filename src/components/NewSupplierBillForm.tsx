@@ -17,7 +17,7 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
   function submit() {
     setError(null);
     if (!grnId) {
-      setError("GRN select karen.");
+      setError("Select GRN.");
       return;
     }
     startTransition(async () => {
@@ -49,12 +49,12 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
           </label>
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-ink-soft">Supplier&apos;s Bill / Invoice Ref#</span>
-            <input value={billRef} onChange={(e) => setBillRef(e.target.value)} className="input" placeholder="Supplier ka apna invoice number" />
+            <input value={billRef} onChange={(e) => setBillRef(e.target.value)} className="input" placeholder="Supplier's own invoice number" />
           </label>
         </div>
 
         <p className="text-xs text-ink-faint">
-          GRN ki tamam lines ke rate/tax automatically wahi honge jo receiving ke waqt the — koi override nahi, taake GRN Clearing hamesha balance rahe.
+          All lines automatically use the same rate/tax as at the time of receiving on the GRN — no overrides, so the GRN Clearing account always stays balanced.
         </p>
       </div>
 
@@ -66,7 +66,7 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Supplier Bill Banayen"}
+        {pending ? "Saving…" : "Create Supplier Bill"}
       </button>
     </div>
   );

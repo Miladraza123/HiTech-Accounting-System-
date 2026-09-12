@@ -72,7 +72,7 @@ export function NewQuotationForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Quotation Save Karen (Rev-0)"}
+        {pending ? "Saving…" : "Save Quotation (Rev-0)"}
       </button>
     </form>
   );

@@ -21,14 +21,14 @@ export default async function NewQueryPage() {
         <Link href="/queries" className="text-xs text-ink-faint hover:text-ink">
           ← Queries
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Query</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Query</h1>
       </div>
 
       {!parties?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Pehle koi client honi chahiye.{" "}
+          A client must exist first.{" "}
           <Link href="/clients" className="underline underline-offset-2 font-medium">
-            Client add karen
+            Add Client
           </Link>
           .
         </div>

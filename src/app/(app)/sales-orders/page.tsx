@@ -46,13 +46,13 @@ export default async function SalesOrdersPage({
       <div>
         <h1 className="text-lg font-semibold text-ink">Sales Orders</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Client PO confirm hone ke baad Quotation se yahan Sales Order banti hai.
+          A Sales Order is created here from a Quotation once the Client PO is confirmed.
           {from && to && (
             <>
               {" "}
-              — <span className="text-ink">{from}</span> se <span className="text-ink">{to}</span> tak{" "}
+              — from <span className="text-ink">{from}</span> to <span className="text-ink">{to}</span>{" "}
               <Link href="/sales-orders" className="text-accent-ink underline underline-offset-2">
-                (sab dekhen)
+                (view all)
               </Link>
             </>
           )}
@@ -111,8 +111,8 @@ export default async function SalesOrdersPage({
         ) : (
           <EmptyState
             icon={<ShoppingCart size={22} />}
-            title="Koi Sales Order nahi hai abhi tak"
-            description="Client ka PO confirm hone ke baad Quotation se yahan Sales Order banti hai."
+            title="No Sales Orders yet"
+            description="A Sales Order is created here from a Quotation once the Client's PO is confirmed."
           />
         )}
       </div>

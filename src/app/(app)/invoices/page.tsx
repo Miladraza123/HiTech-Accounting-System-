@@ -39,7 +39,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">GST Invoices</h1>
-          <p className="mt-1 text-sm text-ink-soft">Delivered goods par Pakistan FBR Sales Tax (GST) invoice.</p>
+          <p className="mt-1 text-sm text-ink-soft">Pakistan FBR Sales Tax (GST) invoices for delivered goods.</p>
         </div>
         {canCreate && (
           <Link href="/invoices/new" className={buttonClass()}>
@@ -92,8 +92,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         ) : (
           <EmptyState
             icon={<Receipt size={22} />}
-            title="Koi Invoice nahi hai abhi tak"
-            description="Delivered goods par Pakistan FBR Sales Tax (GST) invoice yahan banti hai."
+            title="No Invoices yet"
+            description="Pakistan FBR Sales Tax (GST) invoices for delivered goods are created here."
             action={
               canCreate ? (
                 <Link href="/invoices/new" className={buttonClass()}>

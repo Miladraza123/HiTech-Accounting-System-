@@ -180,7 +180,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: Pro
               {!transactions.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Is period mein koi Cash/Bank/Petty Cash transaction nahi hai.
+                    No Cash/Bank/Petty Cash transactions in this period.
                   </td>
                 </tr>
               )}

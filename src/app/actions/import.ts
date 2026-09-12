@@ -14,14 +14,14 @@ export async function parseExcelFileAction(formData: FormData): Promise<{
   error: string | null;
 }> {
   const file = formData.get("file") as File | null;
-  if (!file) return { rows: [], error: "Koi file nahi mili." };
+  if (!file) return { rows: [], error: "No file found." };
 
   try {
     const buffer = await file.arrayBuffer();
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer);
     const sheet = workbook.worksheets[0];
-    if (!sheet) return { rows: [], error: "Sheet khali hai." };
+    if (!sheet) return { rows: [], error: "Sheet is empty." };
 
     const headerRow = sheet.getRow(1).values as (string | undefined)[];
     const headers = headerRow.slice(1).map((h) => String(h ?? "").trim());
@@ -39,7 +39,7 @@ export async function parseExcelFileAction(formData: FormData): Promise<{
 
     return { rows, error: null };
   } catch {
-    return { rows: [], error: "Excel file parse nahi ho saki. Format check karen." };
+    return { rows: [], error: "Failed to parse the Excel file. Please check the format." };
   }
 }
 
@@ -84,7 +84,7 @@ export async function commitPartiesImportAction(
     .single();
 
   if (batchErr || !batch) {
-    return { error: batchErr?.message ?? "Batch nahi ban saka.", importedCount: 0, rowErrors: [] };
+    return { error: batchErr?.message ?? "Failed to create batch.", importedCount: 0, rowErrors: [] };
   }
 
   const rowErrors: { row: number; message: string }[] = [];
@@ -94,7 +94,7 @@ export async function commitPartiesImportAction(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.legal_name?.trim()) {
-      rowErrors.push({ row: i + 1, message: "Naam khali hai — row skip hui." });
+      rowErrors.push({ row: i + 1, message: "Name is empty — row skipped." });
       continue;
     }
     const { error } = await supabase.from("parties").insert({
@@ -152,7 +152,7 @@ export async function commitOpeningStockImportAction(rows: OpeningStockRow[]): P
     .single();
 
   if (batchErr || !batch) {
-    return { error: batchErr?.message ?? "Batch nahi ban saka.", importedCount: 0, rowErrors: [] };
+    return { error: batchErr?.message ?? "Failed to create batch.", importedCount: 0, rowErrors: [] };
   }
 
   const rowErrors: { row: number; message: string }[] = [];
@@ -161,7 +161,7 @@ export async function commitOpeningStockImportAction(rows: OpeningStockRow[]): P
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.item_code?.trim() || !r.warehouse_code?.trim() || !r.qty || !r.as_of_date) {
-      rowErrors.push({ row: i + 1, message: "Item code, warehouse code, qty aur date zaroori hain — row skip hui." });
+      rowErrors.push({ row: i + 1, message: "Item code, warehouse code, qty, and date are required — row skipped." });
       continue;
     }
 
@@ -214,7 +214,7 @@ export async function commitOpeningBalancesImportAction(
     .single();
 
   if (batchErr || !batch) {
-    return { error: batchErr?.message ?? "Batch nahi ban saka.", importedCount: 0, rowErrors: [] };
+    return { error: batchErr?.message ?? "Failed to create batch.", importedCount: 0, rowErrors: [] };
   }
 
   const isReceivable = entityType === "opening_receivables";
@@ -225,7 +225,7 @@ export async function commitOpeningBalancesImportAction(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.party_name?.trim() || !r.amount || !r.as_of_date) {
-      rowErrors.push({ row: i + 1, message: "Naam, amount aur date zaroori hain — row skip hui." });
+      rowErrors.push({ row: i + 1, message: "Name, amount, and date are required — row skipped." });
       continue;
     }
 
@@ -247,7 +247,7 @@ export async function commitOpeningBalancesImportAction(
         .select("id")
         .single();
       if (createErr || !created) {
-        rowErrors.push({ row: i + 1, message: createErr?.message ?? "Party nahi ban saki." });
+        rowErrors.push({ row: i + 1, message: createErr?.message ?? "Failed to create party." });
         continue;
       }
       partyId = created.id;

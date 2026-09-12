@@ -56,7 +56,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       {task.status === "Cancelled" && task.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {task.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancellation reason: {task.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -85,7 +85,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
           <div className="rounded-xl border border-line bg-surface p-4">
             <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
             <TaskActionButtons taskId={id} status={task.status} canAct={canAct} canCancel={canCancel} revalidateTo={`/tasks/${id}`} size="md" />
-            {!canAct && task.status === "Open" && <p className="mt-2 text-xs text-ink-faint">Sirf assignee, task banane wala, ya Owner is task par action le sakta hai.</p>}
+            {!canAct && task.status === "Open" && <p className="mt-2 text-xs text-ink-faint">Only the assignee, the task creator, or the Owner can act on this task.</p>}
           </div>
         </div>
       </div>

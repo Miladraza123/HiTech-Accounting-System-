@@ -65,7 +65,7 @@ export function PermissionMatrixTable({ initialMatrix }: { initialMatrix: Record
                             checked={checked}
                             disabled={!dbAllowed || busy}
                             onChange={() => toggle(def.key, r, dbAllowed)}
-                            title={dbAllowed ? undefined : "Database is action ke liye is role ko allow nahi karta — matrix se grant karna kaam nahi karega."}
+                            title={dbAllowed ? undefined : "The database does not allow this role for this action — granting it from the matrix will not work."}
                             className="h-4 w-4 accent-accent disabled:opacity-25 disabled:cursor-not-allowed"
                           />
                         </td>

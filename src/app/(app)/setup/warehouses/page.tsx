@@ -17,7 +17,7 @@ export default async function WarehousesPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Warehouses</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Ek company, multiple warehouses/branches — har jaga ka stock alag track hoga (Phase 3 mein).
+          One company, multiple warehouses/branches — stock will be tracked separately for each location (in Phase 3).
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default async function WarehousesPage() {
             {!warehouses?.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                  Koi warehouse nahi bana abhi tak.
+                  No warehouse has been created yet.
                 </td>
               </tr>
             )}

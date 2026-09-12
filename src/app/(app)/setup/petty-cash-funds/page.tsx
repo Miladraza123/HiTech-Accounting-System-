@@ -21,7 +21,7 @@ export default async function PettyCashFundsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Petty Cash Funds</h1>
-        <p className="mt-1 text-sm text-ink-soft">Har site/department/person ka alag petty cash fund — Expenses in mein se select honge.</p>
+        <p className="mt-1 text-sm text-ink-soft">A separate Petty Cash fund for each site/department/person — Expenses will be selected from these.</p>
       </div>
 
       <NewPettyCashFundForm profiles={profiles ?? []} />
@@ -59,7 +59,7 @@ export default async function PettyCashFundsPage() {
             {!funds?.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                  Koi petty cash fund nahi bana abhi tak.
+                  No Petty Cash fund has been created yet.
                 </td>
               </tr>
             )}

@@ -25,7 +25,7 @@ export function EditTaskForm({
   function submit() {
     setError(null);
     if (!title.trim()) {
-      setError("Task title zaroori hai.");
+      setError("Task title is required.");
       return;
     }
     startTransition(async () => {
@@ -66,7 +66,7 @@ export function EditTaskForm({
         disabled={pending}
         className="w-full rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Changes Save Karen"}
+        {pending ? "Saving…" : "Save Changes"}
       </button>
     </div>
   );

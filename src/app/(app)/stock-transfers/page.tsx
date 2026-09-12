@@ -24,7 +24,7 @@ export default async function StockTransfersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Stock Transfers</h1>
-          <p className="mt-1 text-sm text-ink-soft">Ek warehouse se doosre warehouse mein stock move karna — GL par koi asar nahi (dono ek hi company asset hain).</p>
+          <p className="mt-1 text-sm text-ink-soft">Moving stock from one warehouse to another — no impact on the GL (both are the same company&apos;s asset).</p>
         </div>
         {canCreate && (
           <Link href="/stock-transfers/new" className={buttonClass()}>
@@ -68,7 +68,7 @@ export default async function StockTransfersPage() {
               {!transfers?.length && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                    Koi Stock Transfer nahi hai abhi tak.
+                    No Stock Transfer has been created yet.
                   </td>
                 </tr>
               )}

@@ -33,7 +33,7 @@ export default async function NewSalesOrderPage({
     const { data: ar } = await supabase.from("party_ar_summary").select("total_outstanding").eq("party_id", quotation.party_id).maybeSingle();
     const outstanding = ar?.total_outstanding ?? 0;
     if (outstanding >= partyInfo.credit_limit) {
-      creditWarning = `${partyInfo.legal_name} ki current outstanding (${outstanding.toLocaleString()}) already credit limit (${partyInfo.credit_limit.toLocaleString()}) tak ya us se zyada hai`;
+      creditWarning = `${partyInfo.legal_name}'s current outstanding (${outstanding.toLocaleString()}) has already reached or exceeded the credit limit (${partyInfo.credit_limit.toLocaleString()})`;
     }
   }
 
@@ -54,8 +54,8 @@ export default async function NewSalesOrderPage({
         <Link href={`/quotations/${quotation_id}`} className="text-xs text-ink-faint hover:text-ink">
           ← {quotation.quotation_no}
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Nayi Sales Order</h1>
-        <p className="text-sm text-ink-soft">{partyInfo?.legal_name} — Quotation lines se pre-filled, zaroorat ho to badal len.</p>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Sales Order</h1>
+        <p className="text-sm text-ink-soft">{partyInfo?.legal_name} — Pre-filled from Quotation lines, change if needed.</p>
       </div>
 
       <NewSalesOrderForm

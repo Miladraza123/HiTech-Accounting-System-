@@ -60,14 +60,14 @@ export default function LoginPage() {
             disabled={pending}
             className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
           >
-            {pending ? "Login ho raha hai…" : "Login"}
+            {pending ? "Logging in…" : "Login"}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-ink-soft">
-          Pehli dafa aaye hain?{" "}
+          First time here?{" "}
           <Link href="/signup" className="text-accent-ink underline underline-offset-2">
-            Account banayen
+            Create an account
           </Link>
         </p>
       </div>

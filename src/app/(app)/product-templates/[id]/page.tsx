@@ -62,7 +62,7 @@ export default async function ProductTemplateDetailPage({ params }: { params: Pr
               {!lines?.length && (
                 <tr>
                   <td colSpan={3} className="px-4 py-6 text-center text-ink-faint">
-                    Koi material line nahi hai.
+                    No material lines.
                   </td>
                 </tr>
               )}

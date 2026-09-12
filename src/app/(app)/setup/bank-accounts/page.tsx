@@ -20,7 +20,7 @@ export default async function BankAccountsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Bank Accounts</h1>
-        <p className="mt-1 text-sm text-ink-soft">Company ke bank accounts — Payments aur Expenses in mein se select honge.</p>
+        <p className="mt-1 text-sm text-ink-soft">The company&apos;s bank accounts — Payments and Expenses will be selected from among these.</p>
       </div>
 
       <NewBankAccountForm />
@@ -57,7 +57,7 @@ export default async function BankAccountsPage() {
             {!accounts?.length && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                  Koi bank account nahi bana abhi tak.
+                  No bank accounts created yet.
                 </td>
               </tr>
             )}

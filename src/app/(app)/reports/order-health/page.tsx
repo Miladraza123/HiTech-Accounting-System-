@@ -80,21 +80,21 @@ export default async function OrderHealthReportPage() {
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Order Health &amp; Stage Aging</h1>
-        <p className="text-sm text-ink-soft">Har open Sales Order / Purchase Order / Job ka health flag aur current stage mein kitne din se hai.</p>
+        <p className="text-sm text-ink-soft">Health flag and days in current stage for every open Sales Order / Purchase Order / Job.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-line bg-surface p-4">
           <p className={`text-2xl font-semibold tabular ${delayedCount > 0 ? "text-bad" : "text-ink"}`}>{delayedCount}</p>
-          <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Delayed (Promised Date Guzar Chuki)</p>
+          <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Delayed (Past Promised Date)</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
           <p className={`text-2xl font-semibold tabular ${atRiskCount > 0 ? "text-warn" : "text-ink"}`}>{atRiskCount}</p>
-          <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">At Risk (Promised Date Qareeb)</p>
+          <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">At Risk (Promised Date Approaching)</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
           <p className={`text-2xl font-semibold tabular ${stalledCount > 0 ? "text-warn" : "text-ink"}`}>{stalledCount}</p>
-          <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Stalled (10+ din se Koi Progress Nahi)</p>
+          <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Stalled (No Progress for 10+ Days)</p>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ function HealthTable({ title, rows }: { title: string; rows: Row[] }) {
             {!rows.length && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                  Koi open record nahi hai.
+                  No open records found.
                 </td>
               </tr>
             )}

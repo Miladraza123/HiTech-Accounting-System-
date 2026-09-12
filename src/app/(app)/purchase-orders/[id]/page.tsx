@@ -69,7 +69,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
       </div>
 
       {po.status === "Cancelled" && po.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {po.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel reason: {po.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -11,7 +11,7 @@ const STATUS_STYLE: Record<string, string> = {
   Cancelled: "bg-bad-soft text-bad",
 };
 
-const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt — Client se aaya", payment: "Payment — Supplier ko gaya" };
+const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt — from Client", payment: "Payment — to Supplier" };
 
 export default async function PaymentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -82,7 +82,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {payment.status === "Cancelled" && payment.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {payment.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancellation reason: {payment.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -133,7 +133,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
                   <span className="tabular text-ink">{a.amount.toLocaleString()}</span>
                 </li>
               ))}
-              {!allocations?.length && <li className="px-4 py-4 text-center text-ink-faint text-xs">Koi allocation nahi hai — pura amount on-account hai.</li>}
+              {!allocations?.length && <li className="px-4 py-4 text-center text-ink-faint text-xs">No allocations — the full amount is on-account.</li>}
             </ul>
           </div>
 

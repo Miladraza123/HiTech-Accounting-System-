@@ -27,8 +27,8 @@ export default async function UsersPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Users &amp; Roles</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Har team member ko sirf uske kaam ke mutabiq role dें — permissions server par (RLS)
-          enforce hoti hain, sirf screen chhupane se nahi.
+          Assign each team member only the role that matches their job — permissions are
+          enforced on the server (RLS), not just by hiding parts of the screen.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export default async function UsersPage() {
                 <p className="text-xs text-ink-faint">{p.email}</p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                {assigned.length === 0 && <span className="text-xs text-ink-faint">Koi role nahi</span>}
+                {assigned.length === 0 && <span className="text-xs text-ink-faint">No role</span>}
                 {assigned.map((r) => (
                   <RevokeRoleChip key={r.id} userId={p.id} roleId={r.id} label={ROLE_LABELS[r.code] ?? r.code} />
                 ))}
@@ -55,7 +55,7 @@ export default async function UsersPage() {
             </div>
           );
         })}
-        {!profiles?.length && <div className="px-5 py-6 text-center text-sm text-ink-faint">Koi user nahi mila.</div>}
+        {!profiles?.length && <div className="px-5 py-6 text-center text-sm text-ink-faint">No user found.</div>}
       </div>
     </div>
   );

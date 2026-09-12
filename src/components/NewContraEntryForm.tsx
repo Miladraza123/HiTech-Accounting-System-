@@ -39,7 +39,7 @@ function SourcePicker({
       </div>
       {type === "bank" && (
         <select value={bankId} onChange={(e) => setBankId(e.target.value)} className="input">
-          <option value="">— Bank Account select karen —</option>
+          <option value="">— Select Bank Account —</option>
           {bankAccounts.map((b) => (
             <option key={b.id} value={b.id}>
               {b.account_name}
@@ -49,7 +49,7 @@ function SourcePicker({
       )}
       {type === "petty_cash" && (
         <select value={fundId} onChange={(e) => setFundId(e.target.value)} className="input">
-          <option value="">— Petty Cash Fund select karen —</option>
+          <option value="">— Select Petty Cash Fund —</option>
           {pettyCashFunds.map((f) => (
             <option key={f.id} value={f.id}>
               {f.fund_name}
@@ -85,23 +85,23 @@ export function NewContraEntryForm({
     setError(null);
     const amt = Number(amount);
     if (!amt || amt <= 0) {
-      setError("Amount zero se zyada hona chahiye.");
+      setError("Amount must be greater than zero.");
       return;
     }
     if (fromType === "bank" && !fromBankId) {
-      setError("Source Bank Account select karen.");
+      setError("Select Source Bank Account.");
       return;
     }
     if (fromType === "petty_cash" && !fromFundId) {
-      setError("Source Petty Cash Fund select karen.");
+      setError("Select Source Petty Cash Fund.");
       return;
     }
     if (toType === "bank" && !toBankId) {
-      setError("Destination Bank Account select karen.");
+      setError("Select Destination Bank Account.");
       return;
     }
     if (toType === "petty_cash" && !toFundId) {
-      setError("Destination Petty Cash Fund select karen.");
+      setError("Select Destination Petty Cash Fund.");
       return;
     }
     startTransition(async () => {
@@ -174,7 +174,7 @@ export function NewContraEntryForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Transfer Karen"}
+        {pending ? "Saving…" : "Transfer"}
       </button>
     </div>
   );

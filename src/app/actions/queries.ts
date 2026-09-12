@@ -23,11 +23,11 @@ export async function createQueryAction(
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!party_id || !requirement) {
-    return { error: "Client aur requirement zaroori hain." };
+    return { error: "Client and requirement are required." };
   }
 
   const { data: queryNo, error: numErr } = await supabase.rpc("fn_get_next_number", { p_doc_type: "QRY" });
-  if (numErr || !queryNo) return { error: numErr?.message ?? "Query number nahi ban saka." };
+  if (numErr || !queryNo) return { error: numErr?.message ?? "Failed to generate Query number." };
 
   const { data: inserted, error } = await supabase
     .from("queries")
@@ -45,7 +45,7 @@ export async function createQueryAction(
     .select("id")
     .single();
 
-  if (error || !inserted) return { error: error?.message ?? "Query save nahi hui." };
+  if (error || !inserted) return { error: error?.message ?? "Failed to save Query." };
 
   redirect(`/queries/${inserted.id}`);
 }

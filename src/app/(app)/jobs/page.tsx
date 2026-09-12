@@ -83,13 +83,13 @@ export default async function JobsPage({
         <div>
           <h1 className="text-lg font-semibold text-ink">Jobs / Work Orders</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Fabrication — material reservation, issue, progress aur dispatch tak.
+            Fabrication — from material reservation and issue through progress to dispatch.
             {statusFilter || healthFilter ? (
               <>
                 {" "}
                 — filtered{" "}
                 <Link href="/jobs" className="text-accent-ink underline underline-offset-2">
-                  (sab dekhen)
+                  (view all)
                 </Link>
               </>
             ) : null}
@@ -160,8 +160,8 @@ export default async function JobsPage({
         ) : (
           <EmptyState
             icon={<Wrench size={22} />}
-            title="Koi Job active nahi hai"
-            description="Sales Order confirm hone ke baad yahan se fabrication job start hoti hai."
+            title="No active Jobs"
+            description="Fabrication jobs are started here once a Sales Order is confirmed."
             action={
               canCreate ? (
                 <Link href="/jobs/new" className={buttonClass()}>

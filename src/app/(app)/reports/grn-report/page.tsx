@@ -126,7 +126,7 @@ export default async function GrnReportPage({ searchParams }: { searchParams: Pr
               {!rows.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Is period mein koi GRN nahi hai.
+                    No GRNs found for this period.
                   </td>
                 </tr>
               )}

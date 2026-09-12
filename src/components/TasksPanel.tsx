@@ -64,11 +64,11 @@ export function TasksPanel({
     setError(null);
     const title = String(formData.get("title") ?? "").trim();
     if (!title) {
-      setError("Task title zaroori hai.");
+      setError("Task title is required.");
       return;
     }
     if (!assignedTo) {
-      setError("Assign karne ke liye koi user chunen.");
+      setError("Select a user to assign to.");
       return;
     }
     startTransition(async () => {
@@ -122,7 +122,7 @@ export function TasksPanel({
             </li>
           );
         })}
-        {!tasks.length && <li className="text-xs text-ink-faint">Koi task nahi hai.</li>}
+        {!tasks.length && <li className="text-xs text-ink-faint">No tasks.</li>}
       </ul>
 
       {error && <p className="text-xs text-bad">{error}</p>}
@@ -133,7 +133,7 @@ export function TasksPanel({
           onClick={() => setOpen(true)}
           className="w-full rounded-md border border-line-strong bg-bg px-3 py-1.5 text-xs text-ink hover:bg-surface-2 transition"
         >
-          + Task / Follow-up Add Karen
+          + Add Task / Follow-up
         </button>
       )}
 
@@ -157,14 +157,14 @@ export function TasksPanel({
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input !py-1.5 text-xs" />
           <div className="flex gap-2">
             <button type="button" onClick={() => setOpen(false)} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1.5 text-xs">
-              Wapis
+              Cancel
             </button>
             <button
               type="submit"
               disabled={pending}
               className="flex-1 rounded-md bg-accent px-2 py-1.5 text-xs font-medium text-white hover:opacity-90 transition disabled:opacity-60"
             >
-              {pending ? "…" : "Add Karen"}
+              {pending ? "…" : "Add"}
             </button>
           </div>
         </form>

@@ -26,7 +26,7 @@ export default async function TransfersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Fund Transfers</h1>
-          <p className="mt-1 text-sm text-ink-soft">Cash-to-Bank, Bank-to-Bank, Bank-to-Petty-Cash waghera — contra entries.</p>
+          <p className="mt-1 text-sm text-ink-soft">Cash-to-Bank, Bank-to-Bank, Bank-to-Petty-Cash, etc. — contra entries.</p>
         </div>
         {canCreate && (
           <Link href="/transfers/new" className={buttonClass()}>
@@ -74,7 +74,7 @@ export default async function TransfersPage() {
               {!transfers?.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Koi fund transfer nahi hua abhi tak.
+                    No fund transfers yet.
                   </td>
                 </tr>
               )}

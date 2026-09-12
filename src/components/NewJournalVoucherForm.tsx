@@ -39,18 +39,18 @@ export function NewJournalVoucherForm({
   function submit() {
     setError(null);
     if (!narration.trim()) {
-      setError("Narration likhna zaroori hai.");
+      setError("Narration is required.");
       return;
     }
     const serialized = serialize(lines);
     if (serialized.length < 2) {
-      setError("Kam az kam 2 lines honi chahiye (ek Debit, ek Credit).");
+      setError("At least 2 lines are required (one Debit, one Credit).");
       return;
     }
     const totalDebit = serialized.reduce((s, l) => s + l.debit, 0);
     const totalCredit = serialized.reduce((s, l) => s + l.credit, 0);
     if (Math.round((totalDebit - totalCredit) * 100) !== 0) {
-      setError("Entry balanced nahi hai — Debit aur Credit total barabar hone chahiye.");
+      setError("Entry is not balanced — Debit and Credit totals must be equal.");
       return;
     }
     startTransition(async () => {
@@ -74,7 +74,7 @@ export function NewJournalVoucherForm({
         </div>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Narration *</span>
-          <input value={narration} onChange={(e) => setNarration(e.target.value)} className="input" placeholder="Entry ki wajah / tafseel" />
+          <input value={narration} onChange={(e) => setNarration(e.target.value)} className="input" placeholder="Reason / details for the entry" />
         </label>
       </div>
 
@@ -88,7 +88,7 @@ export function NewJournalVoucherForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Post ho raha hai…" : "Journal Voucher Post Karen"}
+        {pending ? "Posting…" : "Post Journal Voucher"}
       </button>
     </div>
   );

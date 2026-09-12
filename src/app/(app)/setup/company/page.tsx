@@ -18,7 +18,7 @@ export default async function CompanySetupPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Company Profile</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Yeh detail invoices, quotations aur GST-related documents par print hogi.
+          This information will be printed on invoices, quotations, and GST-related documents.
         </p>
       </div>
       <CompanyForm company={company} provinces={provinces ?? []} />

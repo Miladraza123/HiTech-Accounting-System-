@@ -23,7 +23,7 @@ export default async function DailySnapshotPage() {
           </Link>
           <h1 className="text-lg font-semibold text-ink mt-1">Daily Snapshot</h1>
           <p className="text-sm text-ink-soft">
-            Har din 00:10 baje pichle din ka snapshot khud-b-khud ban jata hai. Neeche se manually bhi generate/regenerate kar sakte hain.
+            A snapshot of the previous day is generated automatically at 00:10 every day. You can also generate or regenerate it manually below.
           </p>
         </div>
         {canGenerate && <GenerateSnapshotButton />}
@@ -79,7 +79,7 @@ export default async function DailySnapshotPage() {
               {!snapshots?.length && (
                 <tr>
                   <td colSpan={11} className="px-4 py-6 text-center text-ink-faint">
-                    Abhi koi snapshot nahi hai — pehla snapshot aaj raat 00:10 baje khud ban jayega, ya abhi manually generate karen.
+                    No snapshot yet — the first snapshot will be generated automatically tonight at 00:10, or generate one manually now.
                   </td>
                 </tr>
               )}

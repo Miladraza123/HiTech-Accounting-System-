@@ -76,7 +76,7 @@ export function SalesOrderAmendPanel({
         onClick={() => setOpen(true)}
         className="rounded-md border border-line-strong bg-bg px-4 py-2 text-sm text-ink hover:bg-surface-2 transition"
       >
-        + Amendment Karen
+        + Amend
       </button>
     );
   }
@@ -84,7 +84,7 @@ export function SalesOrderAmendPanel({
   function submit() {
     setError(null);
     if (!reason.trim()) {
-      setError("Amendment ki wajah likhen (jaise: client ne quantity badha di).");
+      setError("Enter the reason for the amendment (e.g. client increased the quantity).");
       return;
     }
     startTransition(async () => {
@@ -107,10 +107,10 @@ export function SalesOrderAmendPanel({
 
   return (
     <div className="space-y-4 rounded-xl border border-accent bg-accent-soft/30 p-5">
-      <p className="text-sm font-medium text-ink">Amendment — purani state hamesha ke liye history mein mehfooz rahegi.</p>
+      <p className="text-sm font-medium text-ink">Amendment — the previous state is always preserved in history.</p>
       <label className="block space-y-1.5">
-        <span className="text-xs font-medium text-ink-soft">Amendment ki wajah *</span>
-        <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Client ne quantity 100 se 150 kar di" />
+        <span className="text-xs font-medium text-ink-soft">Reason for Amendment *</span>
+        <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Client increased quantity from 100 to 150" />
       </label>
 
       <div className="grid grid-cols-2 gap-4">
@@ -136,7 +136,7 @@ export function SalesOrderAmendPanel({
 
       <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} altUnitsByItem={altUnitsByItem} />
       <p className="text-xs text-ink-faint">
-        Jis line par delivery ho chuki hai usay hataya nahi ja sakta — sirf uski qty/rate badal sakte hain.
+        A line that has already been delivered cannot be removed — only its qty/rate can be changed.
       </p>
 
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
@@ -155,7 +155,7 @@ export function SalesOrderAmendPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Amendment Save Karen"}
+          {pending ? "…" : "Save Amendment"}
         </button>
       </div>
     </div>

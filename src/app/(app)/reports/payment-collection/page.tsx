@@ -107,7 +107,7 @@ export default async function PaymentCollectionReportPage({ searchParams }: { se
                 <span className="tabular text-ink font-medium">{amt.toLocaleString()}</span>
               </li>
             ))}
-            {!byMethod.size && <li className="px-4 py-6 text-center text-ink-faint text-sm">Is period mein koi receipt nahi.</li>}
+            {!byMethod.size && <li className="px-4 py-6 text-center text-ink-faint text-sm">No receipts for this period.</li>}
           </ul>
         </div>
 
@@ -122,7 +122,7 @@ export default async function PaymentCollectionReportPage({ searchParams }: { se
                 <span className="tabular text-ink font-medium">{amt.toLocaleString()}</span>
               </li>
             ))}
-            {!topClients.length && <li className="px-4 py-6 text-center text-ink-faint text-sm">Is period mein koi receipt nahi.</li>}
+            {!topClients.length && <li className="px-4 py-6 text-center text-ink-faint text-sm">No receipts for this period.</li>}
           </ul>
         </div>
       </div>
@@ -163,7 +163,7 @@ export default async function PaymentCollectionReportPage({ searchParams }: { se
               {!payments?.length && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
-                    Is period mein koi payment nahi hai.
+                    No payments for this period.
                   </td>
                 </tr>
               )}

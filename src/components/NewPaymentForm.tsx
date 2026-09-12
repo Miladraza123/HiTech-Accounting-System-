@@ -66,23 +66,23 @@ export function NewPaymentForm({
   function submit() {
     setError(null);
     if (!partyId) {
-      setError("Party select karen.");
+      setError("Select Party.");
       return;
     }
     if (amountNum <= 0) {
-      setError("Amount zero se zyada hona chahiye.");
+      setError("Amount must be greater than zero.");
       return;
     }
     if (allocTotal > amountNum) {
-      setError("Allocation total amount se zyada nahi ho sakti.");
+      setError("Allocation total cannot exceed the amount.");
       return;
     }
     if (source === "bank" && !bankAccountId) {
-      setError("Bank Account select karen.");
+      setError("Select Bank Account.");
       return;
     }
     if (source === "petty_cash" && !pettyCashFundId) {
-      setError("Petty Cash Fund select karen.");
+      setError("Select Petty Cash Fund.");
       return;
     }
     const allocations: PaymentAllocationInput[] = rows
@@ -121,7 +121,7 @@ export function NewPaymentForm({
                 direction === "receipt" ? "border-accent bg-accent-soft/40 text-ink" : "border-line bg-bg text-ink-soft hover:bg-surface-2"
               }`}
             >
-              <span className="block font-medium">Receipt — Client se aa raha hai</span>
+              <span className="block font-medium">Receipt — Money coming in from Client</span>
             </button>
             <button
               type="button"
@@ -130,7 +130,7 @@ export function NewPaymentForm({
                 direction === "payment" ? "border-accent bg-accent-soft/40 text-ink" : "border-line bg-bg text-ink-soft hover:bg-surface-2"
               }`}
             >
-              <span className="block font-medium">Payment — Supplier ko ja raha hai</span>
+              <span className="block font-medium">Payment — Money going out to Supplier</span>
             </button>
           </div>
         </div>
@@ -218,7 +218,7 @@ export function NewPaymentForm({
           <div className="px-4 py-2.5 border-b border-line">
             <h2 className="text-sm font-semibold text-ink">Bill-wise Allocation (optional)</h2>
             <p className="text-xs text-ink-faint mt-0.5">
-              Allocate na karne se amount &quot;unallocated&quot; reh jayega — on-account advance, baad mein allocate kar sakte hain.
+              If you don&apos;t allocate, the amount will remain &quot;unallocated&quot; — as an on-account advance you can allocate it later.
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -254,7 +254,7 @@ export function NewPaymentForm({
                 {!rows.length && (
                   <tr>
                     <td colSpan={4} className="px-4 py-4 text-center text-ink-faint text-xs">
-                      Is party ka koi outstanding {direction === "receipt" ? "invoice" : "bill"} nahi hai.
+                      This party has no outstanding {direction === "receipt" ? "invoice" : "bill"}.
                     </td>
                   </tr>
                 )}
@@ -276,7 +276,7 @@ export function NewPaymentForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Payment Record Karen"}
+        {pending ? "Saving…" : "Record Payment"}
       </button>
     </div>
   );

@@ -20,7 +20,7 @@ export default async function ClientsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Clients &amp; Suppliers</h1>
-        <p className="mt-1 text-sm text-ink-soft">Query aur Purchase dono isi party list se client/supplier select karte hain.</p>
+        <p className="mt-1 text-sm text-ink-soft">Both Query and Purchase select their client/supplier from this same party list.</p>
       </div>
 
       {canManage && <PartyForm provinces={provinces ?? []} />}
@@ -30,7 +30,7 @@ export default async function ClientsPage() {
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
               <tr>
-                <th className="text-left px-4 py-2.5">Naam</th>
+                <th className="text-left px-4 py-2.5">Name</th>
                 <th className="text-left px-4 py-2.5">Type</th>
                 <th className="text-left px-4 py-2.5">NTN / STRN</th>
                 <th className="text-left px-4 py-2.5">Province</th>
@@ -72,7 +72,7 @@ export default async function ClientsPage() {
               {!parties?.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Koi client/supplier nahi mila.
+                    No client/supplier found.
                   </td>
                 </tr>
               )}

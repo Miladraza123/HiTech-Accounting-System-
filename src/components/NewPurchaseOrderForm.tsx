@@ -20,9 +20,9 @@ function serialize(lines: EditableLine[]): PurchaseOrderLineInput[] {
 }
 
 const PURCHASE_TYPE_INFO: Record<string, string> = {
-  direct: "Kisi client order ke liye seedha khareed rahe hain — stock mein nahi jayega, seedha client ko deliver hoga (Material Supply).",
-  stock: "Warehouse stock mein jayega — raw material ya stocked trading goods.",
-  general: "Office/misc kharch — na stock mein, na kisi client order se juda.",
+  direct: "Buying directly for a client order — this won't go into stock, it will be delivered straight to the client (Material Supply).",
+  stock: "Will go into warehouse stock — raw material or stocked trading goods.",
+  general: "Office/miscellaneous expense — not linked to stock or any client order.",
 };
 
 type SalesOrderOption = Pick<Tables<"sales_orders">, "id" | "so_no" | "client_po_number"> & {
@@ -55,15 +55,15 @@ export function NewPurchaseOrderForm({
   function submit() {
     setError(null);
     if (!supplierId) {
-      setError("Supplier select karen.");
+      setError("Select Supplier.");
       return;
     }
     if (purchaseType === "direct" && !linkedSoId) {
-      setError("Direct purchase kisi Sales Order se link honi chahiye.");
+      setError("A direct purchase must be linked to a Sales Order.");
       return;
     }
     if (purchaseType === "stock" && !warehouseId) {
-      setError("Stock purchase ke liye warehouse select karen.");
+      setError("Select a warehouse for stock purchase.");
       return;
     }
     startTransition(async () => {
@@ -158,7 +158,7 @@ export function NewPurchaseOrderForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Purchase Order Banayen"}
+        {pending ? "Saving…" : "Create Purchase Order"}
       </button>
     </div>
   );

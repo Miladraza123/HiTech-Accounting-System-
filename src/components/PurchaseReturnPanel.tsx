@@ -35,7 +35,7 @@ export function PurchaseReturnPanel({
         onClick={() => setOpen(true)}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition"
       >
-        Purchase Return Karen
+        Create Purchase Return
       </button>
     );
   }
@@ -47,15 +47,15 @@ export function PurchaseReturnPanel({
       .filter((l) => l.qty > 0);
 
     if (!returnLines.length) {
-      setError("Kam az kam ek line mein return qty likhen.");
+      setError("Enter return quantity in at least one line.");
       return;
     }
     if (!warehouseId) {
-      setError("Warehouse select karen (jahan se stock wapis jayega).");
+      setError("Select Warehouse (where the stock will be returned from).");
       return;
     }
     if (!reason.trim()) {
-      setError("Return ki wajah likhna zaroori hai.");
+      setError("A return reason is required.");
       return;
     }
 
@@ -79,7 +79,7 @@ export function PurchaseReturnPanel({
 
   return (
     <div className="space-y-4 rounded-xl border border-accent bg-accent-soft/30 p-5">
-      <p className="text-sm font-medium text-ink">Supplier ko wapis ki jaane wali qty likhen — bill rate par hi debit note banega.</p>
+      <p className="text-sm font-medium text-ink">Enter the quantity being returned to the supplier — the debit note will be created at the bill rate.</p>
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block space-y-1.5">
@@ -136,7 +136,7 @@ export function PurchaseReturnPanel({
         </div>
       </div>
 
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Return ki wajah… (e.g. defective, excess qty)" className="input resize-none" />
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason for return… (e.g. defective, excess qty)" className="input resize-none" />
 
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
@@ -150,7 +150,7 @@ export function PurchaseReturnPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Purchase Return Save Karen"}
+          {pending ? "…" : "Save Purchase Return"}
         </button>
       </div>
     </div>

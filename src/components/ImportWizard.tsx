@@ -33,20 +33,20 @@ const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: s
   },
   {
     value: "opening_receivables",
-    label: "Opening Receivables (clients ke pichle bakaya)",
+    label: "Opening Receivables (outstanding balances owed by clients)",
     columns: ["party_name", "amount", "as_of_date", "narration"],
     sample: [
       ["party_name", "amount", "as_of_date", "narration"],
-      ["Al-Karam Steel Traders", "250000", "2026-06-30", "Purani invoice ka bacha hua"],
+      ["Al-Karam Steel Traders", "250000", "2026-06-30", "Remaining balance from an old invoice"],
     ],
   },
   {
     value: "opening_payables",
-    label: "Opening Payables (suppliers ka pichla bakaya)",
+    label: "Opening Payables (outstanding balances owed to suppliers)",
     columns: ["party_name", "amount", "as_of_date", "narration"],
     sample: [
       ["party_name", "amount", "as_of_date", "narration"],
-      ["Punjab Steel Mills", "180000", "2026-06-30", "Purani bill ka bacha hua"],
+      ["Punjab Steel Mills", "180000", "2026-06-30", "Remaining balance from an old bill"],
     ],
   },
   {
@@ -55,7 +55,7 @@ const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: s
     columns: ["item_code", "warehouse_code", "qty", "rate", "as_of_date", "notes"],
     sample: [
       ["item_code", "warehouse_code", "qty", "rate", "as_of_date", "notes"],
-      ["MS-PLATE-6MM", "WH-01", "500", "185.50", "2026-06-30", "Physical count se pehle"],
+      ["MS-PLATE-6MM", "WH-01", "500", "185.50", "2026-06-30", "Before physical count"],
     ],
   },
 ];
@@ -96,7 +96,7 @@ export function ImportWizard() {
       }
       setRows(parsedRows.filter((r) => Object.values(r).some((v) => v && v.trim())));
     } catch {
-      setParseError("File parse nahi ho saki. CSV ya .xlsx file check karen.");
+      setParseError("Failed to parse the file. Please check the CSV or .xlsx file.");
     } finally {
       setParsing(false);
     }
@@ -166,7 +166,7 @@ export function ImportWizard() {
     <div className="space-y-5">
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
         <div>
-          <label className="text-xs font-medium text-ink-soft">Kya import karna hai?</label>
+          <label className="text-xs font-medium text-ink-soft">What do you want to import?</label>
           <select
             value={entity}
             onChange={(e) => {
@@ -185,7 +185,7 @@ export function ImportWizard() {
         </div>
 
         <p className="text-xs text-ink-faint">
-          File mein yeh columns honay chahiye: <span className="font-mono">{config.columns.join(", ")}</span>
+          The file should have these columns: <span className="font-mono">{config.columns.join(", ")}</span>
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -196,15 +196,15 @@ export function ImportWizard() {
               className="hidden"
               onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             />
-            CSV / Excel file chunen
+            Choose CSV / Excel file
           </label>
           <button type="button" onClick={downloadTemplate} className="text-xs text-accent-ink underline underline-offset-2">
-            Sample template download karen
+            Download sample template
           </button>
           {fileName && <span className="text-xs text-ink-faint">{fileName}</span>}
         </div>
 
-        {parsing && <p className="text-sm text-ink-soft">File parse ho rahi hai…</p>}
+        {parsing && <p className="text-sm text-ink-soft">Parsing file…</p>}
         {parseError && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{parseError}</p>}
       </div>
 
@@ -212,8 +212,8 @@ export function ImportWizard() {
         <div className="rounded-xl border border-line bg-surface overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-line">
             <p className="text-sm text-ink">
-              <span className="font-medium">{rows.length}</span> rows mili — commit karne se pehle preview
-              (pehli 10):
+              <span className="font-medium">{rows.length}</span> rows found — preview before committing
+              (first 10):
             </p>
             <button
               type="button"
@@ -221,7 +221,7 @@ export function ImportWizard() {
               disabled={committing}
               className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
             >
-              {committing ? "Import ho raha hai…" : `${rows.length} rows Import Karen`}
+              {committing ? "Importing…" : `Import ${rows.length} rows`}
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -253,10 +253,10 @@ export function ImportWizard() {
 
       {result && (
         <div className="rounded-xl border border-line bg-surface p-5 space-y-2">
-          <p className="text-sm text-good">{result.importedCount} rows kamiyabi se import hui.</p>
+          <p className="text-sm text-good">{result.importedCount} rows imported successfully.</p>
           {result.rowErrors.length > 0 && (
             <div className="text-sm text-bad space-y-1">
-              <p className="font-medium">{result.rowErrors.length} rows mein masla hua:</p>
+              <p className="font-medium">{result.rowErrors.length} rows had errors:</p>
               <ul className="list-disc list-inside space-y-0.5">
                 {result.rowErrors.slice(0, 20).map((e, i) => (
                   <li key={i}>

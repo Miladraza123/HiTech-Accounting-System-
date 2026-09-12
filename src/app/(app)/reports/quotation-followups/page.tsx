@@ -41,7 +41,7 @@ export default async function QuotationFollowupsPage() {
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Quotation Follow-up Due</h1>
-        <p className="text-sm text-ink-soft">Sent quotations jinki linked Query par follow-up date aa chuki hai ya guzar chuki hai.</p>
+        <p className="text-sm text-ink-soft">Sent quotations whose linked Query has a follow-up date that is due today or overdue.</p>
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-4">
@@ -58,7 +58,7 @@ export default async function QuotationFollowupsPage() {
                 <th className="text-left px-3 py-2">Query #</th>
                 <th className="text-left px-3 py-2">Client</th>
                 <th className="text-left px-3 py-2">Follow-up Date</th>
-                <th className="text-right px-3 py-2">Din se Due</th>
+                <th className="text-right px-3 py-2">Days Overdue</th>
               </tr>
             </thead>
             <tbody>
@@ -73,14 +73,14 @@ export default async function QuotationFollowupsPage() {
                   <td className="px-3 py-2 text-ink">{r.client}</td>
                   <td className="px-3 py-2 text-ink-soft">{r.followupDate}</td>
                   <td className={`px-3 py-2 text-right tabular font-medium ${r.overdueDays > 0 ? "text-bad" : "text-warn"}`}>
-                    {r.overdueDays > 0 ? r.overdueDays : "Aaj"}
+                    {r.overdueDays > 0 ? r.overdueDays : "Today"}
                   </td>
                 </tr>
               ))}
               {!rows.length && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                    Koi follow-up due nahi hai.
+                    No follow-ups due.
                   </td>
                 </tr>
               )}

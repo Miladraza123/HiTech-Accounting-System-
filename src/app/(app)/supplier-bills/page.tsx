@@ -39,7 +39,7 @@ export default async function SupplierBillsPage({ searchParams }: { searchParams
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Supplier Bills</h1>
-          <p className="mt-1 text-sm text-ink-soft">GRN Clearing se Trade Payables mein book karna — &quot;stock&quot; type GRN ke liye.</p>
+          <p className="mt-1 text-sm text-ink-soft">Books GRN Clearing into Trade Payables — for &quot;stock&quot; type GRNs.</p>
         </div>
         {canCreate && (
           <Link href="/supplier-bills/new" className={buttonClass()}>
@@ -92,8 +92,8 @@ export default async function SupplierBillsPage({ searchParams }: { searchParams
         ) : (
           <EmptyState
             icon={<FileText size={22} />}
-            title="Koi Supplier Bill nahi hai abhi tak"
-            description="GRN Clearing se Trade Payables mein book karna — &quot;stock&quot; type GRN ke liye."
+            title="No Supplier Bills yet"
+            description="Books GRN Clearing into Trade Payables — for &quot;stock&quot; type GRNs."
             action={
               canCreate ? (
                 <Link href="/supplier-bills/new" className={buttonClass()}>

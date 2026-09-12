@@ -62,7 +62,7 @@ export function JobMaterialPanel({
     setError(null);
     const qty = Number(reserveQty[itemId] ?? 0);
     if (!qty || qty <= 0) {
-      setError("Reserve qty zero se zyada honi chahiye.");
+      setError("Reserve qty must be greater than zero.");
       return;
     }
     setPendingKey(`reserve-${itemId}`);
@@ -92,7 +92,7 @@ export function JobMaterialPanel({
     setError(null);
     const qty = Number(issueQty[itemId] ?? 0);
     if (!qty || qty <= 0) {
-      setError("Issue qty zero se zyada honi chahiye.");
+      setError("Issue qty must be greater than zero.");
       return;
     }
     setPendingKey(`issue-${itemId}`);
@@ -111,7 +111,7 @@ export function JobMaterialPanel({
     setError(null);
     const qty = Number(returnQty[itemId] ?? 0);
     if (!qty || qty <= 0) {
-      setError("Return qty zero se zyada honi chahiye.");
+      setError("Return qty must be greater than zero.");
       return;
     }
     setPendingKey(`return-${itemId}`);
@@ -175,7 +175,7 @@ export function JobMaterialPanel({
               {!requirements.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Koi material requirement nahi hai.
+                    No material requirement found.
                   </td>
                 </tr>
               )}

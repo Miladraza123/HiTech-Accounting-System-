@@ -22,14 +22,14 @@ export default async function NewProductTemplatePage() {
         <Link href="/product-templates" className="text-xs text-ink-faint hover:text-ink">
           ← BOM / Product Templates
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Naya BOM Template</h1>
+        <h1 className="text-lg font-semibold text-ink mt-1">New BOM Template</h1>
       </div>
 
       {!items?.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          Pehle Item Master mein kam az kam ek item hona chahiye.{" "}
+          At least one item must exist in the Item Master first.{" "}
           <Link href="/items" className="underline underline-offset-2 font-medium">
-            Item add karen
+            Add an Item
           </Link>
           .
         </div>

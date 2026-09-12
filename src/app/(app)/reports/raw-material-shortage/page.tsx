@@ -42,7 +42,7 @@ export default async function RawMaterialShortagePage() {
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Raw Material Shortage</h1>
         <p className="text-sm text-ink-soft">
-          Woh items jinki maujooda stock se kami ki wajah se Job(s) &quot;Material Pending&quot; par ruki hui hain — inhen khareedna zaroori hai.
+          Items whose shortage in current stock is holding up Job(s) at &quot;Material Pending&quot; — these need to be purchased.
         </p>
       </div>
 
@@ -78,7 +78,7 @@ export default async function RawMaterialShortagePage() {
               {!rows.length && (
                 <tr>
                   <td colSpan={3} className="px-4 py-6 text-center text-ink-faint">
-                    Koi raw material shortage nahi hai.
+                    No raw material shortage.
                   </td>
                 </tr>
               )}

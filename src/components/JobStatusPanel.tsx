@@ -34,7 +34,7 @@ export function JobStatusPanel({
     setError(null);
     const pct = Number(progress);
     if (Number.isNaN(pct) || pct < 0 || pct > 100) {
-      setError("Progress 0-100 ke darmiyan honi chahiye.");
+      setError("Progress must be between 0 and 100.");
       return;
     }
     startTransition(async () => {
@@ -59,7 +59,7 @@ export function JobStatusPanel({
   function submitCancel() {
     setError(null);
     if (!reason.trim()) {
-      setError("Cancel karne ki wajah likhna zaroori hai.");
+      setError("A reason for cancelling is required.");
       return;
     }
     startTransition(async () => {
@@ -99,7 +99,7 @@ export function JobStatusPanel({
             disabled={pending}
             className="w-full rounded-md border border-line-strong bg-bg px-3 py-1.5 text-xs text-ink hover:bg-surface-2 transition disabled:opacity-60"
           >
-            {pending ? "…" : "Progress Update Karen"}
+            {pending ? "…" : "Update Progress"}
           </button>
         </div>
       )}
@@ -111,17 +111,17 @@ export function JobStatusPanel({
           disabled={pending}
           className="w-full rounded-md bg-good px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Ready for Dispatch Mark Karen"}
+          {pending ? "…" : "Mark Ready for Dispatch"}
         </button>
       )}
 
       {!terminal &&
         (cancelOpen ? (
           <div className="space-y-2 rounded-md border border-bad bg-bad-soft p-3">
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Cancel karne ki wajah…" className="input resize-none text-xs" />
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason for cancelling…" className="input resize-none text-xs" />
             <div className="flex gap-2">
               <button type="button" onClick={() => setCancelOpen(false)} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-xs">
-                Wapis
+                Back
               </button>
               <button
                 type="button"
@@ -139,7 +139,7 @@ export function JobStatusPanel({
             onClick={() => setCancelOpen(true)}
             className="w-full rounded-md border border-bad text-bad bg-bg px-3 py-1.5 text-xs hover:bg-surface-2 transition"
           >
-            Job Cancel Karen
+            Cancel Job
           </button>
         ))}
     </div>

@@ -30,18 +30,18 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
   function submit() {
     setError(null);
     if (!fromWarehouseId || !toWarehouseId) {
-      setError("From aur To warehouse select karen.");
+      setError("Select From and To warehouse.");
       return;
     }
     if (fromWarehouseId === toWarehouseId) {
-      setError("From aur To warehouse alag hone chahiye.");
+      setError("From and To warehouse must be different.");
       return;
     }
     const cleanLines = lines
       .filter((l) => l.item_id && Number(l.qty) > 0)
       .map((l) => ({ item_id: l.item_id, qty: Number(l.qty) }));
     if (!cleanLines.length) {
-      setError("Kam az kam ek item aur qty likhen.");
+      setError("Enter at least one item and quantity.");
       return;
     }
 
@@ -104,7 +104,7 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
                 <tr key={i} className="border-t border-line">
                   <td className="px-2 py-1.5">
                     <select value={l.item_id} onChange={(e) => updateLine(i, { item_id: e.target.value })} className="input !py-1 text-xs">
-                      <option value="">— Item select karen —</option>
+                      <option value="">— Select Item —</option>
                       {items.map((it) => (
                         <option key={it.id} value={it.id}>
                           {it.item_code} — {it.description}
@@ -137,7 +137,7 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
         </div>
         <div className="px-3 py-2 border-t border-line">
           <button type="button" onClick={addLine} className="text-xs text-accent-ink hover:underline">
-            + Item Add Karen
+            + Add Item
           </button>
         </div>
       </div>
@@ -152,7 +152,7 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Save ho raha hai…" : "Stock Transfer Banayen"}
+        {pending ? "Saving…" : "Create Stock Transfer"}
       </button>
     </div>
   );

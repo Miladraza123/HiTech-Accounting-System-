@@ -94,7 +94,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {job.status === "Cancelled" && job.cancel_reason && (
-        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel wajah: {job.cancel_reason}</div>
+        <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancellation reason: {job.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -179,8 +179,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
             <p className="text-xs text-ink-faint">
-              Sirf material cost automated hai (stock issue/return se). Labour/overhead abhi manual expense/payroll system na hone ki wajah se automated nahi
-              — yeh ek jaana-bujha scope deferral hai.
+              Only material cost is automated (from stock issue/return). Labour/overhead are not automated yet since there is no manual expense/payroll
+              system — this is a deliberate scope deferral.
             </p>
           </div>
 

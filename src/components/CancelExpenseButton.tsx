@@ -18,7 +18,7 @@ export function CancelExpenseButton({ expenseId }: { expenseId: string }) {
         onClick={() => setOpen(true)}
         className="w-full rounded-md border border-bad text-bad bg-bg px-3 py-1.5 text-xs hover:bg-surface-2 transition"
       >
-        Expense Cancel Karen
+        Cancel Expense
       </button>
     );
   }
@@ -26,7 +26,7 @@ export function CancelExpenseButton({ expenseId }: { expenseId: string }) {
   function submit() {
     setError(null);
     if (!reason.trim()) {
-      setError("Wajah likhna zaroori hai.");
+      setError("A reason is required.");
       return;
     }
     startTransition(async () => {
@@ -38,11 +38,11 @@ export function CancelExpenseButton({ expenseId }: { expenseId: string }) {
 
   return (
     <div className="space-y-2 rounded-md border border-bad bg-bad-soft p-3">
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Cancel karne ki wajah…" className="input resize-none text-xs" />
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason for cancelling…" className="input resize-none text-xs" />
       {error && <p className="text-xs text-bad">{error}</p>}
       <div className="flex gap-2">
         <button type="button" onClick={() => setOpen(false)} className="flex-1 rounded-md border border-line-strong bg-bg px-2 py-1 text-xs">
-          Wapis
+          Back
         </button>
         <button type="button" onClick={submit} disabled={pending} className="flex-1 rounded-md bg-bad px-2 py-1 text-xs font-medium text-white disabled:opacity-60">
           {pending ? "…" : "Confirm Cancel"}

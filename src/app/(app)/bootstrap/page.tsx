@@ -19,11 +19,11 @@ export default async function BootstrapPage() {
 
   return (
     <div className="max-w-md">
-      <h1 className="text-lg font-semibold text-ink">System ka Owner banayen</h1>
+      <h1 className="text-lg font-semibold text-ink">Create the System Owner</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Is system mein abhi tak koi Owner assign nahi hua. Owner ko har hissa (Company setup,
-        Users &amp; Roles, Chart of Accounts, sab reports) tak poori access hoti hai — aam tor par
-        yeh business ka malik ya sarbaraah hota hai.
+        No Owner has been assigned in this system yet. The Owner has full access to every section
+        (Company setup, Users &amp; Roles, Chart of Accounts, all reports) — this is typically the
+        business owner or manager.
       </p>
       <BootstrapOwnerForm />
     </div>

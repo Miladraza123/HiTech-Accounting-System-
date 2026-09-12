@@ -81,9 +81,9 @@ export default async function QuotationDetailPage({
 
       {!isViewingCurrent && (
         <div className="rounded-md bg-warn-soft border border-warn px-4 py-2 text-sm text-warn">
-          Aap purani Revision (Rev-{selectedRevision.rev_no}) dekh rahe hain — yeh read-only hai.{" "}
+          You are viewing an old revision (Rev-{selectedRevision.rev_no}) — this is read-only.{" "}
           <Link href={`/quotations/${id}`} className="underline underline-offset-2 font-medium">
-            Current revision par wapis jayen
+            Go back to current revision
           </Link>
         </div>
       )}

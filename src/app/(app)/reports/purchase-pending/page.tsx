@@ -46,7 +46,7 @@ export default async function PurchasePendingReportPage() {
           ← Reports
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Purchase Pending Report</h1>
-        <p className="text-sm text-ink-soft">Har Purchase Order line jahan receiving baki hai — sab se overdue pehle.</p>
+        <p className="text-sm text-ink-soft">Every Purchase Order line with pending receiving — most overdue first.</p>
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-4 max-w-xs">
@@ -93,7 +93,7 @@ export default async function PurchasePendingReportPage() {
               {!rows.length && (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-ink-faint">
-                    Koi pending purchase nahi hai — sab receive ho chuka hai.
+                    No pending purchases — everything has been received.
                   </td>
                 </tr>
               )}

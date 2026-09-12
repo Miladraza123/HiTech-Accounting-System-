@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
+const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 export type QuotationLineInput = {
   item_id?: string;
@@ -45,8 +45,8 @@ export async function createQuotationAction(
   const payment_terms = String(formData.get("payment_terms") ?? "").trim() || null;
   const lines = readLinesFromForm(formData);
 
-  if (!query_id) return { error: "Query select karen." };
-  if (!lines.length) return { error: "Kam az kam ek item/service add karen." };
+  if (!query_id) return { error: "Select a Query." };
+  if (!lines.length) return { error: "Add at least one item/service." };
 
   const { data, error } = await supabase.rpc("fn_create_quotation", {
     p_query_id: query_id,
@@ -57,7 +57,7 @@ export async function createQuotationAction(
     p_lines: lines,
   });
 
-  if (error || !data) return { error: error?.message ?? "Quotation nahi ban saki." };
+  if (error || !data) return { error: error?.message ?? "Failed to create Quotation." };
 
   redirect(`/quotations/${data}`);
 }

@@ -44,13 +44,13 @@ export default async function PaymentsPage({
         <div>
           <h1 className="text-lg font-semibold text-ink">Payments</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Bill-wise Payment &amp; Recovery — client receipts aur supplier payments.
+            Bill-wise Payment &amp; Recovery — client receipts and supplier payments.
             {(from && to) || direction ? (
               <>
                 {" "}
                 — filtered{" "}
                 <Link href="/payments" className="text-accent-ink underline underline-offset-2">
-                  (sab dekhen)
+                  (view all)
                 </Link>
               </>
             ) : null}
@@ -105,8 +105,8 @@ export default async function PaymentsPage({
         ) : (
           <EmptyState
             icon={<CreditCard size={22} />}
-            title="Koi Payment nahi hai abhi tak"
-            description="Bill-wise Payment & Recovery — client receipts aur supplier payments yahan record hote hain."
+            title="No Payments yet"
+            description="Bill-wise Payment & Recovery — client receipts and supplier payments are recorded here."
             action={
               canCreate ? (
                 <Link href="/payments/new" className={buttonClass()}>

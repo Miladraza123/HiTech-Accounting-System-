@@ -73,7 +73,7 @@ export function CreateRevisionPanel({
   function submit() {
     setError(null);
     if (!reason.trim()) {
-      setError("Revision ki wajah likhen (jaise: client ne rate mein tabdeeli mangi).");
+      setError("Enter the reason for the revision (e.g., client requested a rate change).");
       return;
     }
     startTransition(async () => {
@@ -96,10 +96,10 @@ export function CreateRevisionPanel({
 
   return (
     <div className="space-y-4 rounded-xl border border-accent bg-accent-soft/30 p-5">
-      <p className="text-sm font-medium text-ink">Nayi Revision — purani revision hamesha ke liye mehfooz rahegi.</p>
+      <p className="text-sm font-medium text-ink">New Revision — the previous revision will always be preserved.</p>
       <label className="block space-y-1.5">
-        <span className="text-xs font-medium text-ink-soft">Revision ki wajah *</span>
-        <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Client ne quantity badha di" />
+        <span className="text-xs font-medium text-ink-soft">Reason for revision *</span>
+        <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Client increased the quantity" />
       </label>
 
       <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} />
@@ -139,7 +139,7 @@ export function CreateRevisionPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Revision Save Karen"}
+          {pending ? "…" : "Save Revision"}
         </button>
       </div>
     </div>

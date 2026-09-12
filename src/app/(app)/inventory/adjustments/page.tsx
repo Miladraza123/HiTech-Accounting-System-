@@ -36,7 +36,7 @@ export default async function StockAdjustmentsPage() {
           ← Inventory
         </Link>
         <h1 className="text-lg font-semibold text-ink mt-1">Stock Adjustments</h1>
-        <p className="mt-1 text-sm text-ink-soft">Physical count farq — Owner approve kiye baghair stock ya books nahi badalte.</p>
+        <p className="mt-1 text-sm text-ink-soft">Physical count discrepancies — stock and books don&apos;t change without Owner approval.</p>
       </div>
 
       <StockAdjustmentRequestForm items={items ?? []} warehouses={warehouses ?? []} />
@@ -76,7 +76,7 @@ export default async function StockAdjustmentsPage() {
               {!adjustments?.length && (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    Koi adjustment request nahi hai.
+                    No adjustment requests found.
                   </td>
                 </tr>
               )}
