@@ -2,9 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 
-export default async function InventoryPage() {
+export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ warehouse?: string }> }) {
   const user = await getCurrentUser();
   const canRequest = isOwner(user) || hasRole(user, "store");
+  const { warehouse: warehouseFilter } = await searchParams;
 
   const supabase = await createClient();
   const [{ data: stock }, { data: availability }, { data: items }, { data: warehouses }, { count: pendingCount }] = await Promise.all([
@@ -18,7 +19,9 @@ export default async function InventoryPage() {
   const itemById = new Map((items ?? []).map((i) => [i.id, i]));
   const whById = new Map((warehouses ?? []).map((w) => [w.id, w]));
   const availabilityByKey = new Map((availability ?? []).map((a) => [`${a.item_id}-${a.warehouse_id}`, a]));
-  const rows = (stock ?? []).filter((r) => (r.qty_on_hand ?? 0) !== 0);
+  const rows = (stock ?? [])
+    .filter((r) => (r.qty_on_hand ?? 0) !== 0)
+    .filter((r) => !warehouseFilter || r.warehouse_id === warehouseFilter);
   const totalValue = rows.reduce((s, r) => s + (r.stock_value ?? 0), 0);
   const reservedCombos = rows.filter((r) => (availabilityByKey.get(`${r.item_id}-${r.warehouse_id}`)?.reserved_qty ?? 0) > 0).length;
 
@@ -35,6 +38,20 @@ export default async function InventoryPage() {
           </Link>
         )}
       </div>
+
+      <form className="flex items-center gap-2 flex-wrap">
+        <select name="warehouse" defaultValue={warehouseFilter ?? ""} className="input !py-1.5 text-sm max-w-xs">
+          <option value="">— Sab Warehouses —</option>
+          {(warehouses ?? []).map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
+          Filter Karen
+        </button>
+      </form>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-line bg-surface p-4">

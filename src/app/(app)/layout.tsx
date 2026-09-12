@@ -73,8 +73,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 11 — Financial Statements</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 12 — Reports &amp; Search</p>
           </div>
+
+          <form action="/search" className="px-3 pt-3">
+            <input
+              type="text"
+              name="q"
+              placeholder="Search… (Query, SO, Invoice, Item…)"
+              className="w-full rounded-md border border-line bg-bg px-3 py-1.5 text-xs text-ink outline-none focus:border-accent"
+            />
+          </form>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5">
             {navItems

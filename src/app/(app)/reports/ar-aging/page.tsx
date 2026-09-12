@@ -52,11 +52,16 @@ export default async function ArAgingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">AR Aging — Client-wise Outstanding</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">AR Aging — Client-wise Outstanding</h1>
+        </div>
+        <a href="/reports/ar-aging/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
+          Export to Excel
+        </a>
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">

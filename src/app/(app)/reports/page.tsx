@@ -13,13 +13,23 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const selectedLine = line === "material_supply" || line === "fabrication" ? line : "combined";
 
   const supabase = await createClient();
-  const [{ data: salesOrders }, { data: invoices }, { data: outstandingRows }, { data: jobs }, { data: tb }] = await Promise.all([
-    supabase.from("sales_orders").select("id, business_line, status, grand_total").not("status", "in", "(Cancelled)"),
-    supabase.from("invoices").select("id, sales_order_id, grand_total, status"),
-    supabase.from("invoice_outstanding").select("invoice_id, outstanding_amount"),
-    supabase.from("jobs").select("id, sales_order_id, status"),
-    supabase.from("trial_balance").select("*"),
-  ]);
+  const [{ data: salesOrders }, { data: invoices }, { data: outstandingRows }, { data: jobs }, { data: tb }, { count: queryCount }, { count: quotationCount }] =
+    await Promise.all([
+      supabase.from("sales_orders").select("id, business_line, status, grand_total").not("status", "in", "(Cancelled)"),
+      supabase.from("invoices").select("id, sales_order_id, grand_total, status"),
+      supabase.from("invoice_outstanding").select("invoice_id, outstanding_amount"),
+      supabase.from("jobs").select("id, sales_order_id, status"),
+      supabase.from("trial_balance").select("*"),
+      supabase.from("queries").select("id", { count: "exact", head: true }),
+      supabase.from("quotations").select("id", { count: "exact", head: true }),
+    ]);
+
+  // Quotation Conversion % — how many Quotations actually turned into a
+  // Sales Order (every Sales Order has quotation_id set, so a distinct count
+  // of that column tells us how many Quotations converted).
+  const { data: soQuotationIds } = await supabase.from("sales_orders").select("quotation_id").not("status", "eq", "Cancelled");
+  const convertedQuotations = new Set((soQuotationIds ?? []).map((s) => s.quotation_id)).size;
+  const conversionPct = quotationCount ? Math.round((convertedQuotations / quotationCount) * 100) : 0;
 
   // Company Capital = Equity accounts + accumulated Retained Earnings (books
   // are never period-closed, so retained earnings = all-time net profit).
@@ -105,6 +115,20 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </div>
           )}
         </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-line">
+          <div>
+            <p className="text-2xl font-semibold text-ink tabular">{queryCount ?? 0}</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Queries Received</p>
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-ink tabular">{quotationCount ?? 0}</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Quotations Sent</p>
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-ink tabular">{conversionPct}%</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Quotation → SO Conversion</p>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-5">
@@ -132,6 +156,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <ReportLink href="/reports/party-ledger" title="Customer / Supplier Ledger" desc="Kisi bhi client/supplier ki poori running-balance ledger." />
         <ReportLink href="/reports/general-ledger" title="General Ledger" desc="Kisi bhi account ki poori running-balance ledger." />
         <ReportLink href="/reports/vehicle-expenses" title="Vehicle &amp; Rider Expenses" desc="Vehicle-wise fuel/maintenance/cost-per-KM, aur Engineer/Rider-wise field expense totals." />
+        <ReportLink href="/reports/pending-orders" title="Pending Order &amp; Delivery Report" desc="Har SO line jahan delivery/invoicing baki hai, purane order pehle." />
+        <ReportLink href="/reports/purchase-pending" title="Purchase Pending Report" desc="Har PO line jahan receiving baki hai, overdue pehle." />
+        <ReportLink href="/reports/grn-report" title="GRN / Receiving Report" desc="Date range ke GRNs, short/excess ke sath." />
+        <ReportLink href="/reports/payment-collection" title="Payment Collection Report" desc="Date range ki collection, method-wise aur top clients." />
+        <ReportLink href="/reports/customer-business" title="Customer-wise Business Report" desc="Har client ka order value, invoiced, outstanding — ek jaga." />
+        <ReportLink href="/reports/order-status" title="Order-wise Status" desc="Ek Sales Order ka poora safar — Query se Payment tak." />
       </div>
     </div>
   );

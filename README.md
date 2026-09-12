@@ -8,7 +8,63 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 11 — Financial Statements (complete)
+## Status: Phase 12 — Reports & Global Search (complete)
+
+Closing the fourth item on the gap list found by the Phase 9 re-audit:
+the rest of the requested operational Reports (§58), **Global Search**
+(§56) and **Excel Export** (§58) across the reports that most needed it.
+Purely additive — no new tables, no changes to any posting function;
+every new page is a read-only query over existing tables/views.
+
+- **`/reports/pending-orders`** — merges the prompt's separate "Pending
+  Order Report" and "Pending Delivery Report" into one page: every
+  Sales Order line still owing a delivery and/or an invoice, oldest PO
+  first, with a Days-Since-PO column flagged red past 30 days.
+- **`/reports/purchase-pending`** — the Purchase-side mirror: every PO
+  line still owing a GRN, sorted by days overdue against its expected
+  delivery date.
+- **`/reports/grn-report`** — date-range GRN/Receiving register with
+  short/excess counts, per the prompt's Receiving Report ask.
+- **`/reports/payment-collection`** — date-range collection report,
+  split receipts vs disbursements, grouped by payment method and by
+  top-10 clients, plus the full transaction list.
+- **`/reports/customer-business`** — Customer-wise Business Report:
+  every client's order count/value, invoiced total, and outstanding, in
+  one sortable table (biggest client first).
+- **`/reports/order-status`** — Order-wise Status: pick one Sales Order
+  and see its entire journey in one place — Query → Quotation → Sales
+  Order → Fabrication Jobs (if applicable) → Delivery Challans →
+  Invoices → Payments — the prompt's "Order Journey Tracking" ask.
+- **`/search`** — Global Search (§56): one search box in the sidebar,
+  searches Parties/Queries/Quotations/Sales Orders/Purchase Orders/
+  Jobs/Delivery Challans/Invoices/Supplier Bills/Items/Vehicles in
+  parallel, grouped results with direct links. User input is sanitized
+  (commas/parens stripped) before being used to build a PostgREST
+  `.or()` filter, since those characters are structural separators in
+  that filter syntax and an unsanitized search string could otherwise
+  break the query.
+- **Excel Export** added to AR Aging, AP Aging, Trial Balance, Pending
+  Orders, Payment Collection, and Customer Business reports — a shared
+  `buildExcelResponse()` helper (`src/lib/excelExport.ts`, using the
+  existing `exceljs` dependency) backs a Route Handler per report, each
+  with its own auth guard mirroring the page's access control (Route
+  Handlers bypass page-level render guards, so the check is repeated
+  explicitly rather than assumed).
+- **Warehouse-wise Stock** (§58) — satisfied by adding a warehouse
+  filter to the existing `/inventory` page rather than building a
+  duplicate report, since that page already showed item × warehouse
+  on-hand/reserved/free/avg-cost/value.
+- **Quotation → Sales Order Conversion %** — new stat tile on the Owner
+  Dashboard (`/reports`), alongside Queries Received and Quotations
+  Sent counts, answering the prompt's explicit "Kitni Quotations PO me
+  convert hui?" question.
+
+**Scope note:** Order Health/Stage Aging, Tasks & Follow-ups, Returns/
+Rejection/Replacement, Rate History, Period Lock, Daily Snapshot, and
+the configurable permission matrix remain as separate upcoming phases.
+
+<details>
+<summary>Phase 11 — Financial Statements (complete)</summary>
 
 Closing the third item on the gap list found by the Phase 9 re-audit:
 **Profit & Loss Statement, Balance Sheet, Cash Flow/Position, and proper
@@ -62,6 +118,8 @@ function; every figure is computed live off the same `journal_lines` /
 Rejection/Replacement, Rate History, Period Lock, Daily Snapshot, the
 rest of the requested operational Reports list, and the configurable
 permission matrix remain as separate upcoming phases.
+
+</details>
 
 <details>
 <summary>Phase 10 — Vehicle/Fleet & Engineer/Rider Expenses (complete)</summary>
@@ -751,10 +809,15 @@ src/
       journal-vouchers/         — Manual Journal Voucher list, create (multi-line, live
                                   Debit=Credit balance check)
       reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle,
-                                  Company Capital/Working Capital) + daily-ledger/,
-                                  ar-aging/, ap-aging/, trial-balance/, profit-loss/,
-                                  balance-sheet/, cash-flow/, party-ledger/,
-                                  general-ledger/, vehicle-expenses/
+                                  Company Capital/Working Capital, Quotation Conversion %)
+                                  + daily-ledger/, ar-aging/(+export/), ap-aging/(+export/),
+                                  trial-balance/(+export/), profit-loss/, balance-sheet/,
+                                  cash-flow/, party-ledger/, general-ledger/,
+                                  vehicle-expenses/, pending-orders/(+export/),
+                                  purchase-pending/, grn-report/, payment-collection/
+                                  (+export/), customer-business/(+export/), order-status/
+      search/                  — Global Search across parties/queries/quotations/orders/
+                                  jobs/deliveries/invoices/bills/items/vehicles
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/bank-accounts/     — bank account master (+ opening balance)
@@ -780,6 +843,8 @@ src/
                                   with an automated test (`npm run test`)
     printStyles.ts             — shared A4 print stylesheet + auto-print script, used by
                                   every [id]/print/ route above
+    excelExport.ts             — shared xlsx builder (exceljs) backing every /export
+                                  Route Handler above
   proxy.ts                     — session refresh + route protection (Next.js 16's
                                   renamed middleware.ts)
 ```
