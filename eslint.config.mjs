@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // backup/ is a standalone CommonJS Node script — deliberately outside the
+    // Next.js/TypeScript app (see backup/backup.js header) — not this config's concern.
+    "backup/**",
   ]),
 ]);
 

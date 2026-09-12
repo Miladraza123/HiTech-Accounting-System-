@@ -1,0 +1,39 @@
+name: Daily Backup
+
+on:
+  schedule:
+    # 21:00 UTC daily = 02:00 AM PKT (Asia/Karachi, UTC+5, no DST) — comfortably
+    # after the Karachi business day has ended and after that day's transactions
+    # are posted, so both the Excel/JSON snapshot and the app's own Daily
+    # Snapshot (Phase 15, generated at 00:10 UTC ≈ 05:10 AM PKT) agree on which
+    # calendar day's data this covers.
+    - cron: "0 21 * * *"
+  workflow_dispatch: {} # manual "run now" button in the Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backup
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backup/package-lock.json
+
+      - run: npm ci
+
+      - name: Run backup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          BACKUP_EMAIL: ${{ secrets.BACKUP_EMAIL }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          BACKUP_TO_EMAIL: ${{ secrets.BACKUP_TO_EMAIL }}
+        run: node backup.js

@@ -1,0 +1,16 @@
+{
+  "name": "hitech-daily-backup",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Standalone Daily Backup runner for the HiTech Accounting System — fetches every table, emails an Excel (human) and JSON (restore) file. Runs outside the Next.js app, via GitHub Actions.",
+  "type": "commonjs",
+  "main": "backup.js",
+  "scripts": {
+    "backup": "node backup.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "exceljs": "^4.4.0",
+    "nodemailer": "^6.9.15"
+  }
+}

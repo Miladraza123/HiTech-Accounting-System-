@@ -4001,6 +4001,18 @@ export type Database = {
         Args: { p_sales_order_id: string }
         Returns: undefined
       }
+      fn_admin_restore_delete_orphans: {
+        Args: { p_rows: Json; p_table_name: string }
+        Returns: number
+      }
+      fn_admin_restore_plan: {
+        Args: { p_rows: Json; p_table_name: string }
+        Returns: Json
+      }
+      fn_admin_restore_upsert: {
+        Args: { p_mode: string; p_rows: Json; p_table_name: string }
+        Returns: Json
+      }
       fn_allocate_payment: {
         Args: { p_allocations: Json; p_payment_id: string }
         Returns: undefined

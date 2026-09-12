@@ -72,6 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/setup/import", label: "Import Wizard", show: owner || user.roles.includes("accounts") },
     { href: "/setup/period-lock", label: "Period Lock", show: owner },
     { href: "/setup/permissions", label: "Permission Matrix", show: owner },
+    { href: "/setup/backup-restore", label: "Backup & Restore", show: owner },
   ];
 
   const userRoleLabel = user.roles.length ? user.roles.map((r) => ROLE_LABELS[r] ?? r).join(", ") : "No role assigned";
@@ -93,7 +94,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 16 — Owner Dashboard</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 17 — Backup &amp; Restore</p>
           </div>
 
           <form action="/search" className="px-3 pt-3">

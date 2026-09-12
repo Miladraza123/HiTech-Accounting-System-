@@ -8,7 +8,98 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 16 — Owner Dashboard Redesign (complete)
+## Status: Phase 17 — Daily Backup & Restore (complete)
+
+Every night, without any human action, the system emails two files: an
+Excel workbook (for a person to read) and a JSON file (for a full
+disaster-recovery restore) — plus an in-app admin feature to actually
+restore from that JSON.
+
+- **Runner** — `backup/backup.js`, a standalone Node script with its own
+  `package.json` (`@supabase/supabase-js`, `exceljs`, `nodemailer`),
+  deliberately kept **outside** the Next.js app bundle (it runs headless
+  via CI, never in a browser). `.github/workflows/daily-backup.yml`
+  schedules it daily at 21:00 UTC (02:00 AM PKT — after the Karachi
+  business day ends and after the Phase 15 Daily Snapshot has already
+  run) plus a `workflow_dispatch` manual-run button.
+- **Authentication — a dedicated, low-privilege account, never a
+  service-role key.** A real `Backup Bot` Supabase Auth user signs in
+  the same way any app user does (email + password), holding only two
+  roles: the existing **`auditor`** role, and a brand-new **`backup`**
+  role added specifically for this feature. Between them these unlock
+  read access to every one of this app's 60+ tables — almost all of
+  which already carry a universal `p_select using(true)` policy; the
+  small number of tables that don't (`journal_entries`/`journal_lines`/
+  `audit_log`/`login_sessions` via `auditor`; `import_batches`/
+  `user_roles` via the new `backup` role) got the minimum additive RLS
+  grant needed and nothing more. This account cannot write anywhere in
+  the app — no financial posting, no master-data changes, nothing.
+- **Resilient, ordered fetch** — one dependency-ordered table list
+  (`RESTORE_TABLE_ORDER`, parents before children — computed once via a
+  topological sort of the live FK graph, duplicated deliberately in
+  `backup/backup.js` and `src/lib/restoreTableOrder.ts` since the
+  backup script intentionally isn't part of the app bundle) is fetched
+  table-by-table; **one table failing never aborts the rest** — it's
+  recorded in `missed[]` and backfilled with an empty array, and only a
+  total failure (bad login, no connectivity) throws. A `missed[]`
+  non-empty backup prefixes its email subject with `⚠ INCOMPLETE —` and
+  sets a non-zero exit code (red CI run) — two independent, hard-to-miss
+  signals, on top of the email body naming exactly which table(s) failed
+  and why.
+- **Excel workbook** — 15 sheets built from the raw fetched tables
+  (Trial Balance and AR/AP Aging computed the same way the app's own
+  `trial_balance` view / `src/lib/aging.ts` do, so the backup always
+  matches what a user sees in the app; Journal, Parties, Items, Current
+  Stock, Sales/Purchase Orders, Invoices, Supplier Bills, Payments,
+  Expenses, Jobs, Delivery Challans).
+- **JSON restore file** — `{format: "hitech-restore", version, taken_at,
+  taken_at_karachi, data_date, order, missed, counts, tables}` — every
+  row of every table, unfiltered (including cancelled/inactive rows —
+  a restore needs real history, not just what today's UI shows).
+- **Restore feature** — `/setup/backup-restore` (Owner-only). Upload the
+  JSON → **plan preview first** (per-table add/update/delete counts,
+  computed read-only by `fn_admin_restore_plan`) → choose **Merge**
+  (only adds rows missing from the live database, never touches or
+  deletes existing ones) or **Replace** (makes the database match the
+  file exactly, including deletions) → **automatically downloads a
+  fresh safety snapshot of the current database** the moment you start
+  confirming, before anything is touched → type `RESTORE` to unlock the
+  commit button → per-table result report. The actual writes go through
+  two new SECURITY DEFINER functions, `fn_admin_restore_delete_orphans`
+  and `fn_admin_restore_upsert` — both `is_owner()`-gated and restricted
+  to a hardcoded table allowlist (`_fn_restore_pk_columns` doubles as
+  that allowlist, returning `null` — reject — for anything not on it),
+  using Postgres's own type-checked `jsonb_populate_recordset()` rather
+  than any string-built value interpolation, so a malformed file fails
+  type conversion instead of ever executing as SQL. A **Replace**
+  restore runs deletes in *reverse* dependency order and upserts in
+  *forward* order — a child row's FK must never block deleting its
+  soon-to-be-gone parent, and a child row can't be inserted before the
+  parent it references exists. One table failing never stops the rest;
+  the end-of-run report says exactly which tables succeeded and which
+  didn't, and never claims a full restore when something failed.
+  `numbering_sequences` (the app's own document-numbering counters) is
+  itself just a normal table in this schema — restoring it via the same
+  mechanism as everything else already gets the "continue numbering
+  after restore" behavior for free, with no separate sequence-fixup
+  step needed.
+- **Bug found and fixed while building this**: `fn_record_pod` was
+  inserting an `activity_timeline.event_type` value the table's own
+  CHECK constraint didn't allow at all — see the standalone fix note
+  above. Also `jobs.responsible_user_id` pointed at the wrong table —
+  see that fix note too. Both were only ever exercised for the first
+  time while seeding real data to test this phase's own work, and are
+  now fixed at the database level.
+
+**Required secrets** (GitHub repo → Settings → Secrets and variables →
+Actions): `SUPABASE_URL`, `SUPABASE_ANON_KEY` (same ones the app itself
+uses — never a service-role key), `BACKUP_EMAIL` / `BACKUP_PASSWORD`
+(the dedicated Backup Bot account's login), `GMAIL_USER` /
+`GMAIL_APP_PASSWORD` (a Gmail account + its App Password, for sending),
+`BACKUP_TO_EMAIL` (where the nightly email should land).
+
+<details>
+<summary>Phase 16 — Owner Dashboard Redesign (complete)</summary>
 
 Rebuilt the Owner Dashboard (`/reports`) to the Owner-approved reference
 layout — same structure and management-view hierarchy as the reference
@@ -92,6 +183,29 @@ Fixed in `20260912040254_fix_fn_record_pod_event_type.sql` — the
 function now writes `'status_change'` (the same value
 `fn_cancel_sales_order` already uses for its own status-change timeline
 entries).
+
+**Bug fix #2:** `jobs.responsible_user_id` referenced `auth.users(id)`,
+unlike every sibling "assigned/responsible person" column elsewhere in
+this schema (`tasks.assigned_to`, `vehicles.assigned_user_id`,
+`petty_cash_funds.custodian_user_id`), which all correctly reference
+`public.profiles(id)`. Because of that mismatch PostgREST had no valid
+relationship path at all to embed `profiles(full_name)` from `jobs` —
+so the Job Detail page's own query silently failed and the page
+rendered as a 404 for every single job. Fixed in
+`20260912052123_fix_jobs_responsible_user_id_fk_target.sql` by
+re-pointing the FK to `public.profiles(id)`, the same pattern already
+used correctly by the three sibling columns above.
+
+**Bug fix #3 (pre-existing, not specific to this phase):** the app's
+sidebar (`<aside className="hidden md:flex ...">`) had no phone-width
+fallback at all — below the `md` breakpoint the entire navigation
+disappeared, leaving only Home and Logout reachable. Fixed by adding
+`src/components/MobileNav.tsx` — a sticky top bar (visible only below
+`md`) with a hamburger button opening a slide-in drawer carrying the
+exact same nav list, search box, user info and Logout the desktop
+sidebar already has, in the same design system.
+
+</details>
 
 <details>
 <summary>Phase 15 — Controls & Permissions (complete)</summary>
@@ -1121,12 +1235,16 @@ src/
                                   actions that role may perform (Owner only; DB's own
                                   hardcoded role check on each action stays as an
                                   unchangeable floor the matrix can only narrow within)
+      setup/backup-restore/    — upload a Daily Backup JSON, review a per-table
+                                  add/update/delete plan, Merge or Replace, auto-downloaded
+                                  safety snapshot + typed "RESTORE" confirmation before
+                                  anything is touched, per-table result report (Owner only)
       not-found.tsx, error.tsx — branded 404 / error boundary inside the app shell
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
                                   cashBank, vehicles, parties, attachments, tasks, returns,
-                                  stockTransfers, snapshots, permissions)
+                                  stockTransfers, snapshots, permissions, backupRestore)
   components/                  — client-side form/UI components (incl. TasksPanel,
                                   TaskActionButtons, NewTaskForm, EditTaskForm,
                                   SalesReturnPanel, PurchaseReturnPanel,
@@ -1134,10 +1252,16 @@ src/
                                   PeriodLockForm, GenerateSnapshotButton,
                                   PermissionMatrixTable, TrendLineChart, CompareBarChart —
                                   the last two are the Owner Dashboard's own theme-aware
-                                  inline-SVG/CSS charts, no charting library dependency)
+                                  inline-SVG/CSS charts, no charting library dependency —
+                                  MobileNav — phone-width sidebar fallback (a sticky top bar
+                                  + slide-in drawer, same nav/search/logout as the desktop
+                                  sidebar), RestoreBackupPanel — the Backup & Restore UI)
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers
+    restoreTableOrder.ts       — the dependency-ordered table list shared by the Restore
+                                  Server Actions and (duplicated, since it deliberately
+                                  isn't part of this bundle) backup/backup.js
     permissionDefs.ts          — client-safe Permission Matrix constants (keys, labels,
                                   modules, each action's DB-hardcoded allowed roles) —
                                   mirrors the auth.ts/roles.ts client/server split
@@ -1160,6 +1284,11 @@ src/
                                   Route Handler above
   proxy.ts                     — session refresh + route protection (Next.js 16's
                                   renamed middleware.ts)
+backup/                        — standalone Daily Backup runner (backup.js + its own
+                                  package.json) — deliberately NOT part of the Next.js
+                                  app bundle; runs headless via GitHub Actions only
+.github/workflows/
+  daily-backup.yml             — schedules backup/backup.js daily + a manual-run button
 ```
 
 Database migrations for this phase live in `supabase/migrations/` (applied
