@@ -14,22 +14,36 @@ const ACCEPTANCE_STYLE: Record<string, string> = {
   Disputed: "bg-bad-soft text-bad",
 };
 
-export default async function DeliveryChallansPage() {
+export default async function DeliveryChallansPage({ searchParams }: { searchParams: Promise<{ acceptance?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "delivery_challan.manage");
+  const { acceptance } = await searchParams;
 
   const supabase = await createClient();
-  const { data: dcs } = await supabase
+  let query = supabase
     .from("delivery_challans")
     .select("*, parties(legal_name), sales_orders(so_no)")
     .order("created_at", { ascending: false });
+  if (acceptance) query = query.eq("acceptance_status", acceptance);
+  const { data: dcs } = await query;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Delivery Challans</h1>
-          <p className="mt-1 text-sm text-ink-soft">Dispatch aur Client Acceptance / POD.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Dispatch aur Client Acceptance / POD.
+            {acceptance && (
+              <>
+                {" "}
+                — filtered{" "}
+                <Link href="/delivery-challans" className="text-accent-ink underline underline-offset-2">
+                  (sab dekhen)
+                </Link>
+              </>
+            )}
+          </p>
         </div>
         {canCreate && (
           <Link href="/delivery-challans/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">

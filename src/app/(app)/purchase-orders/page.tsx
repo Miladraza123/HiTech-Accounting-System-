@@ -14,22 +14,33 @@ const STATUS_STYLE: Record<string, string> = {
 
 const TYPE_LABEL: Record<string, string> = { direct: "Direct", stock: "Stock", general: "General" };
 
-export default async function PurchaseOrdersPage() {
+export default async function PurchaseOrdersPage({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "purchase_order.manage");
+  const { open } = await searchParams;
 
   const supabase = await createClient();
-  const { data: orders } = await supabase
-    .from("purchase_orders")
-    .select("*, parties(legal_name)")
-    .order("created_at", { ascending: false });
+  let query = supabase.from("purchase_orders").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  if (open === "1") query = query.not("status", "in", "(Received,Closed,Cancelled)");
+  const { data: orders } = await query;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Purchase Orders</h1>
-          <p className="mt-1 text-sm text-ink-soft">Supplier se khareed — client order (direct), warehouse stock, ya general.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Supplier se khareed — client order (direct), warehouse stock, ya general.
+            {open === "1" && (
+              <>
+                {" "}
+                — sirf open POs{" "}
+                <Link href="/purchase-orders" className="text-accent-ink underline underline-offset-2">
+                  (sab dekhen)
+                </Link>
+              </>
+            )}
+          </p>
         </div>
         {canCreate && (
           <Link href="/purchase-orders/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">

@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       label: "Journal Vouchers",
       show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
     },
-    { href: "/reports", label: "Reports", show: owner || user.roles.includes("accounts") || user.roles.includes("auditor") },
+    { href: "/reports", label: "Owner Dashboard", show: owner || user.roles.includes("accounts") || user.roles.includes("auditor") },
     { href: "/setup/company", label: "Company", show: owner },
     { href: "/setup/warehouses", label: "Warehouses", show: owner || user.roles.includes("store") },
     { href: "/setup/bank-accounts", label: "Bank Accounts", show: owner || user.roles.includes("accounts") },
@@ -84,7 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 15 — Controls &amp; Permissions</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 16 — Owner Dashboard</p>
           </div>
 
           <form action="/search" className="px-3 pt-3">

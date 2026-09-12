@@ -24,22 +24,49 @@ const STATUS_LABEL: Record<string, string> = {
   Cancelled: "Cancelled",
 };
 
-export default async function JobsPage() {
+export default async function JobsPage({ searchParams }: { searchParams: Promise<{ status?: string; health?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "job.manage");
+  const { status: statusFilter, health: healthFilter } = await searchParams;
 
   const supabase = await createClient();
-  const { data: jobs } = await supabase
+  let query = supabase
     .from("jobs")
     .select("*, sales_orders(so_no, parties(legal_name)), warehouses(name)")
     .order("created_at", { ascending: false });
+  if (statusFilter) query = query.eq("status", statusFilter);
+  const { data: allJobs } = await query;
+
+  // "health" is computed per-row (not a DB column), so that filter is applied after the fetch.
+  const jobs = healthFilter
+    ? (allJobs ?? []).filter((j) => {
+        const health = computeHealth({
+          isOpen: !["Delivered", "Cancelled"].includes(j.status),
+          promisedDate: j.required_delivery_date,
+          updatedAt: j.updated_at,
+        });
+        if (healthFilter === "attention") return health?.label === "AtRisk" || health?.label === "Stalled";
+        return health?.label === healthFilter;
+      })
+    : allJobs;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Jobs / Work Orders</h1>
-          <p className="mt-1 text-sm text-ink-soft">Fabrication — material reservation, issue, progress aur dispatch tak.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Fabrication — material reservation, issue, progress aur dispatch tak.
+            {statusFilter || healthFilter ? (
+              <>
+                {" "}
+                — filtered{" "}
+                <Link href="/jobs" className="text-accent-ink underline underline-offset-2">
+                  (sab dekhen)
+                </Link>
+              </>
+            ) : null}
+          </p>
         </div>
         {canCreate && (
           <Link href="/jobs/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">

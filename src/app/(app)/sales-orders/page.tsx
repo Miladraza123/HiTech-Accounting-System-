@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
+import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -17,18 +18,30 @@ const BUSINESS_LINE_LABEL: Record<string, string> = {
   fabrication: "Fabrication",
 };
 
-export default async function SalesOrdersPage() {
+export default async function SalesOrdersPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+  const { from, to } = await searchParams;
+
   const supabase = await createClient();
-  const { data: orders } = await supabase
-    .from("sales_orders")
-    .select("*, parties(legal_name)")
-    .order("created_at", { ascending: false });
+  let query = supabase.from("sales_orders").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
+  const { data: orders } = await query;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Sales Orders</h1>
-        <p className="mt-1 text-sm text-ink-soft">Client PO confirm hone ke baad Quotation se yahan Sales Order banti hai.</p>
+        <p className="mt-1 text-sm text-ink-soft">
+          Client PO confirm hone ke baad Quotation se yahan Sales Order banti hai.
+          {from && to && (
+            <>
+              {" "}
+              — <span className="text-ink">{from}</span> se <span className="text-ink">{to}</span> tak{" "}
+              <Link href="/sales-orders" className="text-accent-ink underline underline-offset-2">
+                (sab dekhen)
+              </Link>
+            </>
+          )}
+        </p>
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">

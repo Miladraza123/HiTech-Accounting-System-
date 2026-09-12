@@ -8,7 +8,74 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 15 — Controls & Permissions (complete)
+## Status: Phase 16 — Owner Dashboard Redesign (complete)
+
+Rebuilt the Owner Dashboard (`/reports`) to the Owner-approved reference
+layout — same structure and management-view hierarchy as the reference
+design, restyled entirely in the app's own theme (existing colors, cards,
+tables, status badges, typography — no new visual language introduced).
+
+- **Top filters** — Today/This Week/This Month/Custom date range, and
+  All/Material Supply/Fabrication business-line toggle, both as plain
+  query-param links (`?range=`, `?line=`, plus `?from=`/`?to=` for
+  Custom) so every view is a shareable/bookmarkable URL, consistent with
+  how every other filtered report in this app already works. Queries and
+  Quotations have no `business_line` column of their own (a business
+  line is only decided once a Sales Order exists), so the line filter
+  honestly applies only to Sales Order/Job/Delivery/Receivable numbers —
+  stated directly in the UI rather than silently doing nothing.
+- **10 top KPI cards** exactly as specified — Queries Received,
+  Quotations Sent, PO Received (a client's own PO becomes a Sales Order
+  here, via `client_po_number`/`po_date`), Quotation→PO Conversion %,
+  Pending Deliveries, Payments Received, Receivables, Payables, Cash &
+  Bank, Raw Material Stock Value — every card a link that opens the
+  underlying records (per UX rule #5), not just a static number.
+- **4 management charts**, hand-built as theme-aware inline SVG/CSS
+  (`TrendLineChart`, `CompareBarChart`) rather than adding a charting
+  library — zero bundle-size cost, and colors are literal `var(--...)`
+  references so the charts repaint correctly in dark mode with no extra
+  code: Queries vs Quotations vs PO Trend (daily buckets, switching to
+  weekly beyond 31 days so a large Custom range still renders legibly),
+  Material Supply Orders vs Fabrication Jobs in Progress, Receivables vs
+  Payables, and a Cash & Bank / Financial Trend line sourced from the
+  Phase 15 `daily_snapshots` history.
+- **Operational sections** — Recent Queries, Recent Quotations,
+  Fabrication Jobs Status, Pending Deliveries, Payment Follow-ups — live
+  mini-tables embedded directly on the dashboard (not just counts), each
+  with a "Sab dekhen →" link to its full page/report.
+- **Owner control sections** — **Action Required** (all 9 named alert
+  types: Credit Limit Warning, Quotation Follow-up Due, Material
+  Purchase Pending, Raw Material Shortage, Job Delayed, Delivery
+  Overdue, Client Acceptance Pending, Invoice Pending, Payment Overdue —
+  three of these needed brand-new drill-down reports since nothing
+  existing showed exactly that list: `/reports/credit-limit-warning`,
+  `/reports/quotation-followups`, `/reports/raw-material-shortage`);
+  **Order Health** collapsed to the requested 3 buckets (On Track /
+  Attention Required / Delayed) from the existing 4-label
+  `computeHealth()` engine (Attention Required = At Risk + Stalled);
+  **Pending From Whom?** (Client/Supplier/Purchase/Fabrication/Accounts
+  counts); **Daily Owner Summary** reusing the latest Phase 15 snapshot.
+- **Real drill-down, not decoration** — 7 existing list pages
+  (Queries, Quotations, Sales Orders, Payments, Jobs, Delivery
+  Challans, Purchase Orders) gained small, additive, optional
+  query-param filters (`from`/`to`, `status`, `direction`, `acceptance`,
+  `open`, `health`) purely so a dashboard number can link straight to
+  the exact filtered list instead of a generic unfiltered page — every
+  new param is optional and ignored when absent, so every existing
+  link/bookmark keeps behaving exactly as before.
+- New `src/lib/dashboardHelpers.ts` (date-range resolution, daily/weekly
+  bucketing for the trend charts) ships with its own `.test.ts`,
+  matching the existing `aging.ts`/`orderHealth.ts` pattern of pure,
+  independently-tested shared logic.
+
+**Scope note:** the live database this was verified against has zero
+seeded rows (fresh project), so every query shape, FK relationship and
+column name was independently confirmed against the actual schema
+(`pg_constraint`, `EXPLAIN`) rather than by eyeballing rendered numbers —
+noted here rather than silently assumed correct.
+
+<details>
+<summary>Phase 15 — Controls & Permissions (complete)</summary>
 
 Four independent controls, bundled together on the Owner's request:
 **Period Lock**, **Daily Snapshot**, **Stock Transfer** between
@@ -75,6 +142,8 @@ warehouses, and a **configurable Permission Matrix**.
 **Scope note:** Rate History remains on the gap list; WHT, Advance
 Payments, Bank Reconciliation, Scrap tracking and Document Expiry
 alerts remain explicitly optional per the original prompt.
+
+</details>
 
 <details>
 <summary>Phase 14 — Sales & Purchase Returns (complete)</summary>
@@ -993,17 +1062,24 @@ src/
                                   any combination), detail, cancel (Owner only)
       journal-vouchers/         — Manual Journal Voucher list, create (multi-line, live
                                   Debit=Credit balance check)
-      reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle,
-                                  Company Capital/Working Capital, Quotation Conversion %,
-                                  Action Required: Open/Overdue Tasks) + daily-ledger/,
-                                  ar-aging/(+export/), ap-aging/(+export/),
-                                  trial-balance/(+export/), profit-loss/, balance-sheet/,
-                                  cash-flow/, party-ledger/, general-ledger/,
+      reports/                 — Owner Dashboard: Today/Week/Month/Custom + All/Material
+                                  Supply/Fabrication filters, 10 top KPI cards, 4 management
+                                  charts (Queries/Quotations/PO trend, Material Supply vs
+                                  Fabrication, Receivables vs Payables, Cash & Bank trend),
+                                  operational mini-tables (Recent Queries/Quotations,
+                                  Fabrication Jobs Status, Pending Deliveries, Payment
+                                  Follow-ups), Owner control sections (Action Required — 9
+                                  alert types, Order Health, Pending From Whom?, Daily Owner
+                                  Summary) + daily-ledger/, ar-aging/(+export/),
+                                  ap-aging/(+export/), trial-balance/(+export/), profit-loss/,
+                                  balance-sheet/, cash-flow/, party-ledger/, general-ledger/,
                                   vehicle-expenses/, pending-orders/(+export/),
                                   purchase-pending/, grn-report/, payment-collection/
                                   (+export/), customer-business/(+export/), order-status/,
                                   order-health/ (Stage Aging dashboard), daily-snapshot/
-                                  (stat tiles + 90-day history, pg_cron-generated daily)
+                                  (stat tiles + 90-day history, pg_cron-generated daily),
+                                  credit-limit-warning/, quotation-followups/,
+                                  raw-material-shortage/ (new Action Required drill-downs)
       search/                  — Global Search across parties/queries/quotations/orders/
                                   jobs/deliveries/invoices/bills/items/vehicles
       tasks/                   — Tasks & Follow-ups: company-wide list (filters), new/
@@ -1037,7 +1113,9 @@ src/
                                   SalesReturnPanel, PurchaseReturnPanel,
                                   NewStockTransferForm, CancelStockTransferButton,
                                   PeriodLockForm, GenerateSnapshotButton,
-                                  PermissionMatrixTable)
+                                  PermissionMatrixTable, TrendLineChart, CompareBarChart —
+                                  the last two are the Owner Dashboard's own theme-aware
+                                  inline-SVG/CSS charts, no charting library dependency)
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers
@@ -1047,11 +1125,14 @@ src/
     permissions.ts             — server-only hasPermission()/loadPermissionMatrix(),
                                   re-exports the constants from permissionDefs.ts
     aging.ts (+ aging.test.ts) — AR/AP aging-bucket logic, shared by Customer 360 and
-                                  the AR/AP Aging reports; one of two libs in this repo
-                                  with an automated test (`npm run test`)
+                                  the AR/AP Aging reports
     orderHealth.ts (+ .test.ts) — Order Health / Stage Aging logic (On Track/At Risk/
                                   Delayed/Stalled), shared by the SO/PO/Job list pages
-                                  and the Order Health report; the other automated-test lib
+                                  and the Order Health report
+    dashboardHelpers.ts (+ .test.ts) — Owner Dashboard date-range resolution (Today/
+                                  Week/Month/Custom) and daily/weekly trend-chart
+                                  bucketing — pure logic, independently tested like the
+                                  two libs above
     taskLinks.ts               — resolves a task's (related_table, related_id) to a link
                                   back to its owning entity's detail page
     printStyles.ts             — shared A4 print stylesheet + auto-print script, used by

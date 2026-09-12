@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 
 const STATUS_STYLE: Record<string, string> = {
   Draft: "bg-surface-2 text-ink-faint",
@@ -9,18 +10,38 @@ const STATUS_STYLE: Record<string, string> = {
   Expired: "bg-bad-soft text-bad",
 };
 
-export default async function QuotationsPage() {
+export default async function QuotationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; status?: string }>;
+}) {
+  const { from, to, status } = await searchParams;
+
   const supabase = await createClient();
-  const { data: quotations } = await supabase
+  let query = supabase
     .from("quotations")
     .select("*, parties(legal_name), quotation_revisions(rev_no, grand_total, is_current)")
     .order("created_at", { ascending: false });
+  if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
+  if (status) query = query.eq("status", status);
+  const { data: quotations } = await query;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-ink">Quotations</h1>
-        <p className="mt-1 text-sm text-ink-soft">Har Quotation ek Query se link hoti hai, revision history ke sath.</p>
+        <p className="mt-1 text-sm text-ink-soft">
+          Har Quotation ek Query se link hoti hai, revision history ke sath.
+          {(from && to) || status ? (
+            <>
+              {" "}
+              — filtered{" "}
+              <Link href="/quotations" className="text-accent-ink underline underline-offset-2">
+                (sab dekhen)
+              </Link>
+            </>
+          ) : null}
+        </p>
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">

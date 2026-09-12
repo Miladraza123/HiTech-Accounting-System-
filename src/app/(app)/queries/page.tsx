@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 
 const STATUS_STYLE: Record<string, string> = {
   Open: "bg-ledger-soft text-ledger",
@@ -11,22 +12,33 @@ const STATUS_STYLE: Record<string, string> = {
   OnHold: "bg-surface-2 text-ink-faint",
 };
 
-export default async function QueriesPage() {
+export default async function QueriesPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "query.manage");
+  const { from, to } = await searchParams;
 
   const supabase = await createClient();
-  const { data: queries } = await supabase
-    .from("queries")
-    .select("*, parties(legal_name)")
-    .order("created_at", { ascending: false });
+  let query = supabase.from("queries").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
+  const { data: queries } = await query;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Queries</h1>
-          <p className="mt-1 text-sm text-ink-soft">Har naya client inquiry yahan se shuru hota hai.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Har naya client inquiry yahan se shuru hota hai.
+            {from && to && (
+              <>
+                {" "}
+                — <span className="text-ink">{from}</span> se <span className="text-ink">{to}</span> tak{" "}
+                <Link href="/queries" className="text-accent-ink underline underline-offset-2">
+                  (sab dekhen)
+                </Link>
+              </>
+            )}
+          </p>
         </div>
         {canCreate && (
           <Link

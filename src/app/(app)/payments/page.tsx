@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -10,19 +11,38 @@ const STATUS_STYLE: Record<string, string> = {
 
 const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt (in)", payment: "Payment (out)" };
 
-export default async function PaymentsPage() {
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; direction?: string }>;
+}) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "payment.manage");
+  const { from, to, direction } = await searchParams;
 
   const supabase = await createClient();
-  const { data: payments } = await supabase.from("payments").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  let query = supabase.from("payments").select("*, parties(legal_name)").order("created_at", { ascending: false });
+  if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
+  if (direction === "receipt" || direction === "payment") query = query.eq("direction", direction);
+  const { data: payments } = await query;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-ink">Payments</h1>
-          <p className="mt-1 text-sm text-ink-soft">Bill-wise Payment &amp; Recovery — client receipts aur supplier payments.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Bill-wise Payment &amp; Recovery — client receipts aur supplier payments.
+            {(from && to) || direction ? (
+              <>
+                {" "}
+                — filtered{" "}
+                <Link href="/payments" className="text-accent-ink underline underline-offset-2">
+                  (sab dekhen)
+                </Link>
+              </>
+            ) : null}
+          </p>
         </div>
         {canCreate && (
           <Link href="/payments/new" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition">
