@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { JobMaterialPanel } from "@/components/JobMaterialPanel";
 import { JobStatusPanel } from "@/components/JobStatusPanel";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { TasksPanel } from "@/components/TasksPanel";
 
 const STATUS_STYLE: Record<string, string> = {
   MaterialPending: "bg-warn-soft text-warn",
@@ -40,6 +41,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     { data: costLedger },
     { data: notes },
     { data: attachments },
+    { data: tasks },
+    { data: profiles },
   ] = await Promise.all([
     supabase
       .from("jobs")
@@ -51,6 +54,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     supabase.from("job_cost_ledger").select("*").eq("job_id", id).order("created_at", { ascending: false }),
     supabase.from("activity_timeline").select("*").eq("owner_table", "jobs").eq("owner_id", id).order("at", { ascending: false }),
     supabase.from("attachments").select("*").eq("owner_table", "jobs").eq("owner_id", id).order("uploaded_at", { ascending: false }),
+    supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "jobs").eq("related_id", id).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
   ]);
 
   if (!job) notFound();
@@ -195,6 +200,29 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
         <div className="space-y-6">
           <JobStatusPanel jobId={id} status={job.status} progressPct={job.progress_pct} canManage={canManageJob} />
+
+          <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+            <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>
+            <TasksPanel
+              relatedTable="jobs"
+              relatedId={id}
+              revalidateTo={`/jobs/${id}`}
+              tasks={(tasks ?? []).map((t) => ({
+                id: t.id,
+                title: t.title,
+                due_date: t.due_date,
+                priority: t.priority,
+                status: t.status,
+                assigned_to: t.assigned_to,
+                assignee_name: (t.profiles as unknown as { full_name: string } | null)?.full_name ?? "—",
+                created_by: t.created_by,
+              }))}
+              profiles={profiles ?? []}
+              currentUserId={user?.id ?? ""}
+              isOwnerUser={isOwner(user)}
+              canAdd={!!user}
+            />
+          </div>
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Attachments</h2>

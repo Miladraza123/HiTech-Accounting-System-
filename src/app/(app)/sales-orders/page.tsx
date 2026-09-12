@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -41,28 +42,43 @@ export default async function SalesOrdersPage() {
                 <th className="text-left px-4 py-2.5">Line</th>
                 <th className="text-right px-4 py-2.5">Total</th>
                 <th className="text-left px-4 py-2.5">Status</th>
+                <th className="text-left px-4 py-2.5">Health</th>
               </tr>
             </thead>
             <tbody>
-              {(orders ?? []).map((so) => (
-                <tr key={so.id} className="border-t border-line hover:bg-surface-2">
-                  <td className="px-4 py-2.5">
-                    <Link href={`/sales-orders/${so.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
-                      {so.so_no}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2.5 text-ink whitespace-nowrap">{(so.parties as unknown as { legal_name: string } | null)?.legal_name ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-ink-soft font-mono text-xs whitespace-nowrap">{so.client_po_number}</td>
-                  <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{BUSINESS_LINE_LABEL[so.business_line]}</td>
-                  <td className="px-4 py-2.5 text-right tabular text-ink">{so.grand_total}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[so.status] ?? ""}`}>{so.status}</span>
-                  </td>
-                </tr>
-              ))}
+              {(orders ?? []).map((so) => {
+                const health = computeHealth({
+                  isOpen: !["Delivered", "Invoiced", "Closed", "Cancelled"].includes(so.status),
+                  promisedDate: so.delivery_schedule,
+                  updatedAt: so.updated_at,
+                });
+                return (
+                  <tr key={so.id} className="border-t border-line hover:bg-surface-2">
+                    <td className="px-4 py-2.5">
+                      <Link href={`/sales-orders/${so.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
+                        {so.so_no}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-ink whitespace-nowrap">{(so.parties as unknown as { legal_name: string } | null)?.legal_name ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-ink-soft font-mono text-xs whitespace-nowrap">{so.client_po_number}</td>
+                    <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{BUSINESS_LINE_LABEL[so.business_line]}</td>
+                    <td className="px-4 py-2.5 text-right tabular text-ink">{so.grand_total}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[so.status] ?? ""}`}>{so.status}</span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {health && (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${HEALTH_BADGE_STYLE[health.label]}`} title={health.reason}>
+                          {HEALTH_LABEL_TEXT[health.label]}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {!orders?.length && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
+                  <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
                     Koi Sales Order nahi hai abhi tak.
                   </td>
                 </tr>

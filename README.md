@@ -8,7 +8,62 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 12 — Reports & Global Search (complete)
+## Status: Phase 13 — Order Health, Stage Aging & Tasks/Follow-ups (complete)
+
+Closing the fifth item on the gap list found by the Phase 9 re-audit:
+**Order Health Indicators, Stage-wise Aging, and Tasks & Follow-ups**.
+No new posting logic — Order Health/Stage Aging is pure app-layer
+computation off existing columns; Tasks & Follow-ups is one new table.
+
+- **Order Health** (`src/lib/orderHealth.ts`, unit-tested in
+  `orderHealth.test.ts`) — every open Sales Order / Purchase Order / Job
+  gets a health flag: **On Track**, **At Risk** (promised date within 3
+  days), **Delayed** (promised date already passed), or **Stalled** (10+
+  days with no stage movement and no promised date to judge by yet).
+  "Days in current stage" is `now() − updated_at` — every status change
+  already runs through a plain `UPDATE`, which the existing
+  `trg_updated_at` trigger stamps, so this needed no new stage-history
+  table. A true stage-by-stage history (recording exactly when each
+  individual status was entered) would be a materially bigger feature;
+  this is a documented scope choice, not an oversight. Health badges now
+  show directly on the Sales Orders, Purchase Orders, and Jobs list
+  pages (a new "Health" column on each).
+- **`/reports/order-health`** — Stage Aging dashboard: every open SO/PO/
+  Job in one place, worst health first, with days-in-stage and the
+  promised date it's being judged against.
+- **Tasks & Follow-ups** (`tasks` table, new) — an assignable,
+  closeable to-do, distinct from the free-form `activity_timeline` notes
+  that already existed on Queries/Jobs (those stay as a running log with
+  their own optional follow-up date; this is an explicit task with an
+  owner, a due date, and a real Open → Done/Cancelled lifecycle).
+  `related_table`/`related_id` optionally link a task to any Sales
+  Order, Purchase Order, Job, or Client/Supplier — same generic-
+  dimension pattern `activity_timeline.owner_table/owner_id` already
+  uses. `fn_create_task`/`fn_update_task`/`fn_complete_task`/
+  `fn_reopen_task`/`fn_cancel_task` enforce who can do what: anyone
+  signed in can create a task and assign it to anyone; the assignee,
+  the creator, or Owner can complete/reopen it; only the creator or
+  Owner can edit or cancel it.
+  - **`/tasks`** — company-wide task list (My Tasks / All Open /
+    Overdue / Due Today / Upcoming / Completed), each row linking back
+    to its entity.
+  - **`/tasks/new`** — standalone creation, optionally linked to a
+    Sales Order / Purchase Order / Job / Client picked from a dropdown.
+  - **`/tasks/[id]`** — detail, edit (while Open), and actions.
+  - A **`TasksPanel`** component is embedded directly on the Sales
+    Order, Purchase Order, Job, and Client detail pages — add or manage
+    a task for that specific record without leaving its page.
+  - Sidebar gained a **Tasks & Follow-ups** link with a live badge
+    count of the signed-in user's own overdue-or-due-today tasks, plus
+    an **Action Required** card on the Owner Dashboard (Open Tasks /
+    Overdue Tasks, with a link into the Order Health report).
+
+**Scope note:** Returns/Rejection/Replacement, Rate History, Period
+Lock, Daily Snapshot, Stock Transfer between warehouses, and the
+configurable permission matrix remain as separate upcoming phases.
+
+<details>
+<summary>Phase 12 — Reports &amp; Global Search (complete)</summary>
 
 Closing the fourth item on the gap list found by the Phase 9 re-audit:
 the rest of the requested operational Reports (§58), **Global Search**
@@ -62,6 +117,8 @@ every new page is a read-only query over existing tables/views.
 **Scope note:** Order Health/Stage Aging, Tasks & Follow-ups, Returns/
 Rejection/Replacement, Rate History, Period Lock, Daily Snapshot, and
 the configurable permission matrix remain as separate upcoming phases.
+
+</details>
 
 <details>
 <summary>Phase 11 — Financial Statements (complete)</summary>
@@ -809,15 +866,20 @@ src/
       journal-vouchers/         — Manual Journal Voucher list, create (multi-line, live
                                   Debit=Credit balance check)
       reports/                 — Owner Dashboard (Material/Fabrication/Combined toggle,
-                                  Company Capital/Working Capital, Quotation Conversion %)
-                                  + daily-ledger/, ar-aging/(+export/), ap-aging/(+export/),
+                                  Company Capital/Working Capital, Quotation Conversion %,
+                                  Action Required: Open/Overdue Tasks) + daily-ledger/,
+                                  ar-aging/(+export/), ap-aging/(+export/),
                                   trial-balance/(+export/), profit-loss/, balance-sheet/,
                                   cash-flow/, party-ledger/, general-ledger/,
                                   vehicle-expenses/, pending-orders/(+export/),
                                   purchase-pending/, grn-report/, payment-collection/
-                                  (+export/), customer-business/(+export/), order-status/
+                                  (+export/), customer-business/(+export/), order-status/,
+                                  order-health/ (Stage Aging dashboard)
       search/                  — Global Search across parties/queries/quotations/orders/
                                   jobs/deliveries/invoices/bills/items/vehicles
+      tasks/                   — Tasks & Follow-ups: company-wide list (filters), new/
+                                  (standalone create, optional entity link), [id]/
+                                  (detail, edit, complete/reopen/cancel)
       setup/company/           — company profile
       setup/warehouses/        — warehouse management
       setup/bank-accounts/     — bank account master (+ opening balance)
@@ -833,14 +895,20 @@ src/
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
-                                  cashBank, vehicles, parties, attachments)
-  components/                  — client-side form/UI components
+                                  cashBank, vehicles, parties, attachments, tasks)
+  components/                  — client-side form/UI components (incl. TasksPanel,
+                                  TaskActionButtons, NewTaskForm, EditTaskForm)
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers
     aging.ts (+ aging.test.ts) — AR/AP aging-bucket logic, shared by Customer 360 and
-                                  the AR/AP Aging reports; the one thing in this repo
+                                  the AR/AP Aging reports; one of two libs in this repo
                                   with an automated test (`npm run test`)
+    orderHealth.ts (+ .test.ts) — Order Health / Stage Aging logic (On Track/At Risk/
+                                  Delayed/Stalled), shared by the SO/PO/Job list pages
+                                  and the Order Health report; the other automated-test lib
+    taskLinks.ts               — resolves a task's (related_table, related_id) to a link
+                                  back to its owning entity's detail page
     printStyles.ts             — shared A4 print stylesheet + auto-print script, used by
                                   every [id]/print/ route above
     excelExport.ts             — shared xlsx builder (exceljs) backing every /export

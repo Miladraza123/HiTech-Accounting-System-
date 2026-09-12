@@ -11,16 +11,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const owner = isOwner(user);
 
   const supabase = await createClient();
-  const { count: ownerCount } = await supabase
-    .from("user_roles")
-    .select("*, roles!inner(code)", { count: "exact", head: true })
-    .eq("roles.code", "owner");
+  const [{ count: ownerCount }, { count: dueTaskCount }] = await Promise.all([
+    supabase.from("user_roles").select("*, roles!inner(code)", { count: "exact", head: true }).eq("roles.code", "owner"),
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("assigned_to", user.id)
+      .eq("status", "Open")
+      .lte("due_date", new Date().toISOString().slice(0, 10)),
+  ]);
 
   const noOwnerYet = (ownerCount ?? 0) === 0;
   const noRoleYet = user.roles.length === 0 && !noOwnerYet;
 
-  const navItems = [
+  const navItems: { href: string; label: string; show: boolean; badge?: number }[] = [
     { href: "/", label: "Home", show: true },
+    { href: "/tasks", label: "Tasks & Follow-ups", show: true, badge: dueTaskCount || undefined },
     { href: "/clients", label: "Clients & Suppliers", show: true },
     { href: "/queries", label: "Queries", show: true },
     { href: "/quotations", label: "Quotations", show: true },
@@ -73,7 +79,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 12 — Reports &amp; Search</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 13 — Order Health &amp; Tasks</p>
           </div>
 
           <form action="/search" className="px-3 pt-3">
@@ -92,9 +98,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <Link
                   key={n.href}
                   href={n.href}
-                  className="block rounded-md px-3 py-2 text-sm text-ink-soft hover:bg-surface-2 hover:text-ink transition"
+                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-ink-soft hover:bg-surface-2 hover:text-ink transition"
                 >
-                  {n.label}
+                  <span>{n.label}</span>
+                  {!!n.badge && (
+                    <span className="rounded-full bg-bad px-1.5 py-0.5 text-[10px] font-mono text-white leading-none">{n.badge}</span>
+                  )}
                 </Link>
               ))}
           </nav>

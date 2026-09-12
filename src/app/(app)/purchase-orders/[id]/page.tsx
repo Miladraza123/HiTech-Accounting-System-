@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ReceiveGrnPanel } from "@/components/ReceiveGrnPanel";
 import { CancelPurchaseOrderButton } from "@/components/CancelPurchaseOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { TasksPanel } from "@/components/TasksPanel";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -22,7 +23,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const canEdit = isOwner(user) || hasRole(user, "store");
 
   const supabase = await createClient();
-  const [{ data: po }, { data: lines }, { data: warehouses }, { data: grns }, { data: attachments }] = await Promise.all([
+  const [{ data: po }, { data: lines }, { data: warehouses }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }] = await Promise.all([
     supabase
       .from("purchase_orders")
       .select("*, parties(legal_name, billing_address), sales_orders(so_no)")
@@ -32,6 +33,8 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("grns").select("*, grn_lines(*)").eq("purchase_order_id", id).order("created_at", { ascending: false }),
     supabase.from("attachments").select("*").eq("owner_table", "purchase_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
+    supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "purchase_orders").eq("related_id", id).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
   ]);
 
   if (!po) notFound();
@@ -167,6 +170,29 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
               <CancelPurchaseOrderButton purchaseOrderId={id} />
             </div>
           )}
+
+          <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+            <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>
+            <TasksPanel
+              relatedTable="purchase_orders"
+              relatedId={id}
+              revalidateTo={`/purchase-orders/${id}`}
+              tasks={(tasks ?? []).map((t) => ({
+                id: t.id,
+                title: t.title,
+                due_date: t.due_date,
+                priority: t.priority,
+                status: t.status,
+                assigned_to: t.assigned_to,
+                assignee_name: (t.profiles as unknown as { full_name: string } | null)?.full_name ?? "—",
+                created_by: t.created_by,
+              }))}
+              profiles={profiles ?? []}
+              currentUserId={user?.id ?? ""}
+              isOwnerUser={isOwner(user)}
+              canAdd={!!user}
+            />
+          </div>
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Attachments</h2>

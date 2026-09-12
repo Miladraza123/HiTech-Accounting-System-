@@ -2981,6 +2981,71 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          assigned_to: string
+          cancel_reason: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          related_id: string | null
+          related_table: string | null
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          assigned_to: string
+          cancel_reason?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          related_id?: string | null
+          related_table?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          assigned_to?: string
+          cancel_reason?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          related_id?: string | null
+          related_table?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unit_conversions: {
         Row: {
           factor: number
@@ -3498,6 +3563,11 @@ export type Database = {
         Args: { p_reason: string; p_supplier_bill_id: string }
         Returns: undefined
       }
+      fn_cancel_task: {
+        Args: { p_reason?: string; p_task_id: string }
+        Returns: undefined
+      }
+      fn_complete_task: { Args: { p_task_id: string }; Returns: undefined }
       fn_create_bank_account: {
         Args: {
           p_account_name: string
@@ -3682,6 +3752,18 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_task: {
+        Args: {
+          p_assigned_to: string
+          p_description?: string
+          p_due_date?: string
+          p_priority?: string
+          p_related_id?: string
+          p_related_table?: string
+          p_title: string
+        }
+        Returns: string
+      }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_import_opening_stock: {
         Args: {
@@ -3739,6 +3821,7 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: undefined
       }
+      fn_reopen_task: { Args: { p_task_id: string }; Returns: undefined }
       fn_request_stock_adjustment: {
         Args: {
           p_item_id: string
@@ -3778,6 +3861,17 @@ export type Database = {
       }
       fn_update_job_progress: {
         Args: { p_job_id: string; p_note: string; p_progress_pct: number }
+        Returns: undefined
+      }
+      fn_update_task: {
+        Args: {
+          p_assigned_to: string
+          p_description?: string
+          p_due_date?: string
+          p_priority?: string
+          p_task_id: string
+          p_title: string
+        }
         Returns: undefined
       }
       has_role: { Args: { p_code: string }; Returns: boolean }

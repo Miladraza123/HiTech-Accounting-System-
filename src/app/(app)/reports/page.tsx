@@ -13,16 +13,28 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const selectedLine = line === "material_supply" || line === "fabrication" ? line : "combined";
 
   const supabase = await createClient();
-  const [{ data: salesOrders }, { data: invoices }, { data: outstandingRows }, { data: jobs }, { data: tb }, { count: queryCount }, { count: quotationCount }] =
-    await Promise.all([
-      supabase.from("sales_orders").select("id, business_line, status, grand_total").not("status", "in", "(Cancelled)"),
-      supabase.from("invoices").select("id, sales_order_id, grand_total, status"),
-      supabase.from("invoice_outstanding").select("invoice_id, outstanding_amount"),
-      supabase.from("jobs").select("id, sales_order_id, status"),
-      supabase.from("trial_balance").select("*"),
-      supabase.from("queries").select("id", { count: "exact", head: true }),
-      supabase.from("quotations").select("id", { count: "exact", head: true }),
-    ]);
+  const today = new Date().toISOString().slice(0, 10);
+  const [
+    { data: salesOrders },
+    { data: invoices },
+    { data: outstandingRows },
+    { data: jobs },
+    { data: tb },
+    { count: queryCount },
+    { count: quotationCount },
+    { count: openTaskCount },
+    { count: overdueTaskCount },
+  ] = await Promise.all([
+    supabase.from("sales_orders").select("id, business_line, status, grand_total").not("status", "in", "(Cancelled)"),
+    supabase.from("invoices").select("id, sales_order_id, grand_total, status"),
+    supabase.from("invoice_outstanding").select("invoice_id, outstanding_amount"),
+    supabase.from("jobs").select("id, sales_order_id, status"),
+    supabase.from("trial_balance").select("*"),
+    supabase.from("queries").select("id", { count: "exact", head: true }),
+    supabase.from("quotations").select("id", { count: "exact", head: true }),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "Open"),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "Open").lt("due_date", today),
+  ]);
 
   // Quotation Conversion % — how many Quotations actually turned into a
   // Sales Order (every Sales Order has quotation_id set, so a distinct count
@@ -145,6 +157,25 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-ink">Action Required</h2>
+          <Link href="/reports/order-health" className="text-xs text-accent-ink underline underline-offset-2">
+            Order Health &amp; Stage Aging →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-2xl font-semibold text-ink tabular">{openTaskCount ?? 0}</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Open Tasks (All Users)</p>
+          </div>
+          <div>
+            <p className={`text-2xl font-semibold tabular ${(overdueTaskCount ?? 0) > 0 ? "text-bad" : "text-ink"}`}>{overdueTaskCount ?? 0}</p>
+            <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Overdue Tasks</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <ReportLink href="/reports/daily-ledger" title="Daily Ledger / Day Book" desc="Kisi bhi din ki saari journal entries, debit/credit ke sath." />
         <ReportLink href="/reports/ar-aging" title="AR Aging" desc="Client-wise outstanding, aging buckets (Current, 1-30, 31-60, 61-90, 90+)." />
@@ -162,6 +193,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <ReportLink href="/reports/payment-collection" title="Payment Collection Report" desc="Date range ki collection, method-wise aur top clients." />
         <ReportLink href="/reports/customer-business" title="Customer-wise Business Report" desc="Har client ka order value, invoiced, outstanding — ek jaga." />
         <ReportLink href="/reports/order-status" title="Order-wise Status" desc="Ek Sales Order ka poora safar — Query se Payment tak." />
+        <ReportLink href="/reports/order-health" title="Order Health &amp; Stage Aging" desc="Har open SO/PO/Job ka health flag (On Track/At Risk/Delayed/Stalled) aur current stage mein kitne din se hai." />
       </div>
     </div>
   );

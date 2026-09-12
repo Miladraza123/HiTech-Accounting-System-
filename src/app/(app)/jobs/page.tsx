@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
 
 const STATUS_STYLE: Record<string, string> = {
   MaterialPending: "bg-warn-soft text-warn",
@@ -58,12 +59,18 @@ export default async function JobsPage() {
                 <th className="text-right px-4 py-2.5">Progress</th>
                 <th className="text-left px-4 py-2.5">Warehouse</th>
                 <th className="text-left px-4 py-2.5">Status</th>
+                <th className="text-left px-4 py-2.5">Health</th>
               </tr>
             </thead>
             <tbody>
               {(jobs ?? []).map((j) => {
                 const so = j.sales_orders as unknown as { so_no: string; parties: { legal_name: string } | null } | null;
                 const wh = j.warehouses as unknown as { name: string } | null;
+                const health = computeHealth({
+                  isOpen: !["Delivered", "Cancelled"].includes(j.status),
+                  promisedDate: j.required_delivery_date,
+                  updatedAt: j.updated_at,
+                });
                 return (
                   <tr key={j.id} className="border-t border-line hover:bg-surface-2">
                     <td className="px-4 py-2.5">
@@ -81,12 +88,19 @@ export default async function JobsPage() {
                     <td className="px-4 py-2.5">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[j.status] ?? ""}`}>{STATUS_LABEL[j.status] ?? j.status}</span>
                     </td>
+                    <td className="px-4 py-2.5">
+                      {health && (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${HEALTH_BADGE_STYLE[health.label]}`} title={health.reason}>
+                          {HEALTH_LABEL_TEXT[health.label]}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {!jobs?.length && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
+                  <td colSpan={8} className="px-4 py-6 text-center text-ink-faint">
                     Koi Job nahi hai abhi tak.
                   </td>
                 </tr>

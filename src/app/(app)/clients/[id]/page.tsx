@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { EditCreditTermsForm } from "@/components/EditCreditTermsForm";
 import { agingBucket, dueDateFrom, emptyBuckets, bucketTotal } from "@/lib/aging";
+import { TasksPanel } from "@/components/TasksPanel";
 
 const TYPE_LABEL: Record<string, string> = { client: "Client", supplier: "Supplier", both: "Client + Supplier" };
 
@@ -13,10 +14,12 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const owner = isOwner(user);
 
   const supabase = await createClient();
-  const [{ data: party }, { data: arSummary }, { data: apSummary }] = await Promise.all([
+  const [{ data: party }, { data: arSummary }, { data: apSummary }, { data: tasks }, { data: profiles }] = await Promise.all([
     supabase.from("parties").select("*").eq("id", id).maybeSingle(),
     supabase.from("party_ar_summary").select("*").eq("party_id", id).maybeSingle(),
     supabase.from("party_ap_summary").select("*").eq("supplier_id", id).maybeSingle(),
+    supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "parties").eq("related_id", id).order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
   ]);
 
   if (!party) notFound();
@@ -148,6 +151,29 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
           </div>
         </div>
       )}
+
+      <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+        <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>
+        <TasksPanel
+          relatedTable="parties"
+          relatedId={id}
+          revalidateTo={`/clients/${id}`}
+          tasks={(tasks ?? []).map((t) => ({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            priority: t.priority,
+            status: t.status,
+            assigned_to: t.assigned_to,
+            assignee_name: (t.profiles as unknown as { full_name: string } | null)?.full_name ?? "—",
+            created_by: t.created_by,
+          }))}
+          profiles={profiles ?? []}
+          currentUserId={user?.id ?? ""}
+          isOwnerUser={owner}
+          canAdd={!!user}
+        />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {isClient && (

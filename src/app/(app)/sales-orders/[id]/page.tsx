@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { SalesOrderAmendPanel } from "@/components/SalesOrderAmendPanel";
 import { CancelSalesOrderButton } from "@/components/CancelSalesOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { TasksPanel } from "@/components/TasksPanel";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -27,7 +28,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
   const canEdit = isOwner(user) || hasRole(user, "sales");
 
   const supabase = await createClient();
-  const [{ data: so }, { data: lines }, { data: revisions }, { data: items }, { data: units }, { data: altUnits }, { data: attachments }] =
+  const [{ data: so }, { data: lines }, { data: revisions }, { data: items }, { data: units }, { data: altUnits }, { data: attachments }, { data: tasks }, { data: profiles }] =
     await Promise.all([
       supabase
         .from("sales_orders")
@@ -40,6 +41,8 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
       supabase.from("units").select("*").order("code"),
       supabase.from("item_alt_units").select("*").eq("is_active", true),
       supabase.from("attachments").select("*").eq("owner_table", "sales_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
+      supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "sales_orders").eq("related_id", id).order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
     ]);
 
   if (!so) notFound();
@@ -143,6 +146,29 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
               <CancelSalesOrderButton salesOrderId={id} />
             </div>
           )}
+
+          <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+            <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>
+            <TasksPanel
+              relatedTable="sales_orders"
+              relatedId={id}
+              revalidateTo={`/sales-orders/${id}`}
+              tasks={(tasks ?? []).map((t) => ({
+                id: t.id,
+                title: t.title,
+                due_date: t.due_date,
+                priority: t.priority,
+                status: t.status,
+                assigned_to: t.assigned_to,
+                assignee_name: (t.profiles as unknown as { full_name: string } | null)?.full_name ?? "—",
+                created_by: t.created_by,
+              }))}
+              profiles={profiles ?? []}
+              currentUserId={user?.id ?? ""}
+              isOwnerUser={isOwner(user)}
+              canAdd={!!user}
+            />
+          </div>
 
           {!!revisions?.length && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
