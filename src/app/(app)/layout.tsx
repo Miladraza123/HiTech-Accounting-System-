@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
 import { signOutAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
+import { MobileNav } from "@/components/MobileNav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -73,8 +74,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/setup/permissions", label: "Permission Matrix", show: owner },
   ];
 
+  const userRoleLabel = user.roles.length ? user.roles.map((r) => ROLE_LABELS[r] ?? r).join(", ") : "No role assigned";
+
   return (
     <div className="min-h-screen bg-bg">
+      <MobileNav
+        navItems={navItems}
+        userFullName={user.fullName}
+        userRoleLabel={userRoleLabel}
+        signOutAction={signOutAction}
+      />
       <div className="flex">
         <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface min-h-screen sticky top-0">
           <div className="px-5 py-5 border-b border-line">
@@ -116,9 +125,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="border-t border-line px-3 py-4 space-y-2">
             <div className="px-2">
               <p className="text-sm text-ink truncate">{user.fullName}</p>
-              <p className="text-[11px] text-ink-faint truncate">
-                {user.roles.length ? user.roles.map((r) => ROLE_LABELS[r] ?? r).join(", ") : "No role assigned"}
-              </p>
+              <p className="text-[11px] text-ink-faint truncate">{userRoleLabel}</p>
             </div>
             <form action={signOutAction}>
               <button
