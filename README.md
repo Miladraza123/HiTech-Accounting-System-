@@ -8,7 +8,48 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 20 — Language, Connectivity & User Onboarding (complete)
+## Status: Phase 21 — Access Control & Account Self-Service (complete)
+
+Follow-up fixes/features from real device testing of Phase 20, none
+touching core business logic:
+
+**1 — Fixed the offline banner for real this time.** Phase 20's fix had
+a bug: it trusted `navigator.onLine === false` and returned early
+*without ever running the real connectivity check* — exactly the case
+it was supposed to catch. It now always confirms via the `/api/ping`
+fetch, in both directions, before changing the banner's state.
+
+**2 — Invite-only signup, enforced in the database.** This system isn't
+public. `fn_handle_new_user()` (the trigger that fires on every new
+`auth.users` row) now rejects any signup that doesn't match a pending
+invite from `user_invites` — raising an exception inside the trigger
+rolls back the whole signup transaction, so no account is ever created
+without one. The one exception: the very first account, before any
+Owner exists yet, still goes through unchanged (`/bootstrap` still
+needs a way to create that first account). The `/signup` page copy now
+says so plainly.
+
+**3 — Removed the "Home" page.** `/` was a plainer, less useful
+duplicate of the Owner Dashboard (`/reports`) shown to every role
+regardless of relevance. It's now a smart redirect instead of a page:
+Owner/Accounts/Auditor land on `/reports`; every other role (Sales,
+Store, Production, Dispatch) lands on `/tasks` — the one page every
+role can always see. The "Home" sidebar entry is gone.
+
+**4 — Self-service Change Password.** A new `/account` page (linked from
+the sidebar/mobile nav footer as "Change Password", available to every
+signed-in user including the Owner) lets someone change their own
+password: current password, new password, confirm, and a Change button.
+Since Supabase has no direct "verify this is really my current
+password" API, the current password is checked by attempting to sign in
+with it — only once that succeeds does `auth.updateUser()` actually
+change it.
+
+Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
+passing), and `npm run build` (full production build) all clean.
+
+<details>
+<summary>Phase 20 — Language, Connectivity & User Onboarding (complete)</summary>
 
 Four independent fixes/features, none touching business logic:
 
@@ -73,6 +114,8 @@ database level regardless of what the sidebar shows.
 
 Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
 passing), and `npm run build` (full production build) all clean.
+
+</details>
 
 <details>
 <summary>Phase 19 — UI Polish & Visual Design System (complete)</summary>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { NavLink, type NavCategory } from "@/components/SidebarNav";
@@ -103,6 +104,9 @@ export function MobileNav({
               <div className="px-2">
                 <p className="text-sm text-ink truncate">{userFullName}</p>
                 <p className="text-[11px] text-ink-faint truncate">{userRoleLabel}</p>
+                <Link href="/account" onClick={() => setOpen(false)} className="text-[11px] text-accent-ink underline underline-offset-2">
+                  Change Password
+                </Link>
               </div>
               <form action={signOutAction}>
                 <button

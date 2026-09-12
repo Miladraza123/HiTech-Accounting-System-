@@ -1,124 +1,21 @@
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 
+// The generic "Home" landing page was removed — it duplicated the
+// purpose-built Owner Dashboard (/reports) with a plainer, less useful
+// version of the same KPIs. "/" now just routes each signed-in user
+// straight to the page most relevant to them instead of showing an
+// extra stop along the way.
 export default async function HomePage() {
   const user = await getCurrentUser();
-  const supabase = await createClient();
+  if (!user) redirect("/login");
 
-  const [
-    { data: company },
-    { count: warehouseCount },
-    { count: userCount },
-    { count: partyCount },
-    { count: openQueryCount },
-    { count: quotationCount },
-    { count: openSoCount },
-    { count: openPoCount },
-    { count: pendingAdjCount },
-    { count: activeJobCount },
-    { count: materialPendingJobCount },
-    { count: pendingPodCount },
-    { data: outstandingInvoices },
-    { data: outstandingBills },
-  ] = await Promise.all([
-    supabase.from("company").select("legal_name").maybeSingle(),
-    supabase.from("warehouses").select("*", { count: "exact", head: true }),
-    supabase.from("user_roles").select("*", { count: "exact", head: true }),
-    supabase.from("parties").select("*", { count: "exact", head: true }),
-    supabase.from("queries").select("*", { count: "exact", head: true }).in("status", ["Open", "Quoted"]),
-    supabase.from("quotations").select("*", { count: "exact", head: true }),
-    supabase.from("sales_orders").select("*", { count: "exact", head: true }).not("status", "in", "(Closed,Cancelled)"),
-    supabase.from("purchase_orders").select("*", { count: "exact", head: true }).not("status", "in", "(Closed,Cancelled,Received)"),
-    supabase.from("stock_adjustments").select("*", { count: "exact", head: true }).eq("status", "Pending"),
-    supabase.from("jobs").select("*", { count: "exact", head: true }).not("status", "in", "(Delivered,Cancelled)"),
-    supabase.from("jobs").select("*", { count: "exact", head: true }).eq("status", "MaterialPending"),
-    supabase.from("delivery_challans").select("*", { count: "exact", head: true }).eq("status", "Issued").eq("acceptance_status", "Pending"),
-    supabase.from("invoice_outstanding").select("outstanding_amount"),
-    supabase.from("supplier_bill_outstanding").select("outstanding_amount"),
-  ]);
+  if (isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor")) {
+    redirect("/reports");
+  }
 
-  const totalReceivable = (outstandingInvoices ?? []).reduce((s, r) => s + (r.outstanding_amount ?? 0), 0);
-  const totalPayable = (outstandingBills ?? []).reduce((s, r) => s + (r.outstanding_amount ?? 0), 0);
-
-  const checklist = [
-    { label: "Company profile set", done: !!company, href: "/setup/company" },
-    { label: "At least one warehouse", done: (warehouseCount ?? 0) > 0, href: "/setup/warehouses" },
-    { label: "Chart of Accounts ready", done: true, href: "/setup/chart-of-accounts" },
-    { label: "Team member roles assigned", done: (userCount ?? 0) > 0, href: "/setup/users" },
-    { label: "Existing clients/suppliers imported", done: (partyCount ?? 0) > 0, href: "/setup/import" },
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-ink">
-          Hello, {user?.fullName?.split(" ")[0] ?? "there"}
-        </h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          {company?.legal_name ? company.legal_name : "No company has been set up yet"} — Everything from
-          Query through Customer 360, Credit Control, and standard Reports (through Phase 6) is up and running.
-          System hardening will happen in the next/final phase.
-        </p>
-      </div>
-
-      <div className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-sm font-semibold text-ink mb-4">Setup checklist</h2>
-        <ul className="space-y-2.5">
-          {checklist.map((item) => (
-            <li key={item.label} className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2.5">
-                <span
-                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
-                    item.done ? "bg-good-soft text-good" : "bg-surface-2 text-ink-faint"
-                  }`}
-                >
-                  {item.done ? "✓" : "·"}
-                </span>
-                <span className={item.done ? "text-ink" : "text-ink-soft"}>{item.label}</span>
-              </div>
-              {!item.done && isOwner(user) && (
-                <Link href={item.href} className="text-xs text-accent-ink underline underline-offset-2">
-                  Complete
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Open Queries" value={openQueryCount ?? 0} />
-        <StatCard label="Quotations" value={quotationCount ?? 0} />
-        <StatCard label="Active Sales Orders" value={openSoCount ?? 0} />
-        <StatCard label="Open Purchase Orders" value={openPoCount ?? 0} />
-        <StatCard label="Pending Stock Adjustments" value={pendingAdjCount ?? 0} />
-        <StatCard label="Active Jobs" value={activeJobCount ?? 0} />
-        <StatCard label="Jobs — Material Pending" value={materialPendingJobCount ?? 0} />
-        <StatCard label="DC — POD Pending" value={pendingPodCount ?? 0} />
-        <StatCard label="Total Receivable (PKR)" value={totalReceivable} />
-        <StatCard label="Total Payable (PKR)" value={totalPayable} />
-        <StatCard label="Clients / Suppliers" value={partyCount ?? 0} />
-        <StatCard label="Warehouses" value={warehouseCount ?? 0} />
-        <StatCard label="Team members" value={userCount ?? 0} />
-      </div>
-
-      <div className="rounded-xl border border-line bg-surface-2 p-5 text-sm text-ink-soft">
-        <p className="font-medium text-ink mb-1">What&apos;s next?</p>
-        <p>
-          Phase 7 will bring system hardening — end-to-end testing, edge cases, and a final review of
-          performance and security.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <p className="text-2xl font-semibold text-ink tabular">{value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-      <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">{label}</p>
-    </div>
-  );
+  // Every other role (sales, store, production, dispatch) doesn't have
+  // access to the Owner Dashboard — Tasks & Follow-ups is the one page
+  // every role can always see, so it's the safe universal fallback.
+  redirect("/tasks");
 }

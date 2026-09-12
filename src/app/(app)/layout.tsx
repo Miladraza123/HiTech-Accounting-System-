@@ -71,7 +71,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       label: "",
       items: [
-        { href: "/", label: "Home", show: true, icon: <LayoutDashboard size={ICON_SIZE} /> },
         {
           href: "/reports",
           label: "Owner Dashboard",
@@ -230,6 +229,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <div className="px-2">
                 <p className="text-sm text-ink truncate">{user.fullName}</p>
                 <p className="text-[11px] text-ink-faint truncate">{userRoleLabel}</p>
+                <Link href="/account" className="text-[11px] text-accent-ink underline underline-offset-2">
+                  Change Password
+                </Link>
               </div>
               <form action={signOutAction}>
                 <button

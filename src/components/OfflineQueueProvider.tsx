@@ -36,11 +36,11 @@ export function useOfflineQueue() {
 // `navigator.onLine` only reflects whether a network *interface* is up
 // (Wi-Fi/cellular radio active) — not whether the device can actually
 // reach anything. On some mobile carriers/proxies/VPNs it reports
-// `false` with a perfectly working internet connection, which used to
-// make this banner falsely claim "Offline" while the rest of the app
-// worked fine. This does a real same-origin fetch to confirm.
+// `false` with a perfectly working internet connection, which is exactly
+// the case this exists to catch — so it is NEVER trusted on its own in
+// either direction. This always does a real same-origin fetch and only
+// that result decides the banner.
 async function verifyRealConnectivity(): Promise<boolean> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
   try {
     const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: AbortSignal.timeout(5000) });
     return res.ok;

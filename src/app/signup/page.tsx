@@ -18,7 +18,9 @@ export default function SignUpPage() {
           </div>
           <h1 className="mt-4 text-xl font-semibold text-ink">New Account</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            The person who creates the first account becomes the system Owner.
+            This system is invite-only. The person who creates the first account becomes the
+            system Owner — after that, you can only sign up here if the Owner has already added
+            you as a new user from Setup → Users &amp; Roles, using this exact email.
           </p>
         </div>
 

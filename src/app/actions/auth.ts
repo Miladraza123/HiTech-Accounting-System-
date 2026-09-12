@@ -115,3 +115,54 @@ export async function bootstrapOwnerAction(
   }
   redirect("/");
 }
+
+export type ChangePasswordState = { error: string | null; success?: boolean };
+
+// Available to every signed-in user (Owner included) — Supabase has no
+// separate "verify this is really my current password" API, so the
+// accepted pattern is to re-authenticate with it via signInWithPassword
+// first; only once that succeeds is the password actually changed.
+export async function changePasswordAction(
+  _prevState: ChangePasswordState,
+  formData: FormData
+): Promise<ChangePasswordState> {
+  const currentPassword = String(formData.get("current_password") ?? "");
+  const newPassword = String(formData.get("new_password") ?? "");
+  const confirm = String(formData.get("confirm_password") ?? "");
+
+  if (!currentPassword || !newPassword) {
+    return { error: "Enter your current and new password." };
+  }
+  if (newPassword.length < 8) {
+    return { error: "New password must be at least 8 characters." };
+  }
+  if (newPassword !== confirm) {
+    return { error: "New password and confirmation don't match." };
+  }
+  if (newPassword === currentPassword) {
+    return { error: "New password must be different from your current password." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { error: "You must be logged in to change your password." };
+  }
+
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (verifyError) {
+    return { error: "Current password is incorrect." };
+  }
+
+  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  return { error: null, success: true };
+}
