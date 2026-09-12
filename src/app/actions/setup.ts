@@ -155,3 +155,43 @@ export async function revokeRoleAction(userId: string, roleId: string) {
   await supabase.from("user_roles").delete().eq("user_id", userId).eq("role_id", roleId);
   revalidatePath("/setup/users");
 }
+
+// ---------- New User (invite) ----------
+// There's no Supabase Service Role key configured in this app (only the
+// publishable anon key), so there's no way to call the Admin API and
+// instantly create someone else's login from the server — and one
+// should never be hardcoded here to work around that. Instead the Owner
+// invites a teammate by email + name + role(s); fn_invite_user stores
+// it, and fn_handle_new_user (a DB trigger) applies the pre-selected
+// role(s) automatically the moment that person signs up with the same
+// email — see supabase/migrations/20260912190000_phase20_01_user_invites.sql.
+export async function inviteUserAction(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const email = String(formData.get("email") ?? "").trim();
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const roleIds = formData.getAll("role_ids").map(String).filter(Boolean);
+
+  if (!email || !fullName) return { error: "Full name and email are required." };
+  if (roleIds.length === 0) return { error: "Select at least one role for this user." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_invite_user", {
+    p_email: email,
+    p_full_name: fullName,
+    p_role_ids: roleIds,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/setup/users");
+  return { error: null, success: true };
+}
+
+export async function revokeInviteAction(inviteId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_revoke_invite", { p_invite_id: inviteId });
+  revalidatePath("/setup/users");
+  if (error) return { error: error.message };
+  return { error: null };
+}

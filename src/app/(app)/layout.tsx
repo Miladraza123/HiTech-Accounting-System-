@@ -8,6 +8,7 @@ import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import {
   LayoutDashboard,
   ListChecks,
@@ -225,6 +226,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
             <div className="border-t border-line px-3 py-4 space-y-3">
               <ThemeToggle />
+              <InstallAppButton />
               <div className="px-2">
                 <p className="text-sm text-ink truncate">{user.fullName}</p>
                 <p className="text-[11px] text-ink-faint truncate">{userRoleLabel}</p>

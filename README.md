@@ -8,7 +8,74 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 19 — UI Polish & Visual Design System (complete)
+## Status: Phase 20 — Language, Connectivity & User Onboarding (complete)
+
+Four independent fixes/features, none touching business logic:
+
+**1 — Full English translation.** Every remaining Roman Urdu user-facing
+string across the app (~178 files — page copy, validation messages,
+toasts, confirm dialogs, permission-denial messages, button/placeholder
+text) translated to professional English, with a shared glossary kept
+consistent across every file (e.g. "Saving…", "X is required.", "Select
+X.", "You don't have permission to perform this action."). Business/
+domain terms that are already correct English (Query, Quotation, GST,
+NTN, STRN, GRN, POD, BOM, …) were left untouched. No logic, JSX
+structure, names, or comments were changed — only string literal text a
+user actually reads.
+
+**2 — Fixed a false "Offline" banner.** `navigator.onLine` and the
+browser's `online`/`offline` events only reflect whether a network
+*interface* is active, not whether the device can actually reach
+anything — on some mobile carriers/proxies it was reporting `false` with
+a perfectly working connection, so the app claimed to be offline when it
+wasn't. `OfflineQueueProvider` now actively confirms real connectivity
+via a new same-origin `/api/ping` endpoint (a `navigator.onLine=false`
+reading is trusted, but a `true` reading — or an `offline`/`online`
+event — is always double-checked with a real fetch before the banner
+changes state), re-verifies periodically while marked offline, and
+re-checks the moment the tab becomes visible again — so the banner
+recovers on its own instead of waiting on a browser event that may never
+fire correctly.
+
+**3 — PWA "Install App" option.** `InstallAppButton` captures the
+browser's `beforeinstallprompt` event (Chrome/Edge/Android) and shows an
+"Install App" button in the sidebar and mobile nav footer instead of
+leaving the user to find their browser's own menu option; on iOS Safari
+(which never fires that event) it shows the manual Share → Add to Home
+Screen steps instead. Renders nothing once already installed or on a
+browser that hasn't offered installability yet — never a broken button.
+
+**4 — "New User" creation on Setup → Users & Roles.** This app has no
+Supabase Service Role key configured (only the publishable anon key), so
+there's no way to call the Admin API and instantly create someone else's
+login from the server — and one should never be hardcoded into this repo
+to work around that. Instead, the Owner invites a teammate by email +
+full name + role(s) from a new "+ New User" form; a `user_invites` table
+stores the pending invite, and the existing new-user trigger
+(`fn_handle_new_user`) now also checks for a matching pending invite by
+email and applies its pre-selected role(s) automatically the moment that
+person signs up at `/signup` with the same email — they never land on
+"No role assigned" waiting on a manual step. The Owner can see and revoke
+any still-pending invite from the same page. All validation (valid
+email, at least one role, no duplicate/already-registered email) is
+enforced server-side in the `fn_invite_user`/`fn_revoke_invite` RPCs
+(Owner-only), not just in the UI.
+
+**On the sidebar's permission visibility** (a question raised alongside
+this phase, not a change): a nav item without permission is hidden from
+the sidebar entirely — it never renders as a visible-but-"Access
+Denied" entry. This was already the existing, unchanged behavior (every
+item's `show` boolean, preserved verbatim through the Phase 19 sidebar
+reorder) and matches how the rest of the app enforces access — hiding in
+the UI is a convenience; the real enforcement is server-side RLS, so even
+a manually-typed URL to a page without permission is blocked at the
+database level regardless of what the sidebar shows.
+
+Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
+passing), and `npm run build` (full production build) all clean.
+
+<details>
+<summary>Phase 19 — UI Polish & Visual Design System (complete)</summary>
 
 A pure presentation-layer pass across the whole app — no schema changes,
 no new tables/columns, no changed business logic, RPC signatures, or
@@ -88,6 +155,8 @@ tag.
 Verified after every task and again across the full cumulative diff:
 `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all passing),
 and `npm run build` (full production build) all clean.
+
+</details>
 
 <details>
 <summary>Phase 18 — Performance & Smart Merge (complete)</summary>
