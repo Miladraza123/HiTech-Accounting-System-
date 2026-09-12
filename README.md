@@ -68,11 +68,30 @@ tables, status badges, typography — no new visual language introduced).
   matching the existing `aging.ts`/`orderHealth.ts` pattern of pure,
   independently-tested shared logic.
 
-**Scope note:** the live database this was verified against has zero
-seeded rows (fresh project), so every query shape, FK relationship and
-column name was independently confirmed against the actual schema
-(`pg_constraint`, `EXPLAIN`) rather than by eyeballing rendered numbers —
-noted here rather than silently assumed correct.
+**Scope note:** at the time this page was written the connected database
+had zero seeded rows, so every query shape, FK relationship and column
+name was independently confirmed against the actual schema
+(`pg_constraint`, `EXPLAIN`) rather than by eyeballing rendered numbers.
+A realistic demo dataset (5 clients/suppliers, 5 raw-material items, a
+full Material Supply and Fabrication order cycle each, an overdue/over-
+credit-limit invoice, a material-shortage-blocked job, a pending-
+acceptance delivery, 21 days of Daily Snapshot history) was seeded
+directly afterward to actually exercise every dashboard number end to
+end — see the bug fix note immediately below, found only because of
+that exercise.
+
+**Bug fix (found while seeding real data):** `fn_record_pod` inserted
+`activity_timeline.event_type = 'pod'`, a value the table's own CHECK
+constraint doesn't allow (only `note`/`status_change`/`followup`/
+`system`) — so recording a Delivery Challan's Proof-of-Delivery with a
+note attached would fail and roll back the entire POD (including the
+Accepted status update), for every real user, every time. This had
+never been caught because the app had zero real production usage until
+this seeding exercise ran the actual RPC path for the first time.
+Fixed in `20260912040254_fix_fn_record_pod_event_type.sql` — the
+function now writes `'status_change'` (the same value
+`fn_cancel_sales_order` already uses for its own status-change timeline
+entries).
 
 <details>
 <summary>Phase 15 — Controls & Permissions (complete)</summary>
