@@ -34,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/items", label: "Item Master", show: true },
     { href: "/purchase-orders", label: "Purchase Orders", show: true },
     { href: "/inventory", label: "Inventory", show: true },
+    { href: "/stock-transfers", label: "Stock Transfers", show: owner || user.roles.includes("store") },
     { href: "/jobs", label: "Jobs / Work Orders", show: true },
     { href: "/product-templates", label: "BOM Templates", show: true },
     { href: "/delivery-challans", label: "Delivery Challans", show: true },
@@ -68,6 +69,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/setup/users", label: "Users & Roles", show: owner },
     { href: "/setup/chart-of-accounts", label: "Chart of Accounts", show: owner || user.roles.includes("accounts") },
     { href: "/setup/import", label: "Import Wizard", show: owner || user.roles.includes("accounts") },
+    { href: "/setup/period-lock", label: "Period Lock", show: owner },
+    { href: "/setup/permissions", label: "Permission Matrix", show: owner },
   ];
 
   return (
@@ -81,7 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
               <span className="font-semibold text-ink text-sm">HiTech ERP</span>
             </div>
-            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 14 — Sales &amp; Purchase Returns</p>
+            <p className="mt-1 text-[11px] text-ink-faint font-mono uppercase tracking-wide">Phase 15 — Controls &amp; Permissions</p>
           </div>
 
           <form action="/search" className="px-3 pt-3">

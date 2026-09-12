@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewQuotationForm } from "@/components/NewQuotationForm";
 
 export default async function NewQuotationPage({
@@ -10,7 +11,7 @@ export default async function NewQuotationPage({
   searchParams: Promise<{ query_id?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "sales"))) redirect("/queries");
+  if (!(await hasPermission(user, "quotation.manage"))) redirect("/queries");
 
   const { query_id } = await searchParams;
   if (!query_id) redirect("/queries");

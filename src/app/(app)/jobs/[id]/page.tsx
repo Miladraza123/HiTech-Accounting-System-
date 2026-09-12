@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { JobMaterialPanel } from "@/components/JobMaterialPanel";
 import { JobStatusPanel } from "@/components/JobStatusPanel";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
@@ -30,8 +31,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManageJob = isOwner(user) || hasRole(user, "production");
-  const canHandleMaterial = canManageJob || hasRole(user, "store");
+  const canManageJob = await hasPermission(user, "job.manage");
+  const canHandleMaterial = await hasPermission(user, "job.material.manage");
 
   const supabase = await createClient();
   const [

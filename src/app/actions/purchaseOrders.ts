@@ -2,6 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export type PurchaseOrderLineInput = {
   item_id?: string;
@@ -22,6 +26,9 @@ export async function createPurchaseOrderAction(input: {
   expected_delivery: string | null;
   lines: PurchaseOrderLineInput[];
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_purchase_order", {
     p_supplier_id: input.supplier_id,
@@ -37,6 +44,9 @@ export async function createPurchaseOrderAction(input: {
 }
 
 export async function cancelPurchaseOrderAction(purchaseOrderId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_purchase_order", {
     p_purchase_order_id: purchaseOrderId,
@@ -57,6 +67,9 @@ export async function createGrnAction(input: {
   remarks: string | null;
   lines: GrnLineInput[];
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_grn", {
     p_supplier_id: input.supplier_id,

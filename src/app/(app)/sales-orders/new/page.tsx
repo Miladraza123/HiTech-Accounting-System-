@@ -1,7 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewSalesOrderForm } from "@/components/NewSalesOrderForm";
 
 export default async function NewSalesOrderPage({
@@ -10,7 +11,7 @@ export default async function NewSalesOrderPage({
   searchParams: Promise<{ quotation_id?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "sales"))) redirect("/quotations");
+  if (!(await hasPermission(user, "sales_order.manage"))) redirect("/quotations");
 
   const { quotation_id } = await searchParams;
   if (!quotation_id) redirect("/quotations");

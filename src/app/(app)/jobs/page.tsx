@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -25,7 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default async function JobsPage() {
   const user = await getCurrentUser();
-  const canCreate = isOwner(user) || hasRole(user, "production");
+  const canCreate = await hasPermission(user, "job.manage");
 
   const supabase = await createClient();
   const { data: jobs } = await supabase

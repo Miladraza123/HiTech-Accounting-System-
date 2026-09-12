@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { SalesOrderAmendPanel } from "@/components/SalesOrderAmendPanel";
 import { CancelSalesOrderButton } from "@/components/CancelSalesOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
@@ -25,7 +26,7 @@ const BUSINESS_LINE_LABEL: Record<string, string> = {
 export default async function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canEdit = isOwner(user) || hasRole(user, "sales");
+  const canEdit = await hasPermission(user, "sales_order.manage");
 
   const supabase = await createClient();
   const [{ data: so }, { data: lines }, { data: revisions }, { data: items }, { data: units }, { data: altUnits }, { data: attachments }, { data: tasks }, { data: profiles }] =

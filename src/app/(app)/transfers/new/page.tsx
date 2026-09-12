@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewContraEntryForm } from "@/components/NewContraEntryForm";
 
 export default async function NewTransferPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/transfers");
+  if (!(await hasPermission(user, "fund_transfer.manage"))) redirect("/transfers");
 
   const supabase = await createClient();
   const [{ data: bankAccounts }, { data: pettyCashFunds }] = await Promise.all([

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { CancelExpenseButton } from "@/components/CancelExpenseButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 
@@ -18,7 +19,7 @@ const SETTLEMENT_STYLE: Record<string, string> = {
 export default async function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManage = isOwner(user) || hasRole(user, "accounts");
+  const canManage = await hasPermission(user, "expense.manage");
 
   const supabase = await createClient();
   const [{ data: expense }, { data: attachments }] = await Promise.all([

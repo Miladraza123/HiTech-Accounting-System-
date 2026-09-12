@@ -2,12 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function JournalVouchersPage() {
   const user = await getCurrentUser();
   const canView = isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor");
   if (!canView) redirect("/");
-  const canCreate = isOwner(user) || hasRole(user, "accounts");
+  const canCreate = await hasPermission(user, "journal_voucher.manage");
 
   const supabase = await createClient();
   const { data: entries } = await supabase

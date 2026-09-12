@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { StockAdjustmentRequestForm } from "@/components/StockAdjustmentRequestForm";
 import { AdjustmentDecisionButtons } from "@/components/AdjustmentDecisionButtons";
 
@@ -13,7 +14,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default async function StockAdjustmentsPage() {
   const user = await getCurrentUser();
-  const canRequest = isOwner(user) || hasRole(user, "store");
+  const canRequest = await hasPermission(user, "inventory_adjustment.request");
   if (!canRequest) redirect("/inventory");
 
   const supabase = await createClient();

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -11,7 +12,7 @@ const SOURCE_LABEL: Record<string, string> = { cash: "Cash", bank: "Bank", petty
 
 export default async function ExpensesPage() {
   const user = await getCurrentUser();
-  const canCreate = isOwner(user) || hasRole(user, "accounts");
+  const canCreate = await hasPermission(user, "expense.manage");
 
   const supabase = await createClient();
   const { data: expenses } = await supabase

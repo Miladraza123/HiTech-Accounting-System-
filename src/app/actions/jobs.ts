@@ -2,8 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export type MaterialLineInput = { item_id: string; required_qty: number; unit?: string };
 export type TemplateLineInput = { item_id: string; qty_per_unit: number; unit?: string };
@@ -16,6 +20,9 @@ export async function createProductTemplateAction(input: {
   output_unit: string | null;
   lines: TemplateLineInput[];
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "product_template.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_product_template", {
     p_template_code: input.template_code,
@@ -41,6 +48,9 @@ export async function createJobAction(input: {
   required_delivery_date: string | null;
   material_lines: MaterialLineInput[];
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_job", {
     p_sales_order_line_id: input.sales_order_line_id,
@@ -64,6 +74,9 @@ export async function reserveJobMaterialAction(
   warehouseId: string,
   qty: number
 ): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.material.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_reserve_job_material", {
     p_job_id: jobId,
@@ -76,6 +89,9 @@ export async function reserveJobMaterialAction(
 }
 
 export async function releaseJobMaterialAction(reservationId: string, jobId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.material.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_release_job_material", { p_reservation_id: reservationId });
   revalidatePath(`/jobs/${jobId}`);
@@ -83,6 +99,9 @@ export async function releaseJobMaterialAction(reservationId: string, jobId: str
 }
 
 export async function issueJobMaterialAction(jobId: string, itemId: string, qty: number): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.material.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_issue_job_material", {
     p_job_id: jobId,
@@ -95,6 +114,9 @@ export async function issueJobMaterialAction(jobId: string, itemId: string, qty:
 }
 
 export async function returnJobMaterialAction(jobId: string, itemId: string, qty: number): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.material.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_return_job_material", {
     p_job_id: jobId,
@@ -107,6 +129,9 @@ export async function returnJobMaterialAction(jobId: string, itemId: string, qty
 }
 
 export async function updateJobProgressAction(jobId: string, progressPct: number, note: string | null): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_update_job_progress", {
     p_job_id: jobId,
@@ -118,6 +143,9 @@ export async function updateJobProgressAction(jobId: string, progressPct: number
 }
 
 export async function markJobReadyForDispatchAction(jobId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_mark_job_ready_for_dispatch", { p_job_id: jobId });
   revalidatePath(`/jobs/${jobId}`);
@@ -126,6 +154,9 @@ export async function markJobReadyForDispatchAction(jobId: string): Promise<Acti
 }
 
 export async function cancelJobAction(jobId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_job", { p_job_id: jobId, p_reason: reason });
   revalidatePath(`/jobs/${jobId}`);

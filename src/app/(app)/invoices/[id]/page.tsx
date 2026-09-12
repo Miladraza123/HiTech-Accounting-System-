@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { CancelInvoiceButton } from "@/components/CancelInvoiceButton";
 import { SalesReturnPanel } from "@/components/SalesReturnPanel";
 import { CancelSalesReturnButton } from "@/components/CancelSalesReturnButton";
@@ -14,7 +15,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManage = isOwner(user) || hasRole(user, "accounts");
+  const canManage = await hasPermission(user, "invoice.manage");
 
   const supabase = await createClient();
   const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }] = await Promise.all([
@@ -36,7 +37,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const so = invoice.sales_orders as unknown as { so_no: string; client_po_number: string } | null;
   const outstanding = outstandingRow?.outstanding_amount ?? 0;
   const canCancel = canManage && invoice.status === "Posted";
-  const canReturn = canManage && invoice.status === "Posted";
+  const canReturn = (await hasPermission(user, "sales_return.manage")) && invoice.status === "Posted";
 
   return (
     <div className="space-y-6">
@@ -178,7 +179,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {!!returns?.filter((r) => r.status === "Posted").length && canManage && (
+          {!!returns?.filter((r) => r.status === "Posted").length && canReturn && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
               <h2 className="text-sm font-semibold text-ink mb-1">Sales Return Actions</h2>
               {returns

@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewSupplierBillForm } from "@/components/NewSupplierBillForm";
 
 export default async function NewSupplierBillPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/supplier-bills");
+  if (!(await hasPermission(user, "supplier_bill.manage"))) redirect("/supplier-bills");
 
   const supabase = await createClient();
   const [{ data: grns }, { data: existingBills }] = await Promise.all([

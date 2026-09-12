@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewJournalVoucherForm } from "@/components/NewJournalVoucherForm";
 
 export default async function NewJournalVoucherPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/journal-vouchers");
+  if (!(await hasPermission(user, "journal_voucher.manage"))) redirect("/journal-vouchers");
 
   const supabase = await createClient();
   const [{ data: accounts }, { data: parties }, { data: bankAccounts }, { data: pettyCashFunds }] = await Promise.all([

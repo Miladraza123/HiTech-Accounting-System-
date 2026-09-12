@@ -2,8 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export type DeliveryChallanLineInput = {
   sales_order_line_id: string;
@@ -26,6 +30,9 @@ export async function createDeliveryChallanAction(input: {
   remarks: string | null;
   lines: DeliveryChallanLineInput[];
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "delivery_challan.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_delivery_challan", {
     p_sales_order_id: input.sales_order_id,
@@ -43,6 +50,9 @@ export async function createDeliveryChallanAction(input: {
 }
 
 export async function recordPodAction(dcId: string, acceptedByName: string, note: string | null): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "delivery_challan.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_record_pod", {
     p_dc_id: dcId,
@@ -54,6 +64,9 @@ export async function recordPodAction(dcId: string, acceptedByName: string, note
 }
 
 export async function recordDisputeAction(dcId: string, note: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "delivery_challan.dispute"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_record_dispute", { p_dc_id: dcId, p_note: note });
   revalidatePath(`/delivery-challans/${dcId}`);
@@ -61,6 +74,9 @@ export async function recordDisputeAction(dcId: string, note: string): Promise<A
 }
 
 export async function cancelDeliveryChallanAction(dcId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "delivery_challan.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_delivery_challan", { p_dc_id: dcId, p_reason: reason });
   revalidatePath(`/delivery-challans/${dcId}`);

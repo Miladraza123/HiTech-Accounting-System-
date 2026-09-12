@@ -2,6 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export type SalesOrderLineInput = {
   id?: string;
@@ -27,6 +31,9 @@ export type CreateSalesOrderInput = {
 export type ActionResult = { error: string | null; id?: string };
 
 export async function createSalesOrderAction(input: CreateSalesOrderInput): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "sales_order.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_sales_order", {
     p_quotation_id: input.quotation_id,
@@ -53,6 +60,9 @@ export async function amendSalesOrderAction(
   paymentTerms: string | null,
   lines: SalesOrderLineInput[]
 ): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "sales_order.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_amend_sales_order", {
     p_sales_order_id: salesOrderId,
@@ -68,6 +78,9 @@ export async function amendSalesOrderAction(
 }
 
 export async function cancelSalesOrderAction(salesOrderId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "sales_order.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_sales_order", {
     p_sales_order_id: salesOrderId,

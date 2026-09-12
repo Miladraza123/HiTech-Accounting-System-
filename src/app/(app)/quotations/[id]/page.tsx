@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { DraftQuotationEditor } from "@/components/DraftQuotationEditor";
 import { CreateRevisionPanel } from "@/components/CreateRevisionPanel";
 import { QuotationRevisionView } from "@/components/QuotationRevisionView";
@@ -25,7 +26,7 @@ export default async function QuotationDetailPage({
   const { id } = await params;
   const { rev } = await searchParams;
   const user = await getCurrentUser();
-  const canEdit = isOwner(user) || hasRole(user, "sales");
+  const canEdit = await hasPermission(user, "quotation.manage");
 
   const supabase = await createClient();
   const [{ data: quotation }, { data: revisions }, { data: items }, { data: units }, { data: attachments }, { data: salesOrders }] =

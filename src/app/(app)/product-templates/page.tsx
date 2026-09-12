@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function ProductTemplatesPage() {
   const user = await getCurrentUser();
-  const canCreate = isOwner(user) || hasRole(user, "production");
+  const canCreate = await hasPermission(user, "product_template.manage");
 
   const supabase = await createClient();
   const { data: templates } = await supabase

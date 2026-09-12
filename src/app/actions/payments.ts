@@ -2,8 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export type PaymentAllocationInput =
   | { invoice_id: string; amount: number }
@@ -21,6 +25,9 @@ export async function createPaymentAction(input: {
   bank_account_id?: string | null;
   petty_cash_fund_id?: string | null;
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "payment.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_payment", {
     p_party_id: input.party_id,
@@ -42,6 +49,9 @@ export async function createPaymentAction(input: {
 }
 
 export async function allocatePaymentAction(paymentId: string, allocations: PaymentAllocationInput[]): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "payment.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_allocate_payment", { p_payment_id: paymentId, p_allocations: allocations });
   revalidatePath(`/payments/${paymentId}`);
@@ -51,6 +61,9 @@ export async function allocatePaymentAction(paymentId: string, allocations: Paym
 }
 
 export async function cancelPaymentAction(paymentId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "payment.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_payment", { p_payment_id: paymentId, p_reason: reason });
   revalidatePath(`/payments/${paymentId}`);

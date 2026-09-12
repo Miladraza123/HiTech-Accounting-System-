@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewJobForm } from "@/components/NewJobForm";
 
 export default async function NewJobPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "production"))) redirect("/jobs");
+  if (!(await hasPermission(user, "job.manage"))) redirect("/jobs");
 
   const supabase = await createClient();
   const [{ data: soLines }, { data: warehouses }, { data: templates }, { data: items }, { data: units }, { data: altUnits }, { data: profiles }] = await Promise.all([

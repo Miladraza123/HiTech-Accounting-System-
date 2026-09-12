@@ -218,6 +218,7 @@ export type Database = {
           legal_name: string
           logo_path: string | null
           ntn: string | null
+          period_lock_date: string | null
           phone: string | null
           province: string | null
           strn: string | null
@@ -234,6 +235,7 @@ export type Database = {
           legal_name: string
           logo_path?: string | null
           ntn?: string | null
+          period_lock_date?: string | null
           phone?: string | null
           province?: string | null
           strn?: string | null
@@ -250,6 +252,7 @@ export type Database = {
           legal_name?: string
           logo_path?: string | null
           ntn?: string | null
+          period_lock_date?: string | null
           phone?: string | null
           province?: string | null
           strn?: string | null
@@ -391,6 +394,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      daily_snapshots: {
+        Row: {
+          bank_balance: number
+          cash_in_hand: number
+          collections_today: number
+          expenses_today: number
+          generated_at: string
+          generated_by: string | null
+          id: string
+          payments_today: number
+          petty_cash_balance: number
+          sales_today: number
+          snapshot_date: string
+          stock_value: number
+          total_ap_outstanding: number
+          total_ar_outstanding: number
+        }
+        Insert: {
+          bank_balance?: number
+          cash_in_hand?: number
+          collections_today?: number
+          expenses_today?: number
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payments_today?: number
+          petty_cash_balance?: number
+          sales_today?: number
+          snapshot_date: string
+          stock_value?: number
+          total_ap_outstanding?: number
+          total_ar_outstanding?: number
+        }
+        Update: {
+          bank_balance?: number
+          cash_in_hand?: number
+          collections_today?: number
+          expenses_today?: number
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payments_today?: number
+          petty_cash_balance?: number
+          sales_today?: number
+          snapshot_date?: string
+          stock_value?: number
+          total_ap_outstanding?: number
+          total_ar_outstanding?: number
+        }
+        Relationships: []
       }
       delivery_challan_lines: {
         Row: {
@@ -2583,6 +2637,27 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          permission_key: string
+          role_codes: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          permission_key: string
+          role_codes?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          permission_key?: string
+          role_codes?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       roles: {
         Row: {
           code: string
@@ -3138,6 +3213,108 @@ export type Database = {
           {
             foreignKeyName: "stock_reservations_warehouse_id_fkey"
             columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfer_lines: {
+        Row: {
+          id: string
+          item_id: string
+          qty: number
+          rate: number
+          sort_order: number
+          transfer_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          qty: number
+          rate?: number
+          sort_order?: number
+          transfer_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          qty?: number
+          rate?: number
+          sort_order?: number
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfer_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          from_warehouse_id: string
+          id: string
+          remarks: string | null
+          status: string
+          to_warehouse_id: string
+          transfer_date: string
+          transfer_no: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_warehouse_id: string
+          id?: string
+          remarks?: string | null
+          status?: string
+          to_warehouse_id: string
+          transfer_date?: string
+          transfer_no: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_warehouse_id?: string
+          id?: string
+          remarks?: string | null
+          status?: string
+          to_warehouse_id?: string
+          transfer_date?: string
+          transfer_no?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_from_warehouse_id_fkey"
+            columns: ["from_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_warehouse_id_fkey"
+            columns: ["to_warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
             referencedColumns: ["id"]
@@ -3879,6 +4056,7 @@ export type Database = {
         Returns: undefined
       }
       fn_cancel_sales_return: { Args: { p_reason: string; p_return_id: string }; Returns: undefined }
+      fn_cancel_stock_transfer: { Args: { p_reason: string; p_transfer_id: string }; Returns: undefined }
       fn_cancel_supplier_bill: {
         Args: { p_reason: string; p_supplier_bill_id: string }
         Returns: undefined
@@ -4084,6 +4262,16 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_stock_transfer: {
+        Args: {
+          p_from_warehouse_id: string
+          p_lines: Json
+          p_remarks: string | null
+          p_to_warehouse_id: string
+          p_transfer_date: string
+        }
+        Returns: string
+      }
       fn_create_supplier_bill: {
         Args: {
           p_bill_date: string
@@ -4104,6 +4292,7 @@ export type Database = {
         }
         Returns: string
       }
+      fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_import_opening_stock: {
         Args: {
@@ -4184,10 +4373,12 @@ export type Database = {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined
       }
+      fn_set_period_lock: { Args: { p_lock_date: string | null }; Returns: undefined }
       fn_set_query_status: {
         Args: { p_note: string; p_query_id: string; p_status: string }
         Returns: undefined
       }
+      fn_set_role_permission: { Args: { p_permission_key: string; p_role_codes: string[] }; Returns: undefined }
       fn_update_draft_quotation: {
         Args: {
           p_delivery_terms: string

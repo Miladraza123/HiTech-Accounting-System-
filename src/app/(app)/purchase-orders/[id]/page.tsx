@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { ReceiveGrnPanel } from "@/components/ReceiveGrnPanel";
 import { CancelPurchaseOrderButton } from "@/components/CancelPurchaseOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
@@ -20,7 +21,7 @@ const TYPE_LABEL: Record<string, string> = { direct: "Direct (Client Order)", st
 export default async function PurchaseOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canEdit = isOwner(user) || hasRole(user, "store");
+  const canEdit = await hasPermission(user, "purchase_order.manage");
 
   const supabase = await createClient();
   const [{ data: po }, { data: lines }, { data: warehouses }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }] = await Promise.all([

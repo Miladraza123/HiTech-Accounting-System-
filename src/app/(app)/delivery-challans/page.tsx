@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 const STATUS_STYLE: Record<string, string> = {
   Issued: "bg-ledger-soft text-ledger",
@@ -15,7 +16,7 @@ const ACCEPTANCE_STYLE: Record<string, string> = {
 
 export default async function DeliveryChallansPage() {
   const user = await getCurrentUser();
-  const canCreate = isOwner(user) || hasRole(user, "dispatch");
+  const canCreate = await hasPermission(user, "delivery_challan.manage");
 
   const supabase = await createClient();
   const { data: dcs } = await supabase

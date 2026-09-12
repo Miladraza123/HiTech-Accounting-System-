@@ -194,6 +194,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <ReportLink href="/reports/customer-business" title="Customer-wise Business Report" desc="Har client ka order value, invoiced, outstanding — ek jaga." />
         <ReportLink href="/reports/order-status" title="Order-wise Status" desc="Ek Sales Order ka poora safar — Query se Payment tak." />
         <ReportLink href="/reports/order-health" title="Order Health &amp; Stage Aging" desc="Har open SO/PO/Job ka health flag (On Track/At Risk/Delayed/Stalled) aur current stage mein kitne din se hai." />
+        <ReportLink href="/reports/daily-snapshot" title="Daily Snapshot" desc="Har din ka Cash/Bank/Stock/AR/AP position — khud-b-khud raat ko generate hota hai, manually bhi ban sakta hai." />
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { PodPanel } from "@/components/PodPanel";
 import { CancelDeliveryChallanButton } from "@/components/CancelDeliveryChallanButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
@@ -20,8 +21,8 @@ const ACCEPTANCE_STYLE: Record<string, string> = {
 export default async function DeliveryChallanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManage = isOwner(user) || hasRole(user, "dispatch");
-  const canDispute = canManage || hasRole(user, "sales");
+  const canManage = await hasPermission(user, "delivery_challan.manage");
+  const canDispute = canManage || (await hasPermission(user, "delivery_challan.dispute"));
 
   const supabase = await createClient();
   const [{ data: dc }, { data: lines }, { data: attachments }] = await Promise.all([

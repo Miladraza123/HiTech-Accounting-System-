@@ -3,6 +3,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export type QuotationLineInput = {
   item_id?: string;
@@ -30,6 +34,9 @@ export async function createQuotationAction(
   _prev: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "quotation.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const query_id = String(formData.get("query_id") ?? "");
   const terms = String(formData.get("terms") ?? "").trim() || null;
@@ -63,6 +70,9 @@ export async function updateDraftQuotationAction(
   paymentTerms: string | null,
   lines: QuotationLineInput[]
 ): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "quotation.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_update_draft_quotation", {
     p_quotation_id: quotationId,
@@ -77,6 +87,9 @@ export async function updateDraftQuotationAction(
 }
 
 export async function markQuotationSentAction(quotationId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "quotation.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_mark_quotation_sent", { p_quotation_id: quotationId });
   revalidatePath(`/quotations/${quotationId}`);
@@ -92,6 +105,9 @@ export async function createQuotationRevisionAction(
   paymentTerms: string | null,
   lines: QuotationLineInput[]
 ): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "quotation.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_create_quotation_revision", {
     p_quotation_id: quotationId,

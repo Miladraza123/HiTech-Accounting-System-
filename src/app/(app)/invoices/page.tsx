@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -9,7 +10,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default async function InvoicesPage() {
   const user = await getCurrentUser();
-  const canCreate = isOwner(user) || hasRole(user, "accounts");
+  const canCreate = await hasPermission(user, "invoice.manage");
 
   const supabase = await createClient();
   const [{ data: invoices }, { data: outstanding }] = await Promise.all([

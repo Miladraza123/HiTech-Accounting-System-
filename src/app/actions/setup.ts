@@ -86,6 +86,15 @@ export async function addAccountAction(
   return { error: null, success: true };
 }
 
+// ---------- Period Lock ----------
+export async function setPeriodLockAction(lockDate: string | null): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_period_lock", { p_lock_date: lockDate });
+  if (error) return { error: error.message };
+  revalidatePath("/setup/period-lock");
+  return { error: null, success: true };
+}
+
 // ---------- Users & Roles ----------
 export async function assignRoleAction(userId: string, roleId: string) {
   const supabase = await createClient();

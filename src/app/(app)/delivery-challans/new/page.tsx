@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewDeliveryChallanForm } from "@/components/NewDeliveryChallanForm";
 
 export default async function NewDeliveryChallanPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "dispatch"))) redirect("/delivery-challans");
+  if (!(await hasPermission(user, "delivery_challan.manage"))) redirect("/delivery-challans");
 
   const supabase = await createClient();
   const [{ data: salesOrders }, { data: warehouses }, { data: items }, { data: altUnits }] = await Promise.all([

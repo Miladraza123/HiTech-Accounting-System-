@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton";
 import { PurchaseReturnPanel } from "@/components/PurchaseReturnPanel";
 import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
@@ -14,7 +15,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function SupplierBillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManage = isOwner(user) || hasRole(user, "accounts");
+  const canManage = await hasPermission(user, "supplier_bill.manage");
 
   const supabase = await createClient();
   const [{ data: bill }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }] = await Promise.all([
@@ -36,7 +37,7 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
   const grn = bill.grns as unknown as { grn_no: string; received_date: string; warehouse_id: string | null } | null;
   const outstanding = outstandingRow?.outstanding_amount ?? 0;
   const canCancel = canManage && bill.status === "Posted";
-  const canReturn = canManage && bill.status === "Posted";
+  const canReturn = (await hasPermission(user, "purchase_return.manage")) && bill.status === "Posted";
 
   return (
     <div className="space-y-6">
@@ -185,7 +186,7 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
             </div>
           )}
 
-          {!!returns?.filter((r) => r.status === "Posted").length && canManage && (
+          {!!returns?.filter((r) => r.status === "Posted").length && canReturn && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
               <h2 className="text-sm font-semibold text-ink mb-1">Purchase Return Actions</h2>
               {returns

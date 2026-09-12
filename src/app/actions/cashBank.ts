@@ -2,8 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 // ---- Bank Accounts ----
 
@@ -101,6 +105,9 @@ export async function createExpenseAction(input: {
   fuel_rate?: number | null;
   settlement_status?: "Settled" | "Pending";
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "expense.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_expense", {
     p_expense_date: input.expense_date,
@@ -126,6 +133,9 @@ export async function createExpenseAction(input: {
 }
 
 export async function cancelExpenseAction(expenseId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "expense.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_expense", { p_expense_id: expenseId, p_reason: reason });
   revalidatePath(`/expenses/${expenseId}`);
@@ -149,6 +159,9 @@ export async function createContraEntryAction(input: {
   amount: number;
   notes: string | null;
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "fund_transfer.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_contra_entry", {
     p_transfer_date: input.transfer_date,
@@ -168,6 +181,9 @@ export async function createContraEntryAction(input: {
 }
 
 export async function cancelContraEntryAction(transferId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "fund_transfer.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_contra_entry", { p_transfer_id: transferId, p_reason: reason });
   revalidatePath(`/transfers/${transferId}`);
@@ -193,6 +209,9 @@ export async function createJournalVoucherAction(input: {
   narration: string;
   lines: JournalVoucherLineInput[];
 }): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "journal_voucher.manage"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_post_journal_entry", {
     p_entry_date: input.entry_date,

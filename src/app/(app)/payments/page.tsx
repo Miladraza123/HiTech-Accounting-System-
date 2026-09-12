@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -11,7 +12,7 @@ const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt (in)", payme
 
 export default async function PaymentsPage() {
   const user = await getCurrentUser();
-  const canCreate = isOwner(user) || hasRole(user, "accounts");
+  const canCreate = await hasPermission(user, "payment.manage");
 
   const supabase = await createClient();
   const { data: payments } = await supabase.from("payments").select("*, parties(legal_name)").order("created_at", { ascending: false });

@@ -2,8 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null };
+
+const NO_PERMISSION: ActionResult = { error: "Aap ke paas yeh action karne ki ijazat nahi hai." };
 
 export async function requestStockAdjustmentAction(
   itemId: string,
@@ -11,6 +15,9 @@ export async function requestStockAdjustmentAction(
   qtyDelta: number,
   reason: string
 ): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "inventory_adjustment.request"))) return NO_PERMISSION;
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_request_stock_adjustment", {
     p_item_id: itemId,

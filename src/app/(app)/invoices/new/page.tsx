@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewInvoiceForm } from "@/components/NewInvoiceForm";
 
 export default async function NewInvoicePage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/invoices");
+  if (!(await hasPermission(user, "invoice.manage"))) redirect("/invoices");
 
   const supabase = await createClient();
   const { data: salesOrders } = await supabase

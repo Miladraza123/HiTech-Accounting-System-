@@ -8,7 +8,76 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 14 — Sales & Purchase Returns (complete)
+## Status: Phase 15 — Controls & Permissions (complete)
+
+Four independent controls, bundled together on the Owner's request:
+**Period Lock**, **Daily Snapshot**, **Stock Transfer** between
+warehouses, and a **configurable Permission Matrix**.
+
+- **Period Lock** — a single `company.period_lock_date`; once set, *no*
+  financial posting anywhere in the system may date on or before it,
+  enforced in exactly one place: the very first statement of
+  `_fn_post_journal_entry_core`, the one function every posting path in
+  the whole system (Invoice, Bill, Payment, Expense, Transfer, JV,
+  Sales/Purchase Return, Stock Transfer's own non-GL path aside) already
+  routes through — so the guarantee is structural, not a per-screen
+  check that a future document type could forget. Absolute even for the
+  Owner once set; the Owner can always move or clear the lock itself via
+  a dedicated `fn_set_period_lock` (Owner-only), and the existing
+  `trg_audit` on `company` already records who changed it and when, so
+  no separate history table was needed. **`/setup/period-lock`** (Owner
+  only).
+- **Daily Snapshot** — a `daily_snapshots` table capturing one row per
+  day: Cash in Hand, Bank, Petty Cash, Stock Value, AR/AP outstanding,
+  and that day's Sales/Collections/Payments/Expenses totals.
+  `fn_generate_daily_snapshot` can be run manually (Owner/Accounts) and
+  is also **scheduled automatically via `pg_cron`** at 00:10 daily for
+  the previous day (`current_date - 1`, guaranteeing every transaction
+  for that day is already posted) through a privilege-revoked wrapper
+  function with no role check (the cron job has no signed-in
+  `auth.uid()`) that is not reachable via the API. **`/reports/daily-snapshot`**
+  shows the latest snapshot as stat tiles plus a 90-day history table
+  (Owner/Accounts to generate, +Auditor to view).
+- **Stock Transfer** — warehouse-to-warehouse stock movement
+  (`fn_create_stock_transfer` / `fn_cancel_stock_transfer`, new `STN`
+  document numbering). Confirmed `1310 Raw Material Inventory` is a
+  single company-wide GL account with no warehouse dimension, so a
+  transfer is **pure `stock_ledger` movement with zero journal entry**
+  — simpler than every other stock-moving document in the system: a
+  negative leg at the source (at its current average cost) and a
+  matching positive leg at the destination at that same cost, guarded by
+  the existing negative-balance check inside `_fn_post_stock_ledger`.
+  **`/stock-transfers`** (Owner/Store, or per the Permission Matrix
+  below).
+- **Configurable Permission Matrix (Option A — app-layer, DB stays the
+  safety floor)** — a `role_permissions` table lets the Owner
+  restrict or (re-)grant, per non-Owner role, exactly which roles may
+  perform each of **19 core transactional create/cancel/manage actions**
+  (Query, Quotation, Sales/Purchase Order, Delivery Challan (+dispute),
+  Product Template, Job (+material handling), Invoice, Supplier Bill,
+  Payment, Expense, Fund Transfer, Journal Voucher, Sales/Purchase
+  Return, Stock Adjustment request, Stock Transfer). Every one of those
+  19 actions still ends at the *same* SQL function it always did,
+  carrying its **own original hardcoded role check as an unchangeable
+  floor** — the matrix can only narrow or restrict *within* what the
+  database already allows for that action, never grant a role the
+  database would reject; the Owner is always implicitly allowed and is
+  never stored in the table. Deliberately **out of scope**: master-data
+  CRUD (Items, Clients, Warehouses, Vehicles, Bank Accounts, Petty Cash,
+  Chart of Accounts, CSV Import — these stay on their existing stable
+  Owner(+role) checks) and report-view gates (unaffected). Both Server
+  Actions (a new `hasPermission(user, key)` check as the very first
+  statement of each covered action) and the corresponding page-level
+  UI gates were converted; **`/setup/permissions`** (Owner only) renders
+  the matrix as a checkbox grid, greying out any cell the database
+  itself would refuse.
+
+**Scope note:** Rate History remains on the gap list; WHT, Advance
+Payments, Bank Reconciliation, Scrap tracking and Document Expiry
+alerts remain explicitly optional per the original prompt.
+
+<details>
+<summary>Phase 14 — Sales & Purchase Returns (complete)</summary>
 
 Closing the sixth item on the gap list found by the Phase 9 re-audit:
 **Returns / Rejection / Replacement** (prompt's Sales Return and Purchase
@@ -56,9 +125,7 @@ really the same reverse-then-forward flow.
   Bill detail page (pick qty per line, same "receive what actually
   happened" pattern `ReceiveGrnPanel` already uses for GRNs).
 
-**Scope note:** Rate History, Period Lock, Daily Snapshot, Stock
-Transfer between warehouses, and the configurable permission matrix
-remain as separate upcoming phases.
+</details>
 
 <details>
 <summary>Phase 13 — Order Health, Stage Aging &amp; Tasks/Follow-ups (complete)</summary>
@@ -899,6 +966,8 @@ src/
       purchase-orders/         — Purchase Order list, create, detail + GRN receiving
       inventory/               — Current stock (+ Reserved/Free), per-item ledger drill-down,
                                   stock adjustments
+      stock-transfers/         — Stock Transfer list, create (warehouse-to-warehouse,
+                                  no GL impact), detail, cancel
       jobs/                    — Job list, create (from a Fabrication SO line), detail —
                                   material requirements, reserve/issue/return, progress,
                                   ready-for-dispatch, cancel, cost summary
@@ -933,7 +1002,8 @@ src/
                                   vehicle-expenses/, pending-orders/(+export/),
                                   purchase-pending/, grn-report/, payment-collection/
                                   (+export/), customer-business/(+export/), order-status/,
-                                  order-health/ (Stage Aging dashboard)
+                                  order-health/ (Stage Aging dashboard), daily-snapshot/
+                                  (stat tiles + 90-day history, pg_cron-generated daily)
       search/                  — Global Search across parties/queries/quotations/orders/
                                   jobs/deliveries/invoices/bills/items/vehicles
       tasks/                   — Tasks & Follow-ups: company-wide list (filters), new/
@@ -950,17 +1020,32 @@ src/
       setup/users/             — role assignment
       setup/chart-of-accounts/ — ledger accounts
       setup/import/            — CSV/Excel Import Wizard
+      setup/period-lock/       — set/clear the accounting Period Lock date (Owner only)
+      setup/permissions/       — configurable Permission Matrix — grant/restrict, per
+                                  non-Owner role, which of the 19 core transactional
+                                  actions that role may perform (Owner only; DB's own
+                                  hardcoded role check on each action stays as an
+                                  unchangeable floor the matrix can only narrow within)
       not-found.tsx, error.tsx — branded 404 / error boundary inside the app shell
     actions/                   — Server Actions (auth, setup, import, queries, quotations,
                                   salesOrders, purchaseOrders, items, inventory, jobs,
                                   deliveryChallans, invoices, supplierBills, payments,
-                                  cashBank, vehicles, parties, attachments, tasks, returns)
+                                  cashBank, vehicles, parties, attachments, tasks, returns,
+                                  stockTransfers, snapshots, permissions)
   components/                  — client-side form/UI components (incl. TasksPanel,
                                   TaskActionButtons, NewTaskForm, EditTaskForm,
-                                  SalesReturnPanel, PurchaseReturnPanel)
+                                  SalesReturnPanel, PurchaseReturnPanel,
+                                  NewStockTransferForm, CancelStockTransferButton,
+                                  PeriodLockForm, GenerateSnapshotButton,
+                                  PermissionMatrixTable)
   lib/
     supabase/                  — browser + server Supabase clients, generated DB types
     auth.ts, roles.ts          — current-user/role helpers
+    permissionDefs.ts          — client-safe Permission Matrix constants (keys, labels,
+                                  modules, each action's DB-hardcoded allowed roles) —
+                                  mirrors the auth.ts/roles.ts client/server split
+    permissions.ts             — server-only hasPermission()/loadPermissionMatrix(),
+                                  re-exports the constants from permissionDefs.ts
     aging.ts (+ aging.test.ts) — AR/AP aging-bucket logic, shared by Customer 360 and
                                   the AR/AP Aging reports; one of two libs in this repo
                                   with an automated test (`npm run test`)

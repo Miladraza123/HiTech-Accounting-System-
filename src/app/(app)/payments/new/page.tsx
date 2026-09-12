@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewPaymentForm } from "@/components/NewPaymentForm";
 
 export default async function NewPaymentPage({
@@ -10,7 +11,7 @@ export default async function NewPaymentPage({
   searchParams: Promise<{ party?: string; direction?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/payments");
+  if (!(await hasPermission(user, "payment.manage"))) redirect("/payments");
 
   const { party, direction } = await searchParams;
 

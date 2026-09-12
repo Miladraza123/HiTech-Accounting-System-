@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ warehouse?: string }> }) {
   const user = await getCurrentUser();
-  const canRequest = isOwner(user) || hasRole(user, "store");
+  const canRequest = await hasPermission(user, "inventory_adjustment.request");
   const { warehouse: warehouseFilter } = await searchParams;
 
   const supabase = await createClient();

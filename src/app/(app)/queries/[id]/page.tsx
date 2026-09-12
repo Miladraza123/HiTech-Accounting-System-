@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { QueryStatusActions } from "@/components/QueryStatusActions";
@@ -17,7 +18,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function QueryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canEdit = isOwner(user) || hasRole(user, "sales");
+  const canEdit = await hasPermission(user, "query.manage");
 
   const supabase = await createClient();
   const [{ data: query }, { data: events }, { data: attachments }, { data: quotations }, { data: profiles }] =

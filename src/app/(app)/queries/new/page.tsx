@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { QueryForm } from "@/components/QueryForm";
 
 export default async function NewQueryPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "sales"))) redirect("/queries");
+  if (!(await hasPermission(user, "query.manage"))) redirect("/queries");
 
   const supabase = await createClient();
   const [{ data: parties }, { data: sources }] = await Promise.all([

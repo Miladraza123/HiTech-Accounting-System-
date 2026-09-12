@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { NewPurchaseOrderForm } from "@/components/NewPurchaseOrderForm";
 
 export default async function NewPurchaseOrderPage() {
   const user = await getCurrentUser();
-  if (!(isOwner(user) || hasRole(user, "store"))) redirect("/purchase-orders");
+  if (!(await hasPermission(user, "purchase_order.manage"))) redirect("/purchase-orders");
 
   const supabase = await createClient();
   const [{ data: suppliers }, { data: salesOrders }, { data: warehouses }, { data: items }, { data: units }] = await Promise.all([

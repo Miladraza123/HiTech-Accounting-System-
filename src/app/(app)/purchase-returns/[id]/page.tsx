@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -12,7 +13,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function PurchaseReturnDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManage = isOwner(user) || hasRole(user, "accounts") || hasRole(user, "store");
+  const canManage = await hasPermission(user, "purchase_return.manage");
   if (!(canManage || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
