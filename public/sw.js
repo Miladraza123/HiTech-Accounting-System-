@@ -19,7 +19,7 @@
 // `activate` deletes every cache from an older version so nothing stale
 // ever lingers on a user's device across deploys.
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
