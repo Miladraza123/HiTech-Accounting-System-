@@ -95,7 +95,7 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
             <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
               <tr>
                 <th className="text-left px-3 py-2">Item</th>
-                <th className="text-right px-3 py-2 w-32">Qty</th>
+                <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Qty</th>
                 <th className="w-10" />
               </tr>
             </thead>

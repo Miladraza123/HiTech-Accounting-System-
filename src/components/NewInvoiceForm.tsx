@@ -101,9 +101,9 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
                 <tr>
                   <th className="text-left px-3 py-2">Description</th>
                   <th className="text-right px-3 py-2">Deliverable</th>
-                  <th className="text-right px-3 py-2 w-28">Qty</th>
-                  <th className="text-right px-3 py-2 w-28">Rate</th>
-                  <th className="text-right px-3 py-2 w-20">Tax %</th>
+                  <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Qty</th>
+                  <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Rate</th>
+                  <th className="text-right px-3 py-2 w-20 min-w-[5rem]">Tax %</th>
                   <th className="text-right px-3 py-2 w-28">Amount</th>
                 </tr>
               </thead>

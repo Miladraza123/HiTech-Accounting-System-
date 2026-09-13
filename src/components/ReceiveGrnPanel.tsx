@@ -110,7 +110,7 @@ export function ReceiveGrnPanel({
                 <th className="text-right px-3 py-2">Ordered</th>
                 <th className="text-right px-3 py-2">Received so far</th>
                 <th className="text-right px-3 py-2">Pending</th>
-                <th className="text-right px-3 py-2 w-32">This Receipt</th>
+                <th className="text-right px-3 py-2 w-32 min-w-[8rem]">This Receipt</th>
               </tr>
             </thead>
             <tbody>

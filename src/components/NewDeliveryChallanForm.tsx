@@ -170,7 +170,7 @@ export function NewDeliveryChallanForm({
                   <th className="text-right px-3 py-2">Ordered</th>
                   <th className="text-right px-3 py-2">Delivered so far</th>
                   <th className="text-right px-3 py-2">Pending</th>
-                  <th className="text-right px-3 py-2 w-32">This Delivery</th>
+                  <th className="text-right px-3 py-2 w-32 min-w-[8rem]">This Delivery</th>
                   <th className="text-center px-3 py-2 w-36">Issue from Stock?</th>
                 </tr>
               </thead>

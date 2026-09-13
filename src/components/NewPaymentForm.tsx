@@ -228,7 +228,7 @@ export function NewPaymentForm({
                   <th className="text-left px-3 py-2">{direction === "receipt" ? "Invoice #" : "Bill #"}</th>
                   <th className="text-left px-3 py-2">Date</th>
                   <th className="text-right px-3 py-2">Outstanding</th>
-                  <th className="text-right px-3 py-2 w-32">Allocate</th>
+                  <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Allocate</th>
                 </tr>
               </thead>
               <tbody>

@@ -77,8 +77,8 @@ export function JournalVoucherLineEditor({
               <th className="text-left px-3 py-2 w-56">Account</th>
               <th className="text-left px-3 py-2 w-56">Party / Bank / Petty Cash</th>
               <th className="text-left px-3 py-2">Memo</th>
-              <th className="text-right px-3 py-2 w-28">Debit</th>
-              <th className="text-right px-3 py-2 w-28">Credit</th>
+              <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Debit</th>
+              <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Credit</th>
               <th className="w-8" />
             </tr>
           </thead>

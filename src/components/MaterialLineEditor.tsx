@@ -80,8 +80,8 @@ export function MaterialLineEditor({
           <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
             <tr>
               <th className="text-left px-3 py-2">Raw Material / Item</th>
-              <th className="text-right px-3 py-2 w-28">{qtyLabel}</th>
-              <th className="text-left px-3 py-2 w-24">Unit</th>
+              <th className="text-right px-3 py-2 w-28 min-w-[7rem]">{qtyLabel}</th>
+              <th className="text-left px-3 py-2 w-24 min-w-[6rem]">Unit</th>
               <th className="w-8" />
             </tr>
           </thead>

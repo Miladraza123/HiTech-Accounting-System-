@@ -155,7 +155,7 @@ export function MultiPaymentForm({
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
               <tr>
-                <th className="text-left px-3 py-2 w-32">Direction</th>
+                <th className="text-left px-3 py-2 w-32 min-w-[8rem]">Direction</th>
                 <th className="text-left px-3 py-2 w-56 min-w-[14rem]">Party</th>
                 <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Amount</th>
                 <th className="text-left px-3 py-2 w-36 min-w-[9rem]">Date</th>

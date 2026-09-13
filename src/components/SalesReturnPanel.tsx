@@ -106,7 +106,7 @@ export function SalesReturnPanel({
                 <th className="text-right px-3 py-2">Invoiced</th>
                 <th className="text-right px-3 py-2">Already Returned</th>
                 <th className="text-right px-3 py-2">Max Returnable</th>
-                <th className="text-right px-3 py-2 w-32">Return Qty</th>
+                <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Return Qty</th>
               </tr>
             </thead>
             <tbody>
