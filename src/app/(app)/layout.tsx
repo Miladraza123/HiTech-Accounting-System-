@@ -227,7 +227,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <Logo size={32} />
                   <span className="font-semibold text-ink text-sm">HiTech ERP</span>
                 </div>
-                <NotificationBell notifications={notifications} />
+                <NotificationBell notifications={notifications} align="left" />
               </div>
             </div>
 

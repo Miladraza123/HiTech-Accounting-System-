@@ -6,7 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { CancelInvoiceButton } from "@/components/CancelInvoiceButton";
 import { SalesReturnPanel } from "@/components/SalesReturnPanel";
 import { CancelSalesReturnButton } from "@/components/CancelSalesReturnButton";
-import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -19,7 +19,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const canManage = await hasPermission(user, "invoice.manage");
 
   const supabase = await createClient();
-  const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }] = await Promise.all([
+  const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }, { data: company }] = await Promise.all([
     supabase
       .from("invoices")
       .select("*, parties(legal_name, billing_address, ntn, strn, cnic), sales_orders(so_no, client_po_number)")
@@ -30,6 +30,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     supabase.from("payment_allocations").select("*, payments(payment_no, payment_date, status)").eq("invoice_id", id).order("created_at", { ascending: false }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("sales_returns").select("*").eq("invoice_id", id).order("created_at", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
   ]);
 
   if (!invoice) notFound();
@@ -62,16 +63,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </p>
           )}
         </div>
-        <div className="flex items-start gap-2">
-          <Link
-            href={`/invoices/${id}/print`}
-            target="_blank"
-            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-          >
-            Print / PDF
-          </Link>
-          <DownloadPdfButton printPath={`/invoices/${id}/print`} filename={`${invoice.invoice_no}.pdf`} />
-        </div>
+        <PrintPdfActions
+          printPath={`/invoices/${id}/print`}
+          filename={`${invoice.invoice_no}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+        />
       </div>
 
       {invoice.status === "Cancelled" && invoice.cancel_reason && (

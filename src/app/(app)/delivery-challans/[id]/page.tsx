@@ -6,7 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { PodPanel } from "@/components/PodPanel";
 import { CancelDeliveryChallanButton } from "@/components/CancelDeliveryChallanButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
-import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 const STATUS_STYLE: Record<string, string> = {
   Issued: "bg-ledger-soft text-ledger",
@@ -26,7 +26,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
   const canDispute = canManage || (await hasPermission(user, "delivery_challan.dispute"));
 
   const supabase = await createClient();
-  const [{ data: dc }, { data: lines }, { data: attachments }] = await Promise.all([
+  const [{ data: dc }, { data: lines }, { data: attachments }, { data: company }] = await Promise.all([
     supabase
       .from("delivery_challans")
       .select("*, parties(legal_name, billing_address), sales_orders(so_no, client_po_number), warehouses(name)")
@@ -34,6 +34,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
       .maybeSingle(),
     supabase.from("delivery_challan_lines").select("*").eq("dc_id", id).order("sort_order"),
     supabase.from("attachments").select("*").eq("owner_table", "delivery_challans").eq("owner_id", id).order("uploaded_at", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
   ]);
 
   if (!dc) notFound();
@@ -59,16 +60,12 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
             {party?.legal_name} — SO {so?.so_no} (PO: {so?.client_po_number})
           </p>
         </div>
-        <div className="flex items-start gap-2">
-          <Link
-            href={`/delivery-challans/${id}/print`}
-            target="_blank"
-            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-          >
-            Print / PDF
-          </Link>
-          <DownloadPdfButton printPath={`/delivery-challans/${id}/print`} filename={`${dc.dc_no}.pdf`} />
-        </div>
+        <PrintPdfActions
+          printPath={`/delivery-challans/${id}/print`}
+          filename={`${dc.dc_no}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+        />
       </div>
 
       {dc.status === "Cancelled" && dc.cancel_reason && (

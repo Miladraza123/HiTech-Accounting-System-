@@ -7,7 +7,7 @@ import { ReceiveGrnPanel } from "@/components/ReceiveGrnPanel";
 import { CancelPurchaseOrderButton } from "@/components/CancelPurchaseOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
-import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -25,7 +25,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const canEdit = await hasPermission(user, "purchase_order.manage");
 
   const supabase = await createClient();
-  const [{ data: po }, { data: lines }, { data: warehouses }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }] = await Promise.all([
+  const [{ data: po }, { data: lines }, { data: warehouses }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }, { data: company }] = await Promise.all([
     supabase
       .from("purchase_orders")
       .select("*, parties(legal_name, billing_address), sales_orders(so_no)")
@@ -37,6 +37,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
     supabase.from("attachments").select("*").eq("owner_table", "purchase_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "purchase_orders").eq("related_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
+    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
   ]);
 
   if (!po) notFound();
@@ -60,16 +61,12 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
           </div>
           <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
         </div>
-        <div className="flex items-start gap-2">
-          <Link
-            href={`/purchase-orders/${id}/print`}
-            target="_blank"
-            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-          >
-            Print / PDF
-          </Link>
-          <DownloadPdfButton printPath={`/purchase-orders/${id}/print`} filename={`${po.po_no}.pdf`} />
-        </div>
+        <PrintPdfActions
+          printPath={`/purchase-orders/${id}/print`}
+          filename={`${po.po_no}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+        />
       </div>
 
       {po.status === "Cancelled" && po.cancel_reason && (

@@ -17,8 +17,21 @@ const TYPE_LABEL: Record<NotificationItem["type"], string> = {
   low_stock: "Low stock",
 };
 
-/** Icon-button + dropdown, used in both the desktop sidebar and the mobile top bar. Notifications are computed server-side (see src/lib/notifications.ts) and passed in as a plain prop — this component only handles showing them. */
-export function NotificationBell({ notifications }: { notifications: NotificationItem[] }) {
+/**
+ * Icon-button + dropdown, used in both the desktop sidebar and the mobile
+ * top bar. Notifications are computed server-side (see
+ * src/lib/notifications.ts) and passed in as a plain prop — this
+ * component only handles showing them.
+ *
+ * `align` controls which side the panel opens from: the desktop sidebar
+ * is only 256px wide, so a `right-0` panel anchored to the bell's own
+ * small wrapper (near the sidebar's left side) would overflow past the
+ * left edge of the whole page and get clipped — pass `align="left"`
+ * there so it opens rightward into the main content area instead. The
+ * mobile top bar's bell sits near the right edge of the screen, where
+ * `right-0` (the default) is correct.
+ */
+export function NotificationBell({ notifications, align = "right" }: { notifications: NotificationItem[]; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -54,7 +67,9 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] rounded-xl border border-line bg-surface shadow-lg overflow-hidden">
+        <div
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-50 mt-2 w-80 max-w-[90vw] rounded-xl border border-line bg-surface shadow-lg overflow-hidden`}
+        >
           <div className="px-4 py-2.5 border-b border-line">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Notifications</p>
           </div>

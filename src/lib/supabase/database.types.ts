@@ -221,6 +221,8 @@ export type Database = {
           period_lock_date: string | null
           phone: string | null
           province: string | null
+          signature_path: string | null
+          stamp_path: string | null
           strn: string | null
           updated_at: string
         }
@@ -238,6 +240,8 @@ export type Database = {
           period_lock_date?: string | null
           phone?: string | null
           province?: string | null
+          signature_path?: string | null
+          stamp_path?: string | null
           strn?: string | null
           updated_at?: string
         }
@@ -255,6 +259,8 @@ export type Database = {
           period_lock_date?: string | null
           phone?: string | null
           province?: string | null
+          signature_path?: string | null
+          stamp_path?: string | null
           strn?: string | null
           updated_at?: string
         }

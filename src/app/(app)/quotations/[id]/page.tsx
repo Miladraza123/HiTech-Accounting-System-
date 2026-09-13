@@ -7,7 +7,7 @@ import { DraftQuotationEditor } from "@/components/DraftQuotationEditor";
 import { CreateRevisionPanel } from "@/components/CreateRevisionPanel";
 import { QuotationRevisionView } from "@/components/QuotationRevisionView";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
-import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -31,7 +31,7 @@ export default async function QuotationDetailPage({
   const canEdit = await hasPermission(user, "quotation.manage");
 
   const supabase = await createClient();
-  const [{ data: quotation }, { data: revisions }, { data: items }, { data: units }, { data: attachments }, { data: salesOrders }] =
+  const [{ data: quotation }, { data: revisions }, { data: items }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }] =
     await Promise.all([
       supabase.from("quotations").select("*, parties(legal_name), queries(query_no)").eq("id", id).maybeSingle(),
       supabase.from("quotation_revisions").select("*").eq("quotation_id", id).order("rev_no", { ascending: false }),
@@ -39,6 +39,7 @@ export default async function QuotationDetailPage({
       supabase.from("units").select("*").order("code"),
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("sales_orders").select("id, so_no, status").eq("quotation_id", id).order("created_at", { ascending: false }),
+      supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
     ]);
 
   if (!quotation || !revisions?.length) notFound();
@@ -71,16 +72,12 @@ export default async function QuotationDetailPage({
           </div>
           <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
         </div>
-        <div className="flex items-start gap-2">
-          <Link
-            href={`/quotations/${id}/print`}
-            target="_blank"
-            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition"
-          >
-            Print / PDF
-          </Link>
-          <DownloadPdfButton printPath={`/quotations/${id}/print`} filename={`${quotation.quotation_no}.pdf`} />
-        </div>
+        <PrintPdfActions
+          printPath={`/quotations/${id}/print`}
+          filename={`${quotation.quotation_no}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+        />
       </div>
 
       {!isViewingCurrent && (

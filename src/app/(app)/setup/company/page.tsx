@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { CompanyForm } from "@/components/CompanyForm";
+import { CompanyBrandingForm } from "@/components/CompanyBrandingForm";
 
 export default async function CompanySetupPage() {
   const user = await getCurrentUser();
@@ -22,6 +23,21 @@ export default async function CompanySetupPage() {
         </p>
       </div>
       <CompanyForm company={company} provinces={provinces ?? []} />
+
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-ink">Letterhead Branding</h2>
+          <p className="mt-1 text-xs text-ink-soft">
+            Logo appears on every printed document automatically. Signature and Stamp are optional — asked for,
+            separately, each time you Print or Download a PDF.
+          </p>
+        </div>
+        <CompanyBrandingForm
+          logoPath={company?.logo_path ?? null}
+          signaturePath={company?.signature_path ?? null}
+          stampPath={company?.stamp_path ?? null}
+        />
+      </div>
     </div>
   );
 }
