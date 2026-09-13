@@ -8,7 +8,56 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 24 — Owner Account Controls, Item Form Restyle, Batch Payments (complete)
+## Status: Phase 25 — Login History, Offline-First Tasks, In-App Notifications (complete)
+
+Three more independent pieces of work — the first batch from the Tier
+2/Tier 3 prioritized improvement list — done together:
+
+**1. Login History (Setup > Login History).** Surfaces the
+`login_sessions` table, which had been written to on every sign-in and
+sign-out since Phase 0 (`fn_log_login`/`fn_log_logout`) but never shown
+anywhere: who signed in, when, whether they've signed out yet, a
+lightweight parsed device summary, and IP address. Visible to Owner and
+Auditor, matching the table's own existing RLS policy exactly. Pure
+read-side addition — no schema change.
+
+**2. Offline-first save/sync extended to Task creation.** The Phase 22
+pattern (Query) now also covers creating a Task while offline: new
+`fn_create_task_idempotent`, following the identical shape — the
+browser generates the row's real uuid before going online, the RPC
+checks for that id first, and a retried sync or a genuine race between
+two offline users can never create a duplicate. Task is if anything an
+easier case than Query: it has no sequential document number at all, so
+there's not even a numbering race to avoid. The offline queue's
+per-table dispatch (`src/lib/offlineQueue.ts`) was generalized into a
+small map so the next document type is one entry, not a rewrite.
+
+**3. In-app notifications** — a bell icon (desktop sidebar + mobile top
+bar) for three conditions that had no alert before: my open tasks due
+today/overdue, clients at/over their credit limit (same threshold as
+the existing Credit Limit Warning report), and items at/under an opt-in
+reorder level. **Deliberately live-computed, not persisted** — there is
+no `notifications` table and no background job generating rows; every
+page load re-derives the current true state from the same data the
+relevant report pages already read. That means the bell can never
+disagree with those reports, there's no "mark as read" that could hide
+a condition that's still actually true, and nothing that depends on a
+scheduler running reliably. The one schema addition is
+`items.reorder_level` (nullable, opt-in — unset means no low-stock
+alert for that item), since no per-item threshold existed before;
+editable from the Item Master form or the item's own detail page.
+
+**Verification.** `npx tsc --noEmit`, `npx eslint .`, `npm run build`,
+and `npm test` (38 tests) all pass for every piece above. The new
+`fn_create_task_idempotent` guard and the new `items.reorder_level`
+column were also confirmed directly against the real database via the
+Supabase MCP tool: the function correctly rejects an unauthenticated
+call the same way the original `fn_create_task` does, and the new
+column is live and queryable (6 existing items, all correctly
+defaulting to no alert, since the feature is opt-in).
+
+<details>
+<summary>Phase 24 — Owner Account Controls, Item Form Restyle, Batch Payments (complete)</summary>
 
 Four independent, self-contained pieces of work, done together as one
 batch since the last check-in:
@@ -90,6 +139,8 @@ tool can); they were verified by type-checking, build, and careful review
 against Supabase's documented Admin API signatures instead, following the
 same disclosed pattern as Phase 23 (which the project owner has since
 confirmed working live).
+
+</details>
 
 <details>
 <summary>Phase 23 — Instant User Creation (complete)</summary>
