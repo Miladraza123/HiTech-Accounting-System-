@@ -45,8 +45,26 @@ password" API, the current password is checked by attempting to sign in
 with it — only once that succeeds does `auth.updateUser()` actually
 change it.
 
+**5 — The rest of the Roman Urdu, at the database level.** The Phase 20
+translation sweep only searched application code (`src/**/*.ts(x)`) — it
+missed `public/offline.html` (the PWA's static offline fallback page,
+translated and reworded to correctly describe that already-open pages
+and the offline-queue forms still work) and, more significantly, ~62
+PL/pgSQL functions in `supabase/migrations/` whose `raise exception`
+messages surface directly as RPC error text in the UI. Every one of
+those messages — plus a handful of activity-log notes built via string
+concatenation that the first pass missed too — is now in English,
+verified with a database-wide sweep that returns zero remaining
+Roman-Urdu matches across the whole `public` schema. No function logic,
+signature, or control flow changed anywhere — only the quoted message
+text. Also bumped the service worker's cache version so browsers
+actually pick up these and prior fixes instead of continuing to run
+stale cached code.
+
 Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
-passing), and `npm run build` (full production build) all clean.
+passing), `npm run build` (full production build), and a live database
+sweep confirming no Roman-Urdu text remains in any `public` schema
+function — all clean.
 
 <details>
 <summary>Phase 20 — Language, Connectivity & User Onboarding (complete)</summary>
