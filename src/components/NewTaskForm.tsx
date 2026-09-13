@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTaskAction, type TaskPriority } from "@/app/actions/tasks";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { buttonClass } from "@/components/ui/Button";
 
 type LinkType = "none" | "sales_orders" | "purchase_orders" | "jobs" | "parties";
 
@@ -14,6 +16,16 @@ const LINK_TYPE_LABEL: Record<LinkType, string> = {
   parties: "Client / Supplier",
 };
 
+/**
+ * Offline-first (Phase 25, extending the Phase 22 Query pilot): creating
+ * a Task while offline saves safely on the device (IndexedDB) instead of
+ * failing. Task is single-row with no sequential document number at all,
+ * so — unlike Query — there isn't even a numbering race to avoid. When
+ * online, this behaves exactly as before; when offline, submission is
+ * intercepted before calling createTaskAction and the entry is queued
+ * with a browser-generated UUID, replayed by OfflineQueueProvider
+ * through `fn_create_task_idempotent` once connectivity returns.
+ */
 export function NewTaskForm({
   profiles,
   salesOrders,
@@ -29,12 +41,14 @@ export function NewTaskForm({
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const { isOnline, enqueue } = useOfflineQueue();
   const [assignedTo, setAssignedTo] = useState(profiles[0]?.id ?? "");
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [dueDate, setDueDate] = useState("");
   const [linkType, setLinkType] = useState<LinkType>("none");
   const [linkId, setLinkId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const linkOptions: { id: string; label: string }[] =
@@ -56,6 +70,30 @@ export function NewTaskForm({
       setError("Select a record to link, or choose 'No link'.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "tasks",
+          recordId: crypto.randomUUID(),
+          label: "Task",
+          payload: {
+            title,
+            description: description || null,
+            assigned_to: assignedTo,
+            due_date: dueDate || null,
+            priority,
+            related_table: linkType === "none" ? null : linkType,
+            related_id: linkType === "none" ? null : linkId,
+          },
+        });
+        formRef.current?.reset();
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createTaskAction(
         {
@@ -72,6 +110,19 @@ export function NewTaskForm({
       if (res.error) setError(res.error);
       else if (res.id) router.push(`/tasks/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Task saved on this device — it will sync automatically once you&apos;re back online.
+        </p>
+        <button type="button" onClick={() => setSavedOffline(false)} className={buttonClass("secondary", "sm")}>
+          + Add another Task
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -140,13 +191,21 @@ export function NewTaskForm({
           </div>
         )}
       </div>
+
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Task will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {error && <p className="text-xs text-bad">{error}</p>}
       <button
         type="submit"
         disabled={pending}
         className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Creating…" : "Create Task"}
+        {pending ? "Saving…" : isOnline ? "Create Task" : "Save Offline"}
       </button>
     </form>
   );

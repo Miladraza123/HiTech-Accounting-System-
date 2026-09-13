@@ -4393,6 +4393,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_task_idempotent: {
+        Args: {
+          p_assigned_to: string
+          p_description?: string
+          p_due_date?: string
+          p_id: string
+          p_priority?: string
+          p_related_id?: string
+          p_related_table?: string
+          p_title: string
+        }
+        Returns: string
+      }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_import_opening_stock: {

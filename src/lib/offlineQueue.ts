@@ -19,12 +19,13 @@
 //   itself (crypto.randomUUID()) *before* going online, so two different
 //   offline users can never collide on the same id — Postgres's own
 //   primary key guarantees that. Replayed through a per-table idempotent
-//   RPC (e.g. `fn_create_query_idempotent`) that's safe to call more than
-//   once with the same id: if the row already exists (a retried sync
-//   after a dropped connection, say), it just returns the existing id
-//   instead of creating a duplicate. Currently only Query is wired up —
-//   see fn_create_query_idempotent's own comment for why the other
-//   document types (multi-row, real-time stock/credit checks) aren't.
+//   RPC (e.g. `fn_create_query_idempotent`, `fn_create_task_idempotent`)
+//   that's safe to call more than once with the same id: if the row
+//   already exists (a retried sync after a dropped connection, say), it
+//   just returns the existing id instead of creating a duplicate. Query
+//   (Phase 22) and Task (Phase 25) are wired up so far — see each RPC's
+//   own comment for why the other document types (multi-row, real-time
+//   stock/credit checks) aren't yet.
 //
 // A tiny, dependency-free IndexedDB wrapper (no external idb/dexie lib)
 // persists queued writes across reloads/navigations, since an in-memory
@@ -49,7 +50,7 @@ export type QueuedEdit = {
 export type QueuedCreate = {
   kind: "create";
   id: string;
-  table: "queries";
+  table: "queries" | "tasks";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -67,6 +68,45 @@ export type QueuedWrite = QueuedEdit | QueuedCreate;
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 export type SyncedConflict = QueuedEdit & { conflicts: SmartMergeConflict[] };
+
+type SupabaseBrowserClient = ReturnType<typeof createClient>;
+
+/**
+ * One idempotent-create RPC call per queued table. Adding a new offline-
+ * safe create for another document type means adding its RPC name to
+ * the `table` union above and one entry here — flushQueue() itself never
+ * needs to change.
+ */
+const CREATE_RPC: {
+  [T in QueuedCreate["table"]]: (supabase: SupabaseBrowserClient, write: QueuedCreate) => PromiseLike<{ error: { message: string } | null }>;
+} = {
+  queries: (supabase, write) =>
+    // fn_create_query_idempotent's optional params (p_source, p_query_date,
+    // p_next_followup_at, p_notes) have no SQL default, so the generated
+    // RPC type is non-nullable `string` — the function and columns both
+    // accept a literal NULL fine, so these casts are purely for the type
+    // checker (same pattern as setPeriodLockAction/createStockTransferAction).
+    supabase.rpc("fn_create_query_idempotent", {
+      p_id: write.recordId,
+      p_party_id: write.payload.party_id as string,
+      p_requirement: write.payload.requirement as string,
+      p_source: (write.payload.source ?? null) as string,
+      p_query_date: (write.payload.query_date ?? null) as string,
+      p_next_followup_at: (write.payload.next_followup_at ?? null) as string,
+      p_notes: (write.payload.notes ?? null) as string,
+    }),
+  tasks: (supabase, write) =>
+    supabase.rpc("fn_create_task_idempotent", {
+      p_id: write.recordId,
+      p_title: write.payload.title as string,
+      p_assigned_to: write.payload.assigned_to as string,
+      p_description: (write.payload.description ?? null) as string,
+      p_due_date: (write.payload.due_date ?? null) as string,
+      p_priority: (write.payload.priority ?? "Medium") as string,
+      p_related_table: (write.payload.related_table ?? null) as string,
+      p_related_id: (write.payload.related_id ?? null) as string,
+    }),
+};
 
 const DB_NAME = "hitech-offline-queue";
 const DB_VERSION = 1;
@@ -155,20 +195,7 @@ export async function flushQueue(): Promise<{ synced: QueuedWrite[]; conflicts: 
   const supabase = createClient();
   for (const write of queued) {
     if (write.kind === "create") {
-      // fn_create_query_idempotent's optional params (p_source, p_query_date,
-      // p_next_followup_at, p_notes) have no SQL default, so the generated
-      // RPC type is non-nullable `string` — the function and columns both
-      // accept a literal NULL fine, so these casts are purely for the type
-      // checker (same pattern as setPeriodLockAction/createStockTransferAction).
-      const { error } = await supabase.rpc("fn_create_query_idempotent", {
-        p_id: write.recordId,
-        p_party_id: write.payload.party_id as string,
-        p_requirement: write.payload.requirement as string,
-        p_source: (write.payload.source ?? null) as string,
-        p_query_date: (write.payload.query_date ?? null) as string,
-        p_next_followup_at: (write.payload.next_followup_at ?? null) as string,
-        p_notes: (write.payload.notes ?? null) as string,
-      });
+      const { error } = await CREATE_RPC[write.table](supabase, write);
       if (error) {
         failed.push(write);
         continue;
