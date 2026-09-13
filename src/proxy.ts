@@ -59,7 +59,16 @@ export const config = {
   // sw.js/manifest.webmanifest/offline.html must never require auth — the
   // service worker has to register (and its offline fallback has to load)
   // for a signed-out visitor and a signed-in one alike.
+  //
+  // api/ping must also skip this entirely — it exists purely as a cheap,
+  // dependency-free "can I reach my own server" probe for
+  // OfflineQueueProvider's real-connectivity check. Routing it through
+  // this proxy would make every offline/online decision depend on a
+  // supabase.auth.getUser() round-trip to Supabase's own Auth API on
+  // every check — an unrelated failure or slow response there (nothing
+  // to do with the user's own device connectivity) would then show a
+  // false "Offline" banner while the user is genuinely online.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
