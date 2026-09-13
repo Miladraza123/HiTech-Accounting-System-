@@ -23,9 +23,18 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!user) return null;
 
   const [{ data: profile }, { data: roleRows }] = await Promise.all([
-    supabase.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("full_name, email, is_active").eq("id", user.id).maybeSingle(),
     supabase.from("user_roles").select("roles(code)").eq("user_id", user.id),
   ]);
+
+  // Deactivated by the Owner (Setup > Users & Roles). The Admin API ban
+  // already blocks a fresh sign-in, but an already-issued session token
+  // can otherwise keep working until it naturally expires — this cuts
+  // it off on the very next request instead.
+  if (profile && profile.is_active === false) {
+    await supabase.auth.signOut();
+    return null;
+  }
 
   const roles = (roleRows ?? [])
     .map((r) => (r.roles as unknown as { code: string } | null)?.code)

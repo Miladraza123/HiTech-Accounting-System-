@@ -262,3 +262,80 @@ export async function createUserAction(
   revalidatePath("/setup/users");
   return { error: null, success: true };
 }
+
+export type ResetPasswordResult = ActionResult & { password?: string };
+
+// Owner resets an existing user's password directly (there's no other
+// recovery path in this app — no email sending is configured, so a
+// forgotten password would otherwise have no way back in at all).
+// Requires SUPABASE_SERVICE_ROLE_KEY, same as createUserAction.
+export async function resetUserPasswordAction(userId: string, newPassword: string): Promise<ResetPasswordResult> {
+  const currentUser = await getCurrentUser();
+  if (!isOwner(currentUser)) return { error: "You don't have permission to perform this action." };
+  if (newPassword.length < 8) return { error: "Password must be at least 8 characters." };
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Password reset is not available." };
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
+  if (error) return { error: error.message };
+
+  return { error: null, success: true, password: newPassword };
+}
+
+// A very long ban — Supabase's Admin API bans for a duration rather than
+// permanently; "none" lifts it. `profiles.is_active` (present since
+// Phase 0, never used until now) mirrors this for fast, admin-API-free
+// display on the Users & Roles list; getCurrentUser() also checks it so
+// an already-issued session is cut off on its very next request, not
+// just blocked from signing in again.
+const PERMANENT_BAN_DURATION = "876000h"; // 100 years
+
+export async function deactivateUserAction(userId: string): Promise<ActionResult> {
+  const currentUser = await getCurrentUser();
+  if (!isOwner(currentUser)) return { error: "You don't have permission to perform this action." };
+  if (currentUser?.id === userId) return { error: "You can't deactivate your own account." };
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Deactivating a user is not available." };
+  }
+
+  const { error: banError } = await admin.auth.admin.updateUserById(userId, { ban_duration: PERMANENT_BAN_DURATION });
+  if (banError) return { error: banError.message };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ is_active: false }).eq("id", userId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/setup/users");
+  return { error: null, success: true };
+}
+
+export async function reactivateUserAction(userId: string): Promise<ActionResult> {
+  const currentUser = await getCurrentUser();
+  if (!isOwner(currentUser)) return { error: "You don't have permission to perform this action." };
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Reactivating a user is not available." };
+  }
+
+  const { error: banError } = await admin.auth.admin.updateUserById(userId, { ban_duration: "none" });
+  if (banError) return { error: banError.message };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ is_active: true }).eq("id", userId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/setup/users");
+  return { error: null, success: true };
+}

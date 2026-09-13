@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
 import { RoleAssignRow, RevokeRoleChip } from "@/components/RoleAssignRow";
 import { InviteUserForm, PendingInviteRow } from "@/components/InviteUserForm";
+import { UserRowActions } from "@/components/UserRowActions";
 
 export default async function UsersPage() {
   const user = await getCurrentUser();
@@ -10,7 +11,7 @@ export default async function UsersPage() {
 
   const supabase = await createClient();
   const [{ data: profiles }, { data: roles }, { data: userRoles }, { data: invites }] = await Promise.all([
-    supabase.from("profiles").select("*").order("created_at"),
+    supabase.from("profiles").select("id, full_name, email, is_active, created_at").order("created_at"),
     supabase.from("roles").select("*").order("name"),
     supabase.from("user_roles").select("user_id, role_id, roles(id, code)"),
     supabase
@@ -66,12 +67,20 @@ export default async function UsersPage() {
                 <p className="text-sm text-ink font-medium">{p.full_name}</p>
                 <p className="text-xs text-ink-faint">{p.email}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {assigned.length === 0 && <span className="text-xs text-ink-faint">No role</span>}
-                {assigned.map((r) => (
-                  <RevokeRoleChip key={r.id} userId={p.id} roleId={r.id} label={ROLE_LABELS[r.code] ?? r.code} />
-                ))}
-                <RoleAssignRow userId={p.id} assignedRoleIds={assigned.map((r) => r.id)} allRoles={allRoles} />
+              <div className="flex flex-col items-start sm:items-end gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {assigned.length === 0 && <span className="text-xs text-ink-faint">No role</span>}
+                  {assigned.map((r) => (
+                    <RevokeRoleChip key={r.id} userId={p.id} roleId={r.id} label={ROLE_LABELS[r.code] ?? r.code} />
+                  ))}
+                  <RoleAssignRow userId={p.id} assignedRoleIds={assigned.map((r) => r.id)} allRoles={allRoles} />
+                </div>
+                <UserRowActions
+                  userId={p.id}
+                  fullName={p.full_name}
+                  isActive={p.is_active !== false}
+                  isSelf={p.id === user?.id}
+                />
               </div>
             </div>
           );
