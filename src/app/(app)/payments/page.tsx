@@ -6,16 +6,9 @@ import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 import { buttonClass } from "@/components/ui/Button";
-import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PaymentsTable } from "@/components/PaymentsTable";
 import { CreditCard } from "lucide-react";
-
-const STATUS_TONE: Record<string, BadgeTone> = {
-  Posted: "good",
-  Cancelled: "bad",
-};
-
-const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt (in)", payment: "Payment (out)" };
 
 export default async function PaymentsPage({
   searchParams,
@@ -68,46 +61,13 @@ export default async function PaymentsPage({
         )}
       </div>
 
-      <div className="rounded-xl border border-line bg-surface overflow-hidden">
-        {payments?.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
-                <tr>
-                  <th className="text-left px-4 py-2.5">Payment #</th>
-                  <th className="text-left px-4 py-2.5">Party</th>
-                  <th className="text-left px-4 py-2.5">Direction</th>
-                  <th className="text-right px-4 py-2.5">Amount</th>
-                  <th className="text-right px-4 py-2.5">Unallocated</th>
-                  <th className="text-left px-4 py-2.5">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => {
-                  const party = p.parties as unknown as { legal_name: string } | null;
-                  return (
-                    <tr key={p.id} className="border-t border-line even:bg-bg hover:bg-surface-2">
-                      <td className="px-4 py-2.5">
-                        <Link href={`/payments/${p.id}`} className="text-accent-ink underline underline-offset-2 font-mono text-xs">
-                          {p.payment_no}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5 text-ink-soft text-xs whitespace-nowrap">{party?.legal_name}</td>
-                      <td className="px-4 py-2.5 text-ink-soft text-xs">{DIRECTION_LABEL[p.direction]}</td>
-                      <td className="px-4 py-2.5 text-right tabular text-ink">{p.amount.toLocaleString()}</td>
-                      <td className={`px-4 py-2.5 text-right tabular ${p.unallocated_amount > 0 ? "text-warn font-medium" : "text-ink-soft"}`}>
-                        {p.unallocated_amount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Badge tone={STATUS_TONE[p.status] ?? "neutral"}>{p.status}</Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
+      {payments?.length ? (
+        <PaymentsTable
+          payments={payments.map((p) => ({ ...p, parties: p.parties as unknown as { legal_name: string } | null }))}
+          canManage={canCreate}
+        />
+      ) : (
+        <div className="rounded-xl border border-line bg-surface overflow-hidden">
           <EmptyState
             icon={<CreditCard size={22} />}
             title="No Payments yet"
@@ -120,8 +80,8 @@ export default async function PaymentsPage({
               ) : undefined
             }
           />
-        )}
-      </div>
+        </div>
+      )}
 
       <PaginationControls basePath="/payments" searchParams={{ from, to, direction }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
