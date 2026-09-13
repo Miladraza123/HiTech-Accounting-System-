@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 
 // Every signed-in user's own account settings — currently just the
 // password. Not role-gated: anyone who can log in can change their own
@@ -21,6 +22,11 @@ export default async function AccountPage() {
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink">Change Password</h2>
         <ChangePasswordForm />
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-ink">Two-Factor Authentication</h2>
+        <TwoFactorSettings />
       </div>
     </div>
   );

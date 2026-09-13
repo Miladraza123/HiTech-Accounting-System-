@@ -46,6 +46,16 @@ export async function signInAction(
     });
   }
 
+  // Password verified — but if this account has Two-Factor Authentication
+  // enabled, the session is still only aal1 at this point and must not be
+  // treated as fully signed in yet. getAuthenticatorAssuranceLevel() reads
+  // this straight off the session's JWT claims (no network round trip),
+  // so this adds no real latency to a normal login.
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+    redirect("/mfa-challenge");
+  }
+
   redirect("/");
 }
 
