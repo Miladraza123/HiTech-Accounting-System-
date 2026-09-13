@@ -8,7 +8,59 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 26 — 2FA, Bulk Actions, PDF Download, Mobile Table Fixes (complete)
+## Status: Phase 27 — Notification Bell Fix, Company Signature/Stamp on Documents (complete)
+
+Two pieces reported/requested directly by the project owner after using Phase 26's work live:
+
+**1. Notification bell clipping (bug fix).** The sidebar's dropdown was
+anchored `right-0` to its own small wrapper inside the 256px-wide
+desktop sidebar, so it opened extending past the *left* edge of the
+whole page and got clipped. `NotificationBell` now takes an `align`
+prop — the sidebar passes `align="left"` (opens rightward, into the
+roomy main content area); the mobile top bar keeps the default
+`align="right"` (correct as-is, since that bell already sits near the
+right edge of the screen).
+
+**2. Company Signature/Stamp on printed documents.** New Setup >
+Company > "Letterhead Branding" section to upload Logo, Signature, and
+Stamp images (reuses the existing private `attachments` storage bucket
+and its signed-URL pattern — no new bucket or RLS policy needed).
+`company.logo_path` existed since Phase 0 but was never wired to an
+upload UI or shown on any print page; `signature_path`/`stamp_path` are
+new, both nullable/opt-in — nothing changes for a deployment that never
+uploads anything.
+
+- **Logo** always shows on every printed document's letterhead once
+  uploaded (falls back to the original generic mark otherwise).
+- **Signature** and **Stamp** are asked for, independently, only at
+  Print/Download PDF time — two checkboxes, any combination, applied to
+  that one document via `?signature=1&stamp=1` on the print page's own
+  URL, via the new `PrintPdfActions.tsx`.
+- Wired into the "our side" signoff box (never the recipient's own
+  blank signature box) on **Quotation** ("Authorized By" — a signoff
+  box that didn't exist before this, added since a Quotation is exactly
+  the kind of outbound document that needs one), **Purchase Order**
+  ("Authorized By"), **Invoice** ("Prepared By"), and **Delivery
+  Challan** ("Dispatched By"). Deliberately **not** added to **Supplier
+  Bill** — an internal bookkeeping record of a bill received, not a
+  document issued outward, so there's no existing signoff box and no
+  natural place for our own signature there; it still gets the
+  logo-on-letterhead treatment.
+
+New shared print components (`PrintLogoBlock.tsx`, `PrintSignoff.tsx`)
+replace what was near-identical hand-duplicated header/signoff markup
+across all 5 print pages, so this new logic lives in one place instead
+of five.
+
+**Verification.** `npx tsc --noEmit`, `npx eslint .`, `npm run build`,
+and `npm test` (38 tests) all pass. Also confirmed live via the
+Supabase MCP tool: the `company` table's existing RLS write policy
+already covers the two new columns with no additional grant needed, and
+the real company row (OHT Solutions) correctly shows both new columns
+as null — opt-in, no regression for the live deployment.
+
+<details>
+<summary>Phase 26 — 2FA, Bulk Actions, PDF Download, Mobile Table Fixes (complete)</summary>
 
 The Tier 3 batch from the same prioritized improvement list Phase 25 started on:
 
@@ -67,6 +119,8 @@ limitation as Phase 23/25 — direct calls to the Supabase project's own
 API are blocked here); both were implemented and reviewed carefully
 against their respective documented behavior, and are worth a quick
 real-world check on the actual deployment.
+
+</details>
 
 <details>
 <summary>Phase 25 — Login History, Offline-First Tasks, In-App Notifications (complete)</summary>
