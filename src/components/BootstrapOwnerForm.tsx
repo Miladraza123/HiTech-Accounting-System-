@@ -16,7 +16,7 @@ export function BootstrapOwnerForm() {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "…" : "Main Owner hoon — access lein"}
+        {pending ? "…" : "I am the Owner — claim access"}
       </button>
     </form>
   );

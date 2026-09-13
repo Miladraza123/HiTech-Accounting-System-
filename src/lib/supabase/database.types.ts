@@ -3497,6 +3497,21 @@ export type Database = {
           },
         ]
       }
+      system_bootstrap: {
+        Row: {
+          id: boolean
+          owner_bootstrapped_at: string | null
+        }
+        Insert: {
+          id?: boolean
+          owner_bootstrapped_at?: string | null
+        }
+        Update: {
+          id?: boolean
+          owner_bootstrapped_at?: string | null
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assigned_to: string
