@@ -4,6 +4,28 @@ import { useEffect, useState, useTransition } from "react";
 import { uploadCompanyImageAction, removeCompanyImageAction, getCompanyImagePreviewUrlAction, type BrandingKind } from "@/app/actions/companyBranding";
 import { buttonClass } from "@/components/ui/Button";
 
+// Roughly enough to stay sharp printed at the sizes these are actually
+// shown at (logo up to 45mm wide, signature/stamp similar) — a source
+// image below this will look visibly soft once scaled up, regardless
+// of how correctly the print CSS itself sizes the box.
+const MIN_DIMENSION_PX = 150;
+
+function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
 function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: string; hint: string; path: string | null }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(!!path);
@@ -27,8 +49,23 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
     });
   }, [path]);
 
-  function handleUpload(formData: FormData) {
+  async function handleUpload(formData: FormData) {
     setError(null);
+    const file = formData.get("file");
+    if (file instanceof File && file.type !== "image/svg+xml") {
+      // A correctly-sized print box can't fix a source image that's
+      // just too low-resolution to begin with — it'll look soft once
+      // scaled up. Checked client-side (natural pixel dimensions) before
+      // even uploading; SVG is vector and has no meaningful "resolution"
+      // to check.
+      const dims = await readImageDimensions(file);
+      if (dims && Math.min(dims.width, dims.height) < MIN_DIMENSION_PX) {
+        setError(
+          `This image is only ${dims.width}×${dims.height}px — too low-resolution to print sharply. Use an image at least ${MIN_DIMENSION_PX}×${MIN_DIMENSION_PX}px.`
+        );
+        return;
+      }
+    }
     startTransition(async () => {
       const res = await uploadCompanyImageAction(kind, formData);
       if (res.error) setError(res.error);

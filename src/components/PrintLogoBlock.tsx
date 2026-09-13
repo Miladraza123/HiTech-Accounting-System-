@@ -4,6 +4,13 @@
  * an uploaded company logo image and the original generic mark
  * (unchanged fallback, so nothing changes for a deployment that hasn't
  * uploaded one). Plain server-renderable markup — no client JS needed.
+ *
+ * Sized in physical mm, not px, even though this page's print engine
+ * (verified directly: rendered through headless Chromium's real
+ * print-to-PDF path and measured the actual output) already maps CSS
+ * px to physical size correctly here — mm is the more direct, harder-
+ * to-misread unit for something whose whole point is a fixed physical
+ * size on paper, independent of any given renderer's px handling.
  */
 export function PrintLogoBlock({
   company,
@@ -19,10 +26,10 @@ export function PrintLogoBlock({
         <img
           src={logoUrl}
           alt={`${company?.legal_name ?? "Company"} logo`}
-          style={{ height: 68, width: "auto", maxWidth: 170, objectFit: "contain", flexShrink: 0 }}
+          style={{ height: "18mm", width: "auto", maxWidth: "45mm", objectFit: "contain", flexShrink: 0 }}
         />
       ) : (
-        <svg width="68" height="68" viewBox="0 0 40 40" style={{ flexShrink: 0 }}>
+        <svg width="18mm" height="18mm" viewBox="0 0 40 40" style={{ flexShrink: 0 }}>
           <rect width="40" height="40" rx="9" fill="#2b3a55" />
           <polyline points="9,20 20,11 31,20" fill="none" stroke="#e08a4f" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
           <rect x="12" y="20" width="16" height="10" rx="1.4" fill="none" stroke="#e08a4f" strokeWidth="2.2" />
