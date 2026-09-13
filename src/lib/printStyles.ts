@@ -34,5 +34,15 @@ export function printStyles(scopeClass: string): string {
   `;
 }
 
-/** Auto-open the browser's print dialog once the page has rendered. */
-export const AUTO_PRINT_SCRIPT = `window.addEventListener('load', () => setTimeout(() => window.print(), 300));`;
+/**
+ * Auto-open the browser's print dialog once the page has rendered.
+ * Skipped when this page is loaded with `?autoprint=0` — used by
+ * DownloadPdfButton, which loads this same print page in a hidden
+ * iframe to render an actual downloadable PDF and must not have a real
+ * print dialog pop up while doing that; opening this URL directly
+ * (the existing "Print / PDF" link) is completely unaffected.
+ */
+export const AUTO_PRINT_SCRIPT = `window.addEventListener('load', () => {
+  if (new URLSearchParams(location.search).get('autoprint') === '0') return;
+  setTimeout(() => window.print(), 300);
+});`;

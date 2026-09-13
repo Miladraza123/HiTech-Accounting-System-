@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton";
 import { PurchaseReturnPanel } from "@/components/PurchaseReturnPanel";
 import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -55,13 +56,16 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
           </p>
           {bill.supplier_bill_ref && <p className="text-xs text-ink-faint mt-0.5">Supplier Ref#: {bill.supplier_bill_ref}</p>}
         </div>
-        <Link
-          href={`/supplier-bills/${id}/print`}
-          target="_blank"
-          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-        >
-          Print / PDF
-        </Link>
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/supplier-bills/${id}/print`}
+            target="_blank"
+            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+          >
+            Print / PDF
+          </Link>
+          <DownloadPdfButton printPath={`/supplier-bills/${id}/print`} filename={`${bill.bill_no}.pdf`} />
+        </div>
       </div>
 
       {bill.status === "Cancelled" && bill.cancel_reason && (

@@ -7,6 +7,7 @@ import { ReceiveGrnPanel } from "@/components/ReceiveGrnPanel";
 import { CancelPurchaseOrderButton } from "@/components/CancelPurchaseOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -59,13 +60,16 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
           </div>
           <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
         </div>
-        <Link
-          href={`/purchase-orders/${id}/print`}
-          target="_blank"
-          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-        >
-          Print / PDF
-        </Link>
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/purchase-orders/${id}/print`}
+            target="_blank"
+            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+          >
+            Print / PDF
+          </Link>
+          <DownloadPdfButton printPath={`/purchase-orders/${id}/print`} filename={`${po.po_no}.pdf`} />
+        </div>
       </div>
 
       {po.status === "Cancelled" && po.cancel_reason && (

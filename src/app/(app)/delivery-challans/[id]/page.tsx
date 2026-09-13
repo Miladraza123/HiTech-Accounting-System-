@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { PodPanel } from "@/components/PodPanel";
 import { CancelDeliveryChallanButton } from "@/components/CancelDeliveryChallanButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 
 const STATUS_STYLE: Record<string, string> = {
   Issued: "bg-ledger-soft text-ledger",
@@ -58,13 +59,16 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
             {party?.legal_name} — SO {so?.so_no} (PO: {so?.client_po_number})
           </p>
         </div>
-        <Link
-          href={`/delivery-challans/${id}/print`}
-          target="_blank"
-          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-        >
-          Print / PDF
-        </Link>
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/delivery-challans/${id}/print`}
+            target="_blank"
+            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+          >
+            Print / PDF
+          </Link>
+          <DownloadPdfButton printPath={`/delivery-challans/${id}/print`} filename={`${dc.dc_no}.pdf`} />
+        </div>
       </div>
 
       {dc.status === "Cancelled" && dc.cancel_reason && (

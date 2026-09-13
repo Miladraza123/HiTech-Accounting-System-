@@ -7,6 +7,7 @@ import { DraftQuotationEditor } from "@/components/DraftQuotationEditor";
 import { CreateRevisionPanel } from "@/components/CreateRevisionPanel";
 import { QuotationRevisionView } from "@/components/QuotationRevisionView";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -70,13 +71,16 @@ export default async function QuotationDetailPage({
           </div>
           <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
         </div>
-        <Link
-          href={`/quotations/${id}/print`}
-          target="_blank"
-          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition"
-        >
-          Print / PDF
-        </Link>
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/quotations/${id}/print`}
+            target="_blank"
+            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition"
+          >
+            Print / PDF
+          </Link>
+          <DownloadPdfButton printPath={`/quotations/${id}/print`} filename={`${quotation.quotation_no}.pdf`} />
+        </div>
       </div>
 
       {!isViewingCurrent && (

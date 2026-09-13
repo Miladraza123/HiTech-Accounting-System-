@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { CancelInvoiceButton } from "@/components/CancelInvoiceButton";
 import { SalesReturnPanel } from "@/components/SalesReturnPanel";
 import { CancelSalesReturnButton } from "@/components/CancelSalesReturnButton";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -61,13 +62,16 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </p>
           )}
         </div>
-        <Link
-          href={`/invoices/${id}/print`}
-          target="_blank"
-          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-        >
-          Print / PDF
-        </Link>
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/invoices/${id}/print`}
+            target="_blank"
+            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+          >
+            Print / PDF
+          </Link>
+          <DownloadPdfButton printPath={`/invoices/${id}/print`} filename={`${invoice.invoice_no}.pdf`} />
+        </div>
       </div>
 
       {invoice.status === "Cancelled" && invoice.cancel_reason && (
