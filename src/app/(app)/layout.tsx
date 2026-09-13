@@ -9,6 +9,8 @@ import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { NotificationBell } from "@/components/NotificationBell";
+import { getNotifications } from "@/lib/notifications";
 import {
   LayoutDashboard,
   ListChecks,
@@ -52,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const owner = isOwner(user);
 
   const supabase = await createClient();
-  const [{ count: ownerCount }, { count: dueTaskCount }] = await Promise.all([
+  const [{ count: ownerCount }, { count: dueTaskCount }, notifications] = await Promise.all([
     supabase.from("user_roles").select("*, roles!inner(code)", { count: "exact", head: true }).eq("roles.code", "owner"),
     supabase
       .from("tasks")
@@ -60,6 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq("assigned_to", user.id)
       .eq("status", "Open")
       .lte("due_date", new Date().toISOString().slice(0, 10)),
+    getNotifications(supabase, user),
   ]);
 
   const noOwnerYet = (ownerCount ?? 0) === 0;
@@ -209,13 +212,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <OfflineQueueProvider>
       <div className="min-h-screen bg-bg">
-        <MobileNav categories={navCategories} userFullName={user.fullName} userRoleLabel={userRoleLabel} signOutAction={signOutAction} />
+        <MobileNav
+          categories={navCategories}
+          userFullName={user.fullName}
+          userRoleLabel={userRoleLabel}
+          signOutAction={signOutAction}
+          notifications={notifications}
+        />
         <div className="flex">
           <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-line bg-surface min-h-screen sticky top-0">
             <div className="px-5 py-5 border-b border-line">
-              <div className="flex items-center gap-2">
-                <Logo size={32} />
-                <span className="font-semibold text-ink text-sm">HiTech ERP</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Logo size={32} />
+                  <span className="font-semibold text-ink text-sm">HiTech ERP</span>
+                </div>
+                <NotificationBell notifications={notifications} />
               </div>
             </div>
 

@@ -1172,6 +1172,7 @@ export type Database = {
           is_active: boolean
           is_stocked: boolean
           item_code: string
+          reorder_level: number | null
           spec: string | null
           standard_cost: number
           tax_category: string
@@ -1187,6 +1188,7 @@ export type Database = {
           is_active?: boolean
           is_stocked?: boolean
           item_code: string
+          reorder_level?: number | null
           spec?: string | null
           standard_cost?: number
           tax_category?: string
@@ -1202,6 +1204,7 @@ export type Database = {
           is_active?: boolean
           is_stocked?: boolean
           item_code?: string
+          reorder_level?: number | null
           spec?: string | null
           standard_cost?: number
           tax_category?: string

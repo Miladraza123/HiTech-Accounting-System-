@@ -15,6 +15,8 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
     return { error: "Item code, description, and unit are required." };
   }
 
+  const reorderLevelRaw = String(formData.get("reorder_level") ?? "").trim();
+
   const { error } = await supabase.from("items").insert({
     item_code,
     description,
@@ -25,6 +27,7 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
     tax_category: String(formData.get("tax_category") ?? "standard"),
     is_stocked: formData.get("is_stocked") === "on",
     standard_cost: Number(formData.get("standard_cost") ?? 0),
+    reorder_level: reorderLevelRaw ? Number(reorderLevelRaw) : null,
   });
 
   if (error) return { error: error.message };
@@ -36,6 +39,20 @@ export async function toggleItemActiveAction(id: string, isActive: boolean) {
   const supabase = await createClient();
   await supabase.from("items").update({ is_active: isActive }).eq("id", id);
   revalidatePath("/items");
+}
+
+// Low-stock notifications only fire for an item once someone deliberately
+// sets a reorder level for it — null (every item's default) means "don't
+// alert". Editable any time from the item's own detail page, not just at
+// creation, since most items already exist.
+export async function updateItemReorderLevelAction(id: string, reorderLevel: number | null): Promise<ActionResult> {
+  if (reorderLevel !== null && reorderLevel < 0) return { error: "Reorder level can't be negative." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("items").update({ reorder_level: reorderLevel }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath(`/items/${id}`);
+  return { error: null, success: true };
 }
 
 // --- Item Alternate Units (multi-unit conversion) — Sale/Issue/Delivery side only.

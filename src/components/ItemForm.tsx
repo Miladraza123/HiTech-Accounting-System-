@@ -92,6 +92,13 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
           that as an <span className="font-medium text-ink-soft">Opening Stock</span> from Setup → Import once it&apos;s
           created here.
         </p>
+        <Field label="Reorder Level (optional)">
+          <input name="reorder_level" type="number" step="0.001" min="0" placeholder="Leave blank for no low-stock alert" className="input" />
+        </Field>
+        <p className="text-xs text-ink-faint">
+          When total stock on hand (across all warehouses) falls to or below this, it shows up in the low-stock
+          notification bell. Can also be set later from the item&apos;s own page.
+        </p>
       </div>
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}

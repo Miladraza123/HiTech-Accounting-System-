@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ItemAltUnitsPanel } from "@/components/ItemAltUnitsPanel";
 import { ItemToggle } from "@/components/ItemToggle";
+import { ItemReorderLevelField } from "@/components/ItemReorderLevelField";
 
 const TAX_LABEL: Record<string, string> = {
   standard: "Standard",
@@ -71,6 +72,14 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
           <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">Standard Cost</p>
           <p className="text-ink mt-0.5 tabular">{item.standard_cost}</p>
         </div>
+        {canManage ? (
+          <ItemReorderLevelField itemId={item.id} reorderLevel={item.reorder_level} />
+        ) : (
+          <div>
+            <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">Reorder Level</p>
+            <p className="text-ink mt-0.5 tabular">{item.reorder_level ?? "—"}</p>
+          </div>
+        )}
       </div>
 
       {canManage && (

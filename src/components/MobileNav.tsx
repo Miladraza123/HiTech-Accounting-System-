@@ -7,17 +7,21 @@ import { Logo } from "@/components/Logo";
 import { NavLink, type NavCategory } from "@/components/SidebarNav";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { NotificationBell } from "@/components/NotificationBell";
+import type { NotificationItem } from "@/lib/notifications";
 
 export function MobileNav({
   categories,
   userFullName,
   userRoleLabel,
   signOutAction,
+  notifications,
 }: {
   categories: NavCategory[];
   userFullName: string;
   userRoleLabel: string;
   signOutAction: () => Promise<void>;
+  notifications: NotificationItem[];
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -31,18 +35,21 @@ export function MobileNav({
           <Logo size={28} />
           <span className="font-semibold text-ink text-sm">HiTech ERP</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="rounded-md border border-line-strong p-2 text-ink-soft hover:bg-surface-2 transition"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <line x1="1" y1="4" x2="17" y2="4" />
-            <line x1="1" y1="9" x2="17" y2="9" />
-            <line x1="1" y1="14" x2="17" y2="14" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell notifications={notifications} />
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            className="rounded-md border border-line-strong p-2 text-ink-soft hover:bg-surface-2 transition"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <line x1="1" y1="4" x2="17" y2="4" />
+              <line x1="1" y1="9" x2="17" y2="9" />
+              <line x1="1" y1="14" x2="17" y2="14" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {open && (
