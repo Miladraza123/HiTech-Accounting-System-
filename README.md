@@ -40,15 +40,17 @@ purpose. Server-only; every caller must still do its own permission
 check (this feature checks `isOwner()`) since this client bypasses RLS
 entirely.
 
-**Verification note:** this sandbox's network policy blocks direct
-outbound calls to the Supabase project's own API (only the pre-approved
-Supabase management tool can reach it) — confirmed via `curl` returning
-a 403 at the proxy layer. So the Admin API call itself couldn't be
-exercised live from here; verified instead by `npx tsc --noEmit`,
+**Verification.** This sandbox's network policy blocks direct outbound
+calls to the Supabase project's own API (only the pre-approved Supabase
+management tool can reach it) — confirmed via `curl` returning a 403 at
+the proxy layer — so the Admin API call itself couldn't be exercised
+live from here; it was instead verified by `npx tsc --noEmit`,
 `npx eslint .`, `npm test` (38 tests, all passing), `npm run build`,
 and careful review against Supabase's documented `auth.admin.createUser`
-signature. This should be tested for real on the actual deployment
-before relying on it.
+signature. **Confirmed working end-to-end on the actual deployment** by
+the project owner: created a real user through the "New User" form and
+logged in successfully with the shown credentials on a separate browser
+session.
 
 <details>
 <summary>Phase 22 — Offline-First Save & Sync, Pilot (complete)</summary>
