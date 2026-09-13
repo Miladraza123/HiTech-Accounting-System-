@@ -40,6 +40,7 @@ import {
   Lock,
   ShieldCheck,
   DatabaseBackup,
+  History,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -178,6 +179,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           icon: <Car size={ICON_SIZE} />,
         },
         { href: "/setup/users", label: "Users & Roles", show: owner, icon: <UserCog size={ICON_SIZE} /> },
+        {
+          href: "/setup/login-history",
+          label: "Login History",
+          show: owner || user.roles.includes("auditor"),
+          icon: <History size={ICON_SIZE} />,
+        },
         {
           href: "/setup/chart-of-accounts",
           label: "Chart of Accounts",
