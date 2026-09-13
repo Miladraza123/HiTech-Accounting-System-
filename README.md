@@ -8,7 +8,91 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 23 — Instant User Creation (complete)
+## Status: Phase 24 — Owner Account Controls, Item Form Restyle, Batch Payments (complete)
+
+Four independent, self-contained pieces of work, done together as one
+batch since the last check-in:
+
+**1. Owner: reset another user's password.** New `resetUserPasswordAction`
+(`src/app/actions/setup.ts`) — Owner-only, uses the same Admin API client
+built in Phase 23 to set a user's password directly, with no email flow
+of any kind. UI: a "Reset Password" control on each row of Setup → Users
+& Roles (`src/components/UserRowActions.tsx`) — generate or type a new
+password, submit, and it's shown once (with a "Copy" button) exactly like
+a newly-created account's credentials, since Supabase never stores or
+re-displays the plaintext.
+
+**2. Owner: deactivate / reactivate a user.** New `deactivateUserAction`
+/ `reactivateUserAction` — bans the Supabase Auth account (`ban_duration`,
+a 100-year ban standing in for "permanent" since the Admin API has no
+true permanent-ban flag; `"none"` lifts it) *and* flips the existing-but
+previously-unused `profiles.is_active` column (present since Phase 0) to
+match, so the Users & Roles list can show an "Inactive" badge without an
+extra Admin API round-trip. `getCurrentUser()` now also checks
+`is_active` directly and force-signs-out on the very next request if it's
+`false` — so a session that was already issued before the ban gets cut
+off immediately too, not just blocked from a fresh login. The Owner
+can't deactivate their own account (checked server-side; the button is
+also hidden for that row). No schema migration needed — `is_active`
+already existed, just unused until now.
+
+**3. Item Master form restyled.** `ItemForm.tsx` now follows the same
+design system treatment already applied to `PartyForm.tsx` — grouped
+sections (Basic Info / Unit & Tax / Stock Tracking) with a shared `Field`
+label helper and `buttonClass`, instead of the older un-sectioned layout.
+Also answered a recurring question directly in the form: Item Master
+itself has no quantity/stock field by design (see below) — the form now
+says so, and points to Setup → Import for a one-time Opening Stock entry
+when migrating existing stock from another system.
+
+**How Item Master relates to stock, for reference:** `items` is a pure
+catalog (code, description, unit, tax category, etc.) — it deliberately
+carries no quantity column, because quantity changes on every purchase,
+issue, delivery, and adjustment. Actual on-hand quantities live in the
+append-only `stock_ledger` table; `current_stock` is a view over its
+latest running balance per item/warehouse. Once an item exists here,
+stock starts moving automatically via GRN (purchase), Job material
+issue/return, Delivery Challan, Stock Transfer, and Stock Adjustment —
+none of which touch this form. **Opening Stock** is a separate one-time
+bulk-import step (Setup → Import → `fn_import_opening_stock`), used only
+when bringing in a starting balance from a previous system — it posts
+both a `stock_ledger` entry and the matching opening-balance journal
+entry so the books are correct from day one.
+
+**4. Multiple payments in one go.** New `fn_create_payments_batch(jsonb)`
+SQL function and a `/payments/new/batch` page
+(`MultiPaymentForm.tsx`) — an editable grid for recording several
+receipts/payments at once (e.g. a day's worth of customer cheques), each
+becoming its own payment document. The batch function calls the existing
+`fn_create_payment` once per row *inside a single Postgres function
+call*, so it's naturally atomic: one invalid row aborts the whole batch
+(no partial postings, nothing to reconcile), and the error names exactly
+which row and why so it can be fixed and resubmitted. No duplication of
+`fn_create_payment`'s validation, numbering, or journal-posting logic.
+Bill-wise allocation is intentionally left out of the grid — each row
+lands unallocated, exactly like a single payment left unallocated
+already can, and gets allocated afterward from that payment's own page
+(the existing `AllocatePaymentPanel`). Linked from both the Payments list
+("+ Multiple Payments") and the single New Payment page.
+
+**Verification.** `npx tsc --noEmit`, `npx eslint .`, `npm run build`,
+and `npm test` (38 tests) all pass for every piece above. The new batch
+payments function was additionally live-tested against the real database
+via the Supabase MCP tool (not just reviewed): an empty batch is rejected
+with "Add at least one payment row.", and a batch containing one invalid
+row is rejected atomically with a "Row 1: …" message — confirmed by a
+follow-up count query that zero rows were left behind in `payments`. The
+password-reset, deactivate/reactivate, and instant-user-creation Admin
+API calls themselves could not be exercised live from this sandbox (same
+network-policy limitation as Phase 23 — this environment can't reach the
+project's own API directly, only the pre-approved Supabase management
+tool can); they were verified by type-checking, build, and careful review
+against Supabase's documented Admin API signatures instead, following the
+same disclosed pattern as Phase 23 (which the project owner has since
+confirmed working live).
+
+<details>
+<summary>Phase 23 — Instant User Creation (complete)</summary>
 
 `SUPABASE_SERVICE_ROLE_KEY` is now configured, so Setup → Users & Roles'
 "New User" no longer needs the invite-and-self-signup flow from Phase
@@ -51,6 +135,8 @@ signature. **Confirmed working end-to-end on the actual deployment** by
 the project owner: created a real user through the "New User" form and
 logged in successfully with the shown credentials on a separate browser
 session.
+
+</details>
 
 <details>
 <summary>Phase 22 — Offline-First Save & Sync, Pilot (complete)</summary>
