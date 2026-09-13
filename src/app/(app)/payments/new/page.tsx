@@ -31,11 +31,16 @@ export default async function NewPaymentPage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <Link href="/payments" className="text-xs text-ink-faint hover:text-ink">
-          ← Payments
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/payments" className="text-xs text-ink-faint hover:text-ink">
+            ← Payments
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">New Payment</h1>
+        </div>
+        <Link href="/payments/new/batch" className="text-xs text-accent-ink underline underline-offset-2 whitespace-nowrap">
+          Record multiple at once →
         </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Naya Payment</h1>
       </div>
 
       <NewPaymentForm

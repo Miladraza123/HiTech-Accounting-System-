@@ -72,3 +72,59 @@ export async function cancelPaymentAction(paymentId: string, reason: string): Pr
   revalidatePath("/supplier-bills");
   return { error: error?.message ?? null };
 }
+
+// ---------- Multiple payments in one go ----------
+// Each row lands the same way an unallocated/"on account" single payment
+// already can — no bill-wise allocation inside the batch grid; allocate
+// afterward from that payment's own detail page (AllocatePaymentPanel),
+// same as a single payment left unallocated today.
+//
+// fn_create_payments_batch calls fn_create_payment once per row inside
+// one Postgres function invocation, so the whole batch is atomic: if any
+// row fails validation, none of the rows are posted (see the migration
+// for details) — the error names which row and why, so the batch can be
+// fixed and resubmitted rather than the client trying to sort out which
+// of several partially-applied rows succeeded.
+export type BatchPaymentInput = {
+  party_id: string;
+  direction: "receipt" | "payment";
+  payment_date: string;
+  method: string | null;
+  reference_no: string | null;
+  amount: number;
+  notes: string | null;
+  bank_account_id?: string | null;
+  petty_cash_fund_id?: string | null;
+};
+
+export type BatchPaymentResult = { id: string; payment_no: string };
+
+export async function createPaymentsBatchAction(
+  payments: BatchPaymentInput[]
+): Promise<ActionResult & { payments?: BatchPaymentResult[] }> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "payment.manage"))) return NO_PERMISSION;
+  if (!payments.length) return { error: "Add at least one payment row." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_create_payments_batch", {
+    p_payments: payments.map((p) => ({
+      party_id: p.party_id,
+      direction: p.direction,
+      payment_date: p.payment_date,
+      method: p.method,
+      reference_no: p.reference_no,
+      amount: p.amount,
+      notes: p.notes,
+      allocations: [],
+      bank_account_id: p.bank_account_id ?? null,
+      petty_cash_fund_id: p.petty_cash_fund_id ?? null,
+    })),
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/payments");
+  revalidatePath("/invoices");
+  revalidatePath("/supplier-bills");
+  return { error: null, payments: (data as unknown as BatchPaymentResult[]) ?? [] };
+}

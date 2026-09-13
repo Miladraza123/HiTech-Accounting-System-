@@ -4263,6 +4263,7 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_payments_batch: { Args: { p_payments: Json }; Returns: Json }
       fn_create_petty_cash_fund: {
         Args: {
           p_custodian_user_id: string

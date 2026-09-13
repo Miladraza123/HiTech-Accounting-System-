@@ -57,9 +57,14 @@ export default async function PaymentsPage({
           </p>
         </div>
         {canCreate && (
-          <Link href="/payments/new" className={buttonClass()}>
-            + New Payment
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/payments/new" className={buttonClass()}>
+              + New Payment
+            </Link>
+            <Link href="/payments/new/batch" className={buttonClass("secondary")}>
+              + Multiple Payments
+            </Link>
+          </div>
         )}
       </div>
 
