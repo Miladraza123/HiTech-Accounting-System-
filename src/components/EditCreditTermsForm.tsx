@@ -62,6 +62,7 @@ export function EditCreditTermsForm({
         );
         if (Object.keys(changes).length > 0) {
           await enqueue({
+            kind: "edit",
             table: "parties",
             rowId: partyId,
             label: `${partyName} — Credit Terms`,

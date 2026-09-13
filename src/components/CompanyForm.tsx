@@ -102,7 +102,7 @@ export function CompanyForm({
     const nextNormalized = { ...values, default_sales_tax_pct: Number(values.default_sales_tax_pct) };
     const changes = diffFields(baseNormalized, nextNormalized);
     if (Object.keys(changes).length === 0) return;
-    enqueue({ table: "company", rowId: company.id, label: "Company Profile", base: baseNormalized, changes }).then(() => {
+    enqueue({ kind: "edit", table: "company", rowId: company.id, label: "Company Profile", base: baseNormalized, changes }).then(() => {
       setBase(values);
       setQueuedOffline(true);
     });

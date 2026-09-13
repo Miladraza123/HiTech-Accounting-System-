@@ -1,15 +1,30 @@
 // Phase 18 Part A.4/5 — local-first optimistic UI + offline write queue.
+// Extended in Phase 22 to also queue offline-safe record CREATES, not
+// just edits to an existing row.
 //
-// Scope: this app's editable documents (queries -> quotations -> sales
-// orders -> jobs -> invoices -> ...) are append-only workflow documents
-// created/transitioned through dedicated RPCs, not free-form "edit this
-// record" forms — see the scope note in the Smart Merge migration. The
-// only two genuine free-edit-anytime forms in the app (Company Profile,
-// Party Credit Terms) are also the only two wired into Smart Merge, so
-// they're exactly where a queued offline edit can be replayed safely:
-// this queue routes every replay through the SAME `fn_smart_merge_update`
-// conflict-aware RPC a normal online save uses (never a plain overwrite),
-// per the prompt's own explicit dependency note.
+// Two kinds of queued write:
+//
+// - "edit" — this app's editable documents (queries -> quotations ->
+//   sales orders -> jobs -> invoices -> ...) are append-only workflow
+//   documents created/transitioned through dedicated RPCs, not
+//   free-form "edit this record" forms — see the scope note in the
+//   Smart Merge migration. The only two genuine free-edit-anytime forms
+//   in the app (Company Profile, Party Credit Terms) are also the only
+//   two wired into Smart Merge, so they're exactly where a queued
+//   offline edit can be replayed safely: this queue routes every replay
+//   through the SAME `fn_smart_merge_update` conflict-aware RPC a normal
+//   online save uses (never a plain overwrite).
+//
+// - "create" — a brand new record. The browser generates the row's UUID
+//   itself (crypto.randomUUID()) *before* going online, so two different
+//   offline users can never collide on the same id — Postgres's own
+//   primary key guarantees that. Replayed through a per-table idempotent
+//   RPC (e.g. `fn_create_query_idempotent`) that's safe to call more than
+//   once with the same id: if the row already exists (a retried sync
+//   after a dropped connection, say), it just returns the existing id
+//   instead of creating a duplicate. Currently only Query is wired up —
+//   see fn_create_query_idempotent's own comment for why the other
+//   document types (multi-row, real-time stock/credit checks) aren't.
 //
 // A tiny, dependency-free IndexedDB wrapper (no external idb/dexie lib)
 // persists queued writes across reloads/navigations, since an in-memory
@@ -18,7 +33,8 @@
 import { createClient } from "@/lib/supabase/client";
 import { smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
-export type QueuedWrite = {
+export type QueuedEdit = {
+  kind: "edit";
   id: string;
   table: "company" | "parties";
   rowId: string;
@@ -29,7 +45,28 @@ export type QueuedWrite = {
   createdAt: string;
 };
 
-export type SyncedConflict = QueuedWrite & { conflicts: SmartMergeConflict[] };
+/** A brand-new record queued while offline. `recordId` is the client-generated UUID that becomes the row's real, permanent id once synced. */
+export type QueuedCreate = {
+  kind: "create";
+  id: string;
+  table: "queries";
+  recordId: string;
+  /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
+  label: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type QueuedWrite = QueuedEdit | QueuedCreate;
+
+// Plain `Omit<QueuedWrite, K>` does NOT distribute over the union — since
+// `keyof (A | B)` collapses to only the keys A and B have in common,
+// `Omit<QueuedWrite, ...>` would silently drop every field unique to
+// either branch (rowId/base/changes, recordId/payload). This distributive
+// version applies Omit to each union member separately instead.
+export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+export type SyncedConflict = QueuedEdit & { conflicts: SmartMergeConflict[] };
 
 const DB_NAME = "hitech-offline-queue";
 const DB_VERSION = 1;
@@ -64,13 +101,13 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
   });
 }
 
-/** Persist a write for later replay — used when the browser is offline (or the save just failed on a network error). */
-export async function enqueueWrite(entry: Omit<QueuedWrite, "id" | "createdAt">): Promise<QueuedWrite> {
-  const write: QueuedWrite = {
+/** Persist a write for later replay — used when the browser is offline (or the save just failed on a network error). Never overwrites/loses a queued item: each gets its own id and stays until it's actually confirmed synced. */
+export async function enqueueWrite(entry: DistributiveOmit<QueuedWrite, "id" | "createdAt">): Promise<QueuedWrite> {
+  const write = {
     ...entry,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
-  };
+  } as QueuedWrite;
   await withStore("readwrite", (store) => store.put(write));
   return write;
 }
@@ -88,14 +125,24 @@ export async function removeQueuedWrite(id: string): Promise<void> {
 }
 
 /**
- * Replays every queued write, in the order it was queued, through the
- * exact same Smart Merge RPC an online save uses. A write that applies
- * cleanly (or partially, per Smart Merge's field-level rules) is removed
- * from the queue; a write that comes back with unresolved conflicts is
- * ALSO removed from the pending queue (its non-conflicting fields are
- * already safely applied) but is returned so the caller can show the
- * user a resolution prompt for just those fields — the same conflict UI
- * used for an online save.
+ * Replays every queued write, in the order it was queued.
+ *
+ * - An "edit" goes through the exact same Smart Merge RPC an online save
+ *   uses. One that applies cleanly (or partially, per Smart Merge's
+ *   field-level rules) is removed from the queue; one that comes back
+ *   with unresolved conflicts is ALSO removed from the pending queue
+ *   (its non-conflicting fields are already safely applied) but is
+ *   returned so the caller can show the user a resolution prompt for
+ *   just those fields — the same conflict UI used for an online save.
+ *
+ * - A "create" goes through that document type's idempotent create RPC.
+ *   It only ever gets ONE clean outcome — synced or failed — never a
+ *   field-level conflict, since nobody else could have touched a row
+ *   that didn't exist yet.
+ *
+ * A write is only ever removed from the queue after the server has
+ * actually confirmed it — a network failure (still offline, or a
+ * transient error) leaves it queued untouched, to retry next time.
  */
 export async function flushQueue(): Promise<{ synced: QueuedWrite[]; conflicts: SyncedConflict[]; failed: QueuedWrite[] }> {
   const queued = await listQueuedWrites();
@@ -107,6 +154,30 @@ export async function flushQueue(): Promise<{ synced: QueuedWrite[]; conflicts: 
 
   const supabase = createClient();
   for (const write of queued) {
+    if (write.kind === "create") {
+      // fn_create_query_idempotent's optional params (p_source, p_query_date,
+      // p_next_followup_at, p_notes) have no SQL default, so the generated
+      // RPC type is non-nullable `string` — the function and columns both
+      // accept a literal NULL fine, so these casts are purely for the type
+      // checker (same pattern as setPeriodLockAction/createStockTransferAction).
+      const { error } = await supabase.rpc("fn_create_query_idempotent", {
+        p_id: write.recordId,
+        p_party_id: write.payload.party_id as string,
+        p_requirement: write.payload.requirement as string,
+        p_source: (write.payload.source ?? null) as string,
+        p_query_date: (write.payload.query_date ?? null) as string,
+        p_next_followup_at: (write.payload.next_followup_at ?? null) as string,
+        p_notes: (write.payload.notes ?? null) as string,
+      });
+      if (error) {
+        failed.push(write);
+        continue;
+      }
+      await removeQueuedWrite(write.id);
+      synced.push(write);
+      continue;
+    }
+
     const { result, error } = await smartMergeUpdate(supabase, write.table, write.rowId, write.base, write.changes);
     if (error) {
       // Still offline, or a real server error — leave it queued, try again next time.

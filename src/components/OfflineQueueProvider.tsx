@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 import {
   enqueueWrite,
   flushQueue,
   listQueuedWrites,
+  type DistributiveOmit,
   type QueuedWrite,
   type SyncedConflict,
 } from "@/lib/offlineQueue";
@@ -14,7 +15,7 @@ import {
 type OfflineQueueContextValue = {
   isOnline: boolean;
   pendingCount: number;
-  enqueue: (entry: Omit<QueuedWrite, "id" | "createdAt">) => Promise<void>;
+  enqueue: (entry: DistributiveOmit<QueuedWrite, "id" | "createdAt">) => Promise<void>;
 };
 
 const OfflineQueueContext = createContext<OfflineQueueContextValue | null>(null);
@@ -56,6 +57,15 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
   const [pendingCount, setPendingCount] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncedConflicts, setSyncedConflicts] = useState<SyncedConflict[]>([]);
+  // Read inside the retry interval below without needing it in that
+  // effect's dependency array (which must stay `[]` — it sets up
+  // listeners/intervals once for the component's lifetime).
+  const isOnlineRef = useRef(isOnline);
+  const pendingCountRef = useRef(pendingCount);
+  useEffect(() => {
+    isOnlineRef.current = isOnline;
+    pendingCountRef.current = pendingCount;
+  }, [isOnline, pendingCount]);
 
   const refreshPendingCount = useCallback(async () => {
     const items = await listQueuedWrites();
@@ -113,13 +123,20 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
     window.addEventListener("offline", handleOffline);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // While marked offline, keep re-checking periodically so the banner
-    // clears itself the moment real connectivity returns.
+    // Two reasons to keep polling on a timer, covering requirement #6
+    // (a failed sync must retry automatically, never just sit stuck):
+    // - While marked offline: re-check connectivity so the banner clears
+    //   itself the moment it genuinely returns.
+    // - While online but items are still pending (e.g. the last flush
+    //   hit a transient server error rather than a connectivity one —
+    //   `flushQueue` leaves failed items queued untouched): retry the
+    //   flush again without waiting for another online/offline edge.
     const interval = setInterval(() => {
-      setIsOnline((prev) => {
-        if (!prev) reconcile();
-        return prev;
-      });
+      if (!isOnlineRef.current) {
+        reconcile();
+      } else if (pendingCountRef.current > 0) {
+        runFlush();
+      }
     }, RECHECK_INTERVAL_MS);
 
     return () => {
@@ -133,7 +150,7 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const enqueue = useCallback(
-    async (entry: Omit<QueuedWrite, "id" | "createdAt">) => {
+    async (entry: DistributiveOmit<QueuedWrite, "id" | "createdAt">) => {
       await enqueueWrite(entry);
       await refreshPendingCount();
     },
@@ -222,10 +239,16 @@ function SyncConflictBanner({
 }) {
   return (
     <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md space-y-2 rounded-lg border border-warn bg-warn-soft p-3 text-xs shadow-lg">
-      <div className="flex items-center justify-between">
-        <p className="font-medium text-warn">
-          Someone else changed these field(s) on &quot;{conflict.label}&quot; while it was syncing offline:
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <span className="mb-1 inline-block rounded-full bg-warn px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+            Conflict
+          </span>
+          <p className="font-medium text-warn">
+            Another user has updated &quot;{conflict.label}&quot;. Please review the latest version before applying
+            your changes.
+          </p>
+        </div>
         <button type="button" onClick={onDismiss} className="shrink-0 text-ink-faint underline underline-offset-2">
           Later
         </button>

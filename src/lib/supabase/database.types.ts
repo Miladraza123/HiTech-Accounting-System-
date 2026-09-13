@@ -4304,6 +4304,18 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_query_idempotent: {
+        Args: {
+          p_id: string
+          p_next_followup_at: string
+          p_notes: string
+          p_party_id: string
+          p_query_date: string
+          p_requirement: string
+          p_source: string
+        }
+        Returns: string
+      }
       fn_create_quotation: {
         Args: {
           p_delivery_terms: string

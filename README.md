@@ -8,7 +8,66 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 21 — Access Control & Account Self-Service (complete)
+## Status: Phase 22 — Offline-First Save & Sync, Pilot (complete)
+
+A safe, real (not simulated) offline-first create-and-sync engine —
+scoped deliberately to one document type first rather than the whole
+app at once. See the full design writeup and testing steps shared with
+the project owner for the complete flow; summary here:
+
+**What it does.** Creating a **Query** while offline now saves safely on
+the device (IndexedDB) instead of failing. The browser generates the
+row's UUID itself, *before* ever reaching the server — the same
+mechanism used elsewhere in this codebase's offline queue (Phase 18).
+Two different offline users can never collide on the same id, because
+that id **is** the row's real, permanent primary key once it syncs — no
+separate "local id vs. server id" remapping. The human-facing sequence
+number (QRY-0001, from `fn_get_next_number`) is still only ever assigned
+by the server, at the moment of an actual sync — never guessed offline,
+never duplicated, never gapped by an offline attempt that's later
+discarded.
+
+**Why only Query, not every document type yet.** Query is a single-row
+insert with no line items, no stock check, no credit-limit check, and no
+linked accounting entries — the lowest-risk possible pilot. Quotation,
+Sales Order, Invoice, etc. are multi-row, multi-RPC transactions that
+also depend on *live* data (current stock, current credit exposure) to
+even validate — evaluating those offline would mean accepting entries
+against stale assumptions that may no longer hold by the time they sync.
+Extending this pattern to any of them is real, separate design work per
+document type, not a copy-paste of this one.
+
+**Idempotent sync, no duplicates on retry.** `fn_create_query_idempotent`
+is safe to call more than once with the same client-generated id: if a
+retried sync (say, the connection dropped right after the server's
+response but before the browser saw it) finds the row already exists,
+it just returns that same id — never a second row, never a second
+QRY-number consumed.
+
+**Editing an existing record while offline — already covered by Smart
+Merge (Phase 18).** Company Profile and Party Credit Terms are the two
+existing free-edit-anytime forms in the app, and were already wired into
+Smart Merge's field-level 3-way conflict resolution before this phase.
+This phase tightens the conflict banner's wording and adds an explicit
+"Conflict" status label to match: never a silent overwrite, never blind
+last-write-wins — a field two people genuinely changed differently is
+held back, with the server's value, your offline value, and a
+Keep-mine/Keep-server's choice all shown together, while every other
+field you changed still saves normally.
+
+**Delete — doesn't apply here.** This accounting system has no hard
+delete anywhere, online or offline — every "removal" is a Cancel action
+with a mandatory reason, kept in the record for audit, through each
+document type's own dedicated RPC. That's an intentional, existing
+design choice (accounting records shouldn't vanish), not something this
+phase changed or needs to add an offline path for.
+
+Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
+passing), `npm run build` (full production build) — all clean. New RPC
+applied to the live database and confirmed present.
+
+<details>
+<summary>Phase 21 — Access Control & Account Self-Service (complete)</summary>
 
 Follow-up fixes/features from real device testing of Phase 20, none
 touching core business logic:
@@ -65,6 +124,8 @@ Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
 passing), `npm run build` (full production build), and a live database
 sweep confirming no Roman-Urdu text remains in any `public` schema
 function — all clean.
+
+</details>
 
 <details>
 <summary>Phase 20 — Language, Connectivity & User Onboarding (complete)</summary>
