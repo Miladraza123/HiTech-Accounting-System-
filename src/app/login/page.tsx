@@ -62,6 +62,8 @@ export default function LoginPage() {
             {pending ? "Logging in…" : "Login"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-ink-faint">Powered by &quot;OHT Solutions&quot;</p>
       </div>
     </main>
   );
