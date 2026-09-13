@@ -8,7 +8,68 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 25 — Login History, Offline-First Tasks, In-App Notifications (complete)
+## Status: Phase 26 — 2FA, Bulk Actions, PDF Download, Mobile Table Fixes (complete)
+
+The Tier 3 batch from the same prioritized improvement list Phase 25 started on:
+
+**1. Optional Two-Factor Authentication (TOTP).** Self-service enable/
+disable on the Account page (`TwoFactorSettings.tsx`), using Supabase
+Auth's built-in TOTP support directly — no project config or migration
+needed, enabled on every Supabase project by default. `signInAction`
+now checks the session's authenticator assurance level right after
+password verification and redirects to a new `/mfa-challenge` page
+instead of home when the account has a verified factor the session
+hasn't completed yet this login; `getCurrentUser()` carries the same
+check as defense-in-depth. For every user who hasn't opted in, current
+and next assurance level are always equal, so this is a complete no-op
+until someone actually enables it.
+
+**2. Bulk select + bulk actions** on Payments, Queries, and Quotations —
+a shared checkbox-selection pattern (`useBulkSelection`) plus a
+dependency-free CSV export (`csvExport`). Payments additionally gets
+bulk "Cancel Selected", calling the exact same `cancelPaymentAction` a
+single cancel already uses once per selected row (same mandatory
+reason, same validation) rather than a new atomic batch RPC — each
+cancellation is an independent status transition, so a partial-success
+report is more correct here than an artificial all-or-nothing. Queries
+and Quotations are export-only by design: both are workflows meant to
+be stepped through with individual review, not batch-transitioned.
+
+**3. Direct PDF download** on Quotation, Purchase Order, Invoice,
+Delivery Challan, and Supplier Bill — a real one-click download next to
+the existing "Print / PDF" link, which previously only opened the
+print page for the browser's own print dialog. `DownloadPdfButton`
+loads that exact same print page in a hidden iframe and rasterizes it
+client-side (`html2canvas` + `jsPDF`, both dynamically imported) rather
+than standing up a server-side headless-Chromium renderer (heavy in a
+serverless function) or a second PDF-specific template that could drift
+out of sync with the print pages from the earlier letterhead redesign.
+
+**4. Mobile-narrow-screen table fixes** — the same class of bug already
+fixed once in the Quotation line-item table (a fixed column width with
+no matching `min-w-`, clipping the input inside it on a narrow screen):
+swept every other data-entry table in the app and fixed the same issue
+in 11 more components.
+
+**Verification.** `npx tsc --noEmit`, `npx eslint .`, `npm run build`,
+and `npm test` (38 tests) all pass for every piece above. The riskiest
+part of the PDF feature — the canvas pagination math, which slices a
+tall rendered page into A4-sized chunks — was additionally verified for
+real: built an isolated harness using this project's own installed
+`jspdf`/`html2canvas` builds, served same-origin and driven by this
+sandbox's pre-installed headless Chromium, ran the exact algorithm
+against a mock multi-page-tall document, and inspected the real
+resulting PDF page-by-page (via PyMuPDF) — correct page count, no gaps/
+overlaps/duplication at page boundaries, no distortion. The 2FA enroll/
+challenge/verify flow and a live PDF click-through against a real
+document could not be exercised from this sandbox (same network-policy
+limitation as Phase 23/25 — direct calls to the Supabase project's own
+API are blocked here); both were implemented and reviewed carefully
+against their respective documented behavior, and are worth a quick
+real-world check on the actual deployment.
+
+<details>
+<summary>Phase 25 — Login History, Offline-First Tasks, In-App Notifications (complete)</summary>
 
 Three more independent pieces of work — the first batch from the Tier
 2/Tier 3 prioritized improvement list — done together:
@@ -55,6 +116,8 @@ Supabase MCP tool: the function correctly rejects an unauthenticated
 call the same way the original `fn_create_task` does, and the new
 column is live and queryable (6 existing items, all correctly
 defaulting to no alert, since the feature is opt-in).
+
+</details>
 
 <details>
 <summary>Phase 24 — Owner Account Controls, Item Form Restyle, Batch Payments (complete)</summary>
