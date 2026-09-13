@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
@@ -194,4 +196,69 @@ export async function revokeInviteAction(inviteId: string): Promise<ActionResult
   revalidatePath("/setup/users");
   if (error) return { error: error.message };
   return { error: null };
+}
+
+// Instant account creation — the Owner sets the password directly, the
+// new teammate gets a working login immediately (no self-signup, no
+// email). Requires SUPABASE_SERVICE_ROLE_KEY to be configured.
+//
+// Reuses the existing invite machinery rather than duplicating it:
+// fn_invite_user still does all its usual validation (valid email, at
+// least one real role, no duplicate/already-registered email) and
+// creates the same pending `user_invites` row it always has. The only
+// difference from a plain invite is what happens next — instead of
+// waiting for the teammate to visit /signup themselves, this calls the
+// Auth Admin API right away to create their account with the password
+// the Owner chose. That INSERT into auth.users fires the very same
+// fn_handle_new_user trigger a self-signup would (Postgres triggers
+// don't care which API path caused the insert), which finds the
+// invite that was just created, applies its role(s), and marks it
+// accepted — all synchronously, before this function even returns.
+export async function createUserAction(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  const currentUser = await getCurrentUser();
+  if (!isOwner(currentUser)) return { error: "You don't have permission to perform this action." };
+
+  const email = String(formData.get("email") ?? "").trim();
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const roleIds = formData.getAll("role_ids").map(String).filter(Boolean);
+
+  if (!email || !fullName) return { error: "Full name and email are required." };
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (roleIds.length === 0) return { error: "Select at least one role for this user." };
+
+  const supabase = await createClient();
+  const { data: inviteId, error: inviteError } = await supabase.rpc("fn_invite_user", {
+    p_email: email,
+    p_full_name: fullName,
+    p_role_ids: roleIds,
+  });
+  if (inviteError) return { error: inviteError.message };
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    // Clean up the invite we just created so it doesn't sit there
+    // forever if this deployment isn't configured for instant creation.
+    await supabase.rpc("fn_revoke_invite", { p_invite_id: inviteId });
+    return { error: e instanceof Error ? e.message : "Instant user creation is not available." };
+  }
+
+  const { error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
+  if (createError) {
+    await supabase.rpc("fn_revoke_invite", { p_invite_id: inviteId });
+    return { error: createError.message };
+  }
+
+  revalidatePath("/setup/users");
+  return { error: null, success: true };
 }

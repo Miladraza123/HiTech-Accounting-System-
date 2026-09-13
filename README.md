@@ -8,7 +8,50 @@ See the full architecture, database design, accounting engine and
 implementation phases in the design blueprint shared with the project
 owner. This repository implements it phase by phase.
 
-## Status: Phase 22 — Offline-First Save & Sync, Pilot (complete)
+## Status: Phase 23 — Instant User Creation (complete)
+
+`SUPABASE_SERVICE_ROLE_KEY` is now configured, so Setup → Users & Roles'
+"New User" no longer needs the invite-and-self-signup flow from Phase
+20 — the Owner sets the new teammate's email and password directly, and
+the account is created **immediately**, no email sent, no separate
+sign-up step. Credentials are shown once right after creation (with a
+"Copy" button) for the Owner to hand to the new teammate — Supabase
+never stores the plaintext password, so this is the only chance to
+copy it.
+
+**How it reuses, rather than replaces, Phase 20's work.** `fn_invite_user`
+and `fn_handle_new_user` (the invite-only signup trigger) are completely
+unchanged — `createUserAction` still calls `fn_invite_user` first,
+getting all its existing validation for free (valid email, at least one
+real role, no duplicate/already-registered email), and *then* calls the
+Supabase Admin API (`auth.admin.createUser`) to actually create the
+login right away instead of waiting for a self-signup. That `auth.users`
+insert fires the exact same `fn_handle_new_user` trigger a self-signup
+would — Postgres triggers don't care which API path caused the insert —
+so the role(s) get applied and the invite gets marked accepted
+synchronously, before the action even returns. If the Admin API call
+fails after the invite row was created (e.g. this key isn't configured
+in some other deployment), the invite is automatically revoked rather
+than left stranded.
+
+New file: `src/lib/supabase/admin.ts` — a privileged, non-cookie-based
+Supabase client using the Service Role key, used *only* for this one
+purpose. Server-only; every caller must still do its own permission
+check (this feature checks `isOwner()`) since this client bypasses RLS
+entirely.
+
+**Verification note:** this sandbox's network policy blocks direct
+outbound calls to the Supabase project's own API (only the pre-approved
+Supabase management tool can reach it) — confirmed via `curl` returning
+a 403 at the proxy layer. So the Admin API call itself couldn't be
+exercised live from here; verified instead by `npx tsc --noEmit`,
+`npx eslint .`, `npm test` (38 tests, all passing), `npm run build`,
+and careful review against Supabase's documented `auth.admin.createUser`
+signature. This should be tested for real on the actual deployment
+before relying on it.
+
+<details>
+<summary>Phase 22 — Offline-First Save & Sync, Pilot (complete)</summary>
 
 A safe, real (not simulated) offline-first create-and-sync engine —
 scoped deliberately to one document type first rather than the whole
@@ -65,6 +108,8 @@ phase changed or needs to add an offline path for.
 Verified: `npx tsc --noEmit`, `npx eslint .`, `npm test` (38 tests, all
 passing), `npm run build` (full production build) — all clean. New RPC
 applied to the live database and confirmed present.
+
+</details>
 
 <details>
 <summary>Phase 21 — Access Control & Account Self-Service (complete)</summary>

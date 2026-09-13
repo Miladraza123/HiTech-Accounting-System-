@@ -48,7 +48,7 @@ export default async function UsersPage() {
         <div className="rounded-xl border border-line bg-surface divide-y divide-line">
           <div className="px-5 py-3 border-b border-line">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-              Pending Invites — waiting for them to sign up
+              Pending — account creation didn&apos;t complete
             </p>
           </div>
           {invites.map((inv) => (
