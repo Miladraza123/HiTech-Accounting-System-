@@ -16,9 +16,13 @@ export function PrintLogoBlock({
     <div className="logo-block">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- print pages are plain server-rendered HTML captured for PDF/print, not part of the optimized client image pipeline.
-        <img src={logoUrl} alt={`${company?.legal_name ?? "Company"} logo`} style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0 }} />
+        <img
+          src={logoUrl}
+          alt={`${company?.legal_name ?? "Company"} logo`}
+          style={{ height: 68, width: "auto", maxWidth: 170, objectFit: "contain", flexShrink: 0 }}
+        />
       ) : (
-        <svg width="46" height="46" viewBox="0 0 40 40" style={{ flexShrink: 0 }}>
+        <svg width="68" height="68" viewBox="0 0 40 40" style={{ flexShrink: 0 }}>
           <rect width="40" height="40" rx="9" fill="#2b3a55" />
           <polyline points="9,20 20,11 31,20" fill="none" stroke="#e08a4f" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
           <rect x="12" y="20" width="16" height="10" rx="1.4" fill="none" stroke="#e08a4f" strokeWidth="2.2" />
