@@ -30,7 +30,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     supabase.from("payment_allocations").select("*, payments(payment_no, payment_date, status)").eq("invoice_id", id).order("created_at", { ascending: false }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("sales_returns").select("*").eq("invoice_id", id).order("created_at", { ascending: false }),
-    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   if (!invoice) notFound();
@@ -68,6 +68,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           filename={`${invoice.invoice_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
         />
       </div>
 

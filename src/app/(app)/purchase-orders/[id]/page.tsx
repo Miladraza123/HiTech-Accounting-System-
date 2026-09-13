@@ -37,7 +37,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
     supabase.from("attachments").select("*").eq("owner_table", "purchase_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "purchase_orders").eq("related_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
-    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   if (!po) notFound();
@@ -66,6 +66,8 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
           filename={`${po.po_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
         />
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { uploadCompanyImageAction, removeCompanyImageAction, getCompanyImagePreviewUrlAction, type BrandingKind } from "@/app/actions/companyBranding";
+import { autoCropLogo } from "@/lib/logoAutoCrop";
 import { buttonClass } from "@/components/ui/Button";
 
 // Roughly enough to stay sharp printed at the sizes these are actually
@@ -51,13 +52,22 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
 
   async function handleUpload(formData: FormData) {
     setError(null);
-    const file = formData.get("file");
+    let file = formData.get("file");
     if (file instanceof File && file.type !== "image/svg+xml") {
+      if (kind === "logo") {
+        // Trims blank/transparent margin around the actual logo artwork
+        // before it's ever stored — the print box (PrintLogoBlock.tsx)
+        // alone can't fix a file that already has a lot of padding baked
+        // in. Only applied to Logo, matching the reference approach this
+        // was confirmed against.
+        file = await autoCropLogo(file);
+        formData.set("file", file);
+      }
       // A correctly-sized print box can't fix a source image that's
       // just too low-resolution to begin with — it'll look soft once
-      // scaled up. Checked client-side (natural pixel dimensions) before
-      // even uploading; SVG is vector and has no meaningful "resolution"
-      // to check.
+      // scaled up. Checked client-side (natural pixel dimensions, after
+      // any crop above) before even uploading; SVG is vector and has no
+      // meaningful "resolution" to check.
       const dims = await readImageDimensions(file);
       if (dims && Math.min(dims.width, dims.height) < MIN_DIMENSION_PX) {
         setError(

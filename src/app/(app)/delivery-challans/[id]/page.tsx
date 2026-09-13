@@ -34,7 +34,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
       .maybeSingle(),
     supabase.from("delivery_challan_lines").select("*").eq("dc_id", id).order("sort_order"),
     supabase.from("attachments").select("*").eq("owner_table", "delivery_challans").eq("owner_id", id).order("uploaded_at", { ascending: false }),
-    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   if (!dc) notFound();
@@ -65,6 +65,8 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
           filename={`${dc.dc_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
         />
       </div>
 

@@ -20,10 +20,10 @@ export default async function PurchaseOrderPrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ signature?: string; stamp?: string }>;
+  searchParams: Promise<{ signature?: string; stamp?: string; phone?: string; email?: string }>;
 }) {
   const { id } = await params;
-  const { signature, stamp } = await searchParams;
+  const { signature, stamp, phone, email } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: po }, { data: company }, { data: lines }] = await Promise.all([
@@ -56,7 +56,7 @@ export default async function PurchaseOrderPrintPage({
       </svg>
 
       <div className="hdr">
-        <PrintLogoBlock company={company} logoUrl={logoUrl} />
+        <PrintLogoBlock company={company} logoUrl={logoUrl} showPhone={phone === "1"} showEmail={email === "1"} />
         <div style={{ textAlign: "right" }}>
           <h1>PURCHASE ORDER</h1>
           <div className="muted">{po.po_no}</div>

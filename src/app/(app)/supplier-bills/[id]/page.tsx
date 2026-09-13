@@ -6,7 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton";
 import { PurchaseReturnPanel } from "@/components/PurchaseReturnPanel";
 import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
-import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -19,7 +19,7 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
   const canManage = await hasPermission(user, "supplier_bill.manage");
 
   const supabase = await createClient();
-  const [{ data: bill }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }] = await Promise.all([
+  const [{ data: bill }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }, { data: company }] = await Promise.all([
     supabase
       .from("supplier_bills")
       .select("*, parties(legal_name, billing_address), grns(grn_no, received_date, warehouse_id)")
@@ -30,6 +30,7 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
     supabase.from("payment_allocations").select("*, payments(payment_no, payment_date, status)").eq("supplier_bill_id", id).order("created_at", { ascending: false }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("purchase_returns").select("*").eq("supplier_bill_id", id).order("created_at", { ascending: false }),
+    supabase.from("company").select("phone, email").maybeSingle(),
   ]);
 
   if (!bill) notFound();
@@ -56,16 +57,14 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
           </p>
           {bill.supplier_bill_ref && <p className="text-xs text-ink-faint mt-0.5">Supplier Ref#: {bill.supplier_bill_ref}</p>}
         </div>
-        <div className="flex items-start gap-2">
-          <Link
-            href={`/supplier-bills/${id}/print`}
-            target="_blank"
-            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-          >
-            Print / PDF
-          </Link>
-          <DownloadPdfButton printPath={`/supplier-bills/${id}/print`} filename={`${bill.bill_no}.pdf`} />
-        </div>
+        <PrintPdfActions
+          printPath={`/supplier-bills/${id}/print`}
+          filename={`${bill.bill_no}.pdf`}
+          hasSignature={false}
+          hasStamp={false}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       {bill.status === "Cancelled" && bill.cancel_reason && (

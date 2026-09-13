@@ -5,27 +5,32 @@ import { DownloadPdfButton } from "@/components/DownloadPdfButton";
 
 /**
  * Replaces the old plain "Print / PDF" link + "Download PDF" button
- * pair once the company has a signature and/or stamp uploaded — asks,
- * independently, whether to include each on THIS particular document
- * before opening the print view or generating the PDF. When neither is
- * uploaded, renders exactly the old pair unchanged (no prompt, nothing
- * to toggle) — zero behavior change for a deployment that hasn't set
- * this up.
+ * pair once the company has a signature, stamp, phone, and/or email set
+ * up — asks, independently, whether to include each on THIS particular
+ * document before opening the print view or generating the PDF. When
+ * none of the four apply, renders exactly the old pair unchanged (no
+ * prompt, nothing to toggle).
  */
 export function PrintPdfActions({
   printPath,
   filename,
   hasSignature,
   hasStamp,
+  hasPhone,
+  hasEmail,
 }: {
   printPath: string;
   filename: string;
   hasSignature: boolean;
   hasStamp: boolean;
+  hasPhone: boolean;
+  hasEmail: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [includeSignature, setIncludeSignature] = useState(true);
   const [includeStamp, setIncludeStamp] = useState(true);
+  const [includePhone, setIncludePhone] = useState(true);
+  const [includeEmail, setIncludeEmail] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,7 +41,7 @@ export function PrintPdfActions({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  if (!hasSignature && !hasStamp) {
+  if (!hasSignature && !hasStamp && !hasPhone && !hasEmail) {
     return (
       <div className="flex items-start gap-2">
         <a
@@ -56,6 +61,8 @@ export function PrintPdfActions({
     const params = new URLSearchParams();
     if (hasSignature && includeSignature) params.set("signature", "1");
     if (hasStamp && includeStamp) params.set("stamp", "1");
+    if (hasPhone && includePhone) params.set("phone", "1");
+    if (hasEmail && includeEmail) params.set("email", "1");
     const qs = params.toString();
     return qs ? `${base}?${qs}` : base;
   }
@@ -94,6 +101,28 @@ export function PrintPdfActions({
                   className="h-3.5 w-3.5 accent-[var(--accent)]"
                 />
                 Stamp
+              </label>
+            )}
+            {hasPhone && (
+              <label className="flex items-center gap-2 text-xs text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={includePhone}
+                  onChange={(e) => setIncludePhone(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--accent)]"
+                />
+                Phone
+              </label>
+            )}
+            {hasEmail && (
+              <label className="flex items-center gap-2 text-xs text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={includeEmail}
+                  onChange={(e) => setIncludeEmail(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--accent)]"
+                />
+                Email
               </label>
             )}
           </div>

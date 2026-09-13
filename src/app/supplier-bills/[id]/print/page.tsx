@@ -12,8 +12,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: bill?.bill_no ?? "Supplier Bill" };
 }
 
-export default async function SupplierBillPrintPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SupplierBillPrintPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ phone?: string; email?: string }>;
+}) {
   const { id } = await params;
+  const { phone, email } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: bill }, { data: company }, { data: lines }] = await Promise.all([
@@ -46,7 +53,7 @@ export default async function SupplierBillPrintPage({ params }: { params: Promis
       </svg>
 
       <div className="hdr">
-        <PrintLogoBlock company={company} logoUrl={logoUrl} />
+        <PrintLogoBlock company={company} logoUrl={logoUrl} showPhone={phone === "1"} showEmail={email === "1"} />
         <div style={{ textAlign: "right" }}>
           <h1>SUPPLIER BILL</h1>
           <div className="muted">{bill.bill_no}</div>

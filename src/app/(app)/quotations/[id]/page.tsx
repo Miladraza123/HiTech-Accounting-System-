@@ -39,7 +39,7 @@ export default async function QuotationDetailPage({
       supabase.from("units").select("*").order("code"),
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("sales_orders").select("id, so_no, status").eq("quotation_id", id).order("created_at", { ascending: false }),
-      supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
+      supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
     ]);
 
   if (!quotation || !revisions?.length) notFound();
@@ -77,6 +77,8 @@ export default async function QuotationDetailPage({
           filename={`${quotation.quotation_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
         />
       </div>
 
