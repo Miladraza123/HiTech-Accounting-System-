@@ -4,6 +4,7 @@ import { printStyles, AUTO_PRINT_SCRIPT } from "@/lib/printStyles";
 import { getCompanyBrandingUrls } from "@/lib/companyBranding";
 import { PrintLogoBlock } from "@/components/PrintLogoBlock";
 import { PrintSignoff } from "@/components/PrintSignoff";
+import { PrintBackLink } from "@/components/PrintBackLink";
 import type { Metadata } from "next";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -18,10 +19,10 @@ export default async function DeliveryChallanPrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ signature?: string; stamp?: string; phone?: string; email?: string }>;
+  searchParams: Promise<{ signature?: string; stamp?: string; phone?: string; email?: string; autoprint?: string }>;
 }) {
   const { id } = await params;
-  const { signature, stamp, phone, email } = await searchParams;
+  const { signature, stamp, phone, email, autoprint } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: dc }, { data: company }, { data: lines }] = await Promise.all([
@@ -46,72 +47,75 @@ export default async function DeliveryChallanPrintPage({
   const warehouse = dc.warehouses as unknown as { name: string } | null;
 
   return (
-    <div className="print-dc">
-      <style dangerouslySetInnerHTML={{ __html: printStyles("print-dc") }} />
+    <>
+      {autoprint !== "0" && <PrintBackLink href={`/delivery-challans/${id}`} />}
+      <div className="print-dc">
+        <style dangerouslySetInnerHTML={{ __html: printStyles("print-dc") }} />
 
-      <svg className="watermark" width="260" height="260" viewBox="0 0 40 40">
-        <polyline points="9,20 20,11 31,20" fill="none" stroke="#2b3a55" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="12" y="20" width="16" height="10" rx="1.4" fill="none" stroke="#2b3a55" strokeWidth="2.2" />
-      </svg>
+        <svg className="watermark" width="260" height="260" viewBox="0 0 40 40">
+          <polyline points="9,20 20,11 31,20" fill="none" stroke="#2b3a55" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="12" y="20" width="16" height="10" rx="1.4" fill="none" stroke="#2b3a55" strokeWidth="2.2" />
+        </svg>
 
-      <div className="hdr">
-        <PrintLogoBlock company={company} logoUrl={logoUrl} showPhone={phone === "1"} showEmail={email === "1"} />
-        <div style={{ textAlign: "right" }}>
-          <h1>DELIVERY CHALLAN</h1>
-          <div className="muted">{dc.dc_no}</div>
-          <div className="muted">{dc.delivery_date}</div>
+        <div className="hdr">
+          <PrintLogoBlock company={company} logoUrl={logoUrl} showPhone={phone === "1"} showEmail={email === "1"} />
+          <div style={{ textAlign: "right" }}>
+            <h1>DELIVERY CHALLAN</h1>
+            <div className="muted">{dc.dc_no}</div>
+            <div className="muted">{dc.delivery_date}</div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-        <div>
-          <div className="muted">Deliver To</div>
-          <div style={{ fontWeight: 600 }}>{party?.legal_name}</div>
-          {party?.billing_address && <div className="muted">{party.billing_address}</div>}
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+          <div>
+            <div className="muted">Deliver To</div>
+            <div style={{ fontWeight: 600 }}>{party?.legal_name}</div>
+            {party?.billing_address && <div className="muted">{party.billing_address}</div>}
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="muted">Sales Order</div>
+            <div>{so?.so_no}</div>
+            {so?.client_po_number && <div className="muted">PO: {so.client_po_number}</div>}
+            <div className="muted">Ex-Warehouse: {warehouse?.name}</div>
+            {dc.vehicle_no && <div className="muted">Vehicle: {dc.vehicle_no}</div>}
+            {dc.driver_name && <div className="muted">Driver: {dc.driver_name}</div>}
+          </div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div className="muted">Sales Order</div>
-          <div>{so?.so_no}</div>
-          {so?.client_po_number && <div className="muted">PO: {so.client_po_number}</div>}
-          <div className="muted">Ex-Warehouse: {warehouse?.name}</div>
-          {dc.vehicle_no && <div className="muted">Vehicle: {dc.vehicle_no}</div>}
-          {dc.driver_name && <div className="muted">Driver: {dc.driver_name}</div>}
-        </div>
-      </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th className="num">Delivered Qty</th>
-            <th>Unit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(lines ?? []).map((l) => (
-            <tr key={l.id}>
-              <td>{l.description}</td>
-              <td className="num">{l.delivered_qty}</td>
-              <td>{l.unit ?? "—"}</td>
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th className="num">Delivered Qty</th>
+              <th>Unit</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(lines ?? []).map((l) => (
+              <tr key={l.id}>
+                <td>{l.description}</td>
+                <td className="num">{l.delivered_qty}</td>
+                <td>{l.unit ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-      {dc.remarks && (
-        <p className="muted" style={{ marginTop: 12 }}>
-          Remarks: {dc.remarks}
-        </p>
-      )}
+        {dc.remarks && (
+          <p className="muted" style={{ marginTop: 12 }}>
+            Remarks: {dc.remarks}
+          </p>
+        )}
 
-      <PrintSignoff
-        ourLabel="Dispatched By"
-        theirLabel="Received By (Name, Signature & Date)"
-        signatureUrl={signatureUrl}
-        stampUrl={stampUrl}
-      />
+        <PrintSignoff
+          ourLabel="Dispatched By"
+          theirLabel="Received By (Name, Signature & Date)"
+          signatureUrl={signatureUrl}
+          stampUrl={stampUrl}
+        />
 
-      <script dangerouslySetInnerHTML={{ __html: AUTO_PRINT_SCRIPT }} />
-    </div>
+        <script dangerouslySetInnerHTML={{ __html: AUTO_PRINT_SCRIPT }} />
+      </div>
+    </>
   );
 }
