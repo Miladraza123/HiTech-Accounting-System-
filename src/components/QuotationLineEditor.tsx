@@ -88,13 +88,13 @@ export function QuotationLineEditor({
         <table className="w-full text-sm">
           <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
             <tr>
-              <th className="text-left px-3 py-2 w-48">Item (optional)</th>
-              <th className="text-left px-3 py-2">Description</th>
-              <th className="text-right px-3 py-2 w-20">Qty</th>
-              <th className="text-left px-3 py-2 w-24">Unit</th>
-              <th className="text-right px-3 py-2 w-28">Rate</th>
-              <th className="text-right px-3 py-2 w-20">Tax %</th>
-              <th className="text-right px-3 py-2 w-28">Amount</th>
+              <th className="text-left px-3 py-2 w-64 min-w-[16rem]">Item (optional)</th>
+              <th className="text-left px-3 py-2 min-w-[14rem]">Description</th>
+              <th className="text-right px-3 py-2 w-24 min-w-[6rem]">Qty</th>
+              <th className="text-left px-3 py-2 w-28 min-w-[7rem]">Unit</th>
+              <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Rate</th>
+              <th className="text-right px-3 py-2 w-24 min-w-[6rem]">Tax %</th>
+              <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Amount</th>
               <th className="w-8" />
             </tr>
           </thead>

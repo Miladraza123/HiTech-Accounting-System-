@@ -13,9 +13,9 @@ export type ResolvedRange = {
 };
 
 export const RANGE_LABEL: Record<DashRangeKey, string> = {
-  today: "Aaj",
-  week: "Is Hafta",
-  month: "Is Mahine",
+  today: "Today",
+  week: "This Week",
+  month: "This Month",
   custom: "Custom",
 };
 
@@ -34,7 +34,7 @@ export function resolveRange(rangeParam: string | undefined, fromParam?: string,
 
   if (rangeParam === "custom") {
     if (isValidISODate(fromParam) && isValidISODate(toParam) && fromParam <= toParam) {
-      return { range: "custom", from: fromParam, to: toParam, label: `${fromParam} se ${toParam}` };
+      return { range: "custom", from: fromParam, to: toParam, label: `${fromParam} to ${toParam}` };
     }
     // Invalid/incomplete custom range — fall back to This Month rather than erroring.
     const first = new Date(today.getFullYear(), today.getMonth(), 1);

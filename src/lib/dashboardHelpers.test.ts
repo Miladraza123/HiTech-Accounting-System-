@@ -27,7 +27,7 @@ describe("resolveRange", () => {
 
   it("accepts a valid Custom range", () => {
     const r = resolveRange("custom", "2026-01-01", "2026-01-31");
-    expect(r).toEqual({ range: "custom", from: "2026-01-01", to: "2026-01-31", label: "2026-01-01 se 2026-01-31" });
+    expect(r).toEqual({ range: "custom", from: "2026-01-01", to: "2026-01-31", label: "2026-01-01 to 2026-01-31" });
   });
 
   it("falls back to This Month when Custom is invalid (from after to)", () => {
