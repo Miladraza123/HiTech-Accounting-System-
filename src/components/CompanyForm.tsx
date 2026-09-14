@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { saveCompanyAction, type ActionResult } from "@/app/actions/setup";
 import type { Tables } from "@/lib/supabase/database.types";
 import { diffFields, type SmartMergeConflict } from "@/lib/smartMerge";
+import { findPendingEdit } from "@/lib/offlineQueue";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 const initialState: ActionResult = { error: null };
@@ -59,6 +60,47 @@ export function CompanyForm({
   const [base, setBase] = useState<FormValues>(loaded);
   const [values, setValues] = useState<FormValues>(loaded);
   const conflicts = state.conflicts ?? [];
+
+  // Phase 0 (Master Offline-First Roadmap) — pending-edit awareness: this
+  // page's server-rendered `company` prop is whatever was last SYNCED, so
+  // reopening this form after a save was queued offline (in this tab, or
+  // one that's since been closed/reloaded) would otherwise silently show
+  // those stale, pre-edit values with no hint that an edit is still
+  // sitting unsynced in IndexedDB — inviting the user to redo work, or
+  // worse, to "correct" a field back to what's actually already queued to
+  // change. On mount, check for a pending queued edit to this exact row
+  // and, if one exists, adopt its `base` (the last-confirmed-synced state
+  // it was diffed against) and layer its `changes` on top for display —
+  // exactly reconstructing what the user last submitted offline.
+  useEffect(() => {
+    if (!company) return;
+    let cancelled = false;
+    findPendingEdit("company", company.id).then((pending) => {
+      if (cancelled || !pending) return;
+      const pendingBase = pending.base as Partial<Record<keyof FormValues, unknown>>;
+      const pendingChanges = pending.changes as Partial<Record<keyof FormValues, unknown>>;
+      const toStr = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
+      setBase((b) => {
+        const updated = { ...b };
+        (Object.keys(updated) as (keyof FormValues)[]).forEach((k) => {
+          if (k in pendingBase) updated[k] = toStr(pendingBase[k]);
+        });
+        return updated;
+      });
+      setValues((v) => {
+        const updated = { ...v };
+        (Object.keys(updated) as (keyof FormValues)[]).forEach((k) => {
+          if (k in pendingChanges) updated[k] = toStr(pendingChanges[k]);
+        });
+        return updated;
+      });
+      setQueuedOffline(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company?.id]);
 
   // After a save, any field the user changed that DIDN'T conflict has
   // already been written to the database — advance this tab's own "base"

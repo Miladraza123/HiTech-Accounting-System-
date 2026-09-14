@@ -70,7 +70,7 @@ export async function updateCreditTermsAction(
     { credit_limit: base.creditLimit, credit_days: base.creditDays },
     changes
   );
-  if (error) return { error };
+  if (error) return { error: error.message };
   if (result && result.conflicts.length > 0) {
     return { error: null, conflicts: result.conflicts };
   }

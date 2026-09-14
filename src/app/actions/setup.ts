@@ -61,7 +61,7 @@ export async function saveCompanyAction(
   };
   const changes = diffFields(base, next);
   const { result, error } = await smartMergeUpdate(supabase, "company", COMPANY_ID, base, changes);
-  if (error) return { error };
+  if (error) return { error: error.message };
 
   // Any non-conflicting field was applied even when others conflicted —
   // revalidate either way so the page's own data reflects it.

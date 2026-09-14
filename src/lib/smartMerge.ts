@@ -56,6 +56,15 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return String(a) === String(b);
 }
 
+/** A Postgres/PostgREST error worth distinguishing by `code`, not just its
+ * message — e.g. the offline queue's retry classifier (see
+ * offlineQueue.ts) needs to tell a transient connection/serialization
+ * failure (safe to retry) apart from an RPC's own business-rule
+ * exception (retrying the identical payload will fail identically
+ * forever). `code` is optional because a plain network-level failure
+ * (never reached the database at all) has none. */
+export type SmartMergeError = { message: string; code?: string };
+
 /**
  * Calls the generic Smart Merge RPC for one row of `table`. Only the
  * fields present in `base`/`changes` are ever considered — anything the
@@ -67,7 +76,7 @@ export async function smartMergeUpdate(
   rowId: string,
   base: Record<string, unknown>,
   changes: Record<string, unknown>
-): Promise<{ result: SmartMergeResult | null; error: string | null }> {
+): Promise<{ result: SmartMergeResult | null; error: SmartMergeError | null }> {
   if (Object.keys(changes).length === 0) {
     return { result: { applied: {}, conflicts: [] }, error: null };
   }
@@ -77,6 +86,6 @@ export async function smartMergeUpdate(
     p_base: base,
     p_changes: changes,
   });
-  if (error) return { result: null, error: error.message };
+  if (error) return { result: null, error: { message: error.message, code: error.code } };
   return { result: data as SmartMergeResult, error: null };
 }

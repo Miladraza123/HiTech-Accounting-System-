@@ -7,15 +7,14 @@ import {
   enqueueWrite,
   flushQueue,
   listQueuedWrites,
-  type DistributiveOmit,
-  type QueuedWrite,
+  type QueuedWriteInput,
   type SyncedConflict,
 } from "@/lib/offlineQueue";
 
 type OfflineQueueContextValue = {
   isOnline: boolean;
   pendingCount: number;
-  enqueue: (entry: DistributiveOmit<QueuedWrite, "id" | "createdAt">) => Promise<void>;
+  enqueue: (entry: QueuedWriteInput) => Promise<void>;
 };
 
 const OfflineQueueContext = createContext<OfflineQueueContextValue | null>(null);
@@ -257,7 +256,7 @@ export function OfflineQueueProvider({
   }, [isOnline]);
 
   const enqueue = useCallback(
-    async (entry: DistributiveOmit<QueuedWrite, "id" | "createdAt">) => {
+    async (entry: QueuedWriteInput) => {
       await enqueueWrite(entry);
       await refreshPendingCount();
     },

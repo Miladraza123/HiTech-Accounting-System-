@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateCreditTermsAction } from "@/app/actions/parties";
 import { diffFields, type SmartMergeConflict } from "@/lib/smartMerge";
+import { findPendingEdit } from "@/lib/offlineQueue";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 const FIELD_LABEL: Record<string, string> = {
@@ -35,6 +36,35 @@ export function EditCreditTermsForm({
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<SmartMergeConflict[]>([]);
   const [pending, startTransition] = useTransition();
+
+  // Phase 0 (Master Offline-First Roadmap) — pending-edit awareness: this
+  // component's `creditLimit`/`creditDays` props are whatever was last
+  // SYNCED. Without this, reopening the editor after a save was queued
+  // offline (in this tab after a reload, or in a tab that's since closed)
+  // would silently show those stale, pre-edit values with no hint that an
+  // edit is still sitting unsynced in IndexedDB. On mount, adopt any
+  // pending queued edit's `base` (the last-confirmed-synced state it was
+  // diffed against) and layer its `changes` on top — exactly reconstructing
+  // what the user last submitted offline — and restore the "queued" badge.
+  useEffect(() => {
+    let cancelled = false;
+    findPendingEdit("parties", partyId).then((pendingEdit) => {
+      if (cancelled || !pendingEdit) return;
+      const pendingBase = pendingEdit.base as { credit_limit?: number; credit_days?: number };
+      const pendingChanges = pendingEdit.changes as { credit_limit?: number; credit_days?: number };
+      const newBase = {
+        creditLimit: pendingBase.credit_limit ?? creditLimit,
+        creditDays: pendingBase.credit_days ?? creditDays,
+      };
+      setBase(newBase);
+      setLimit(String(pendingChanges.credit_limit ?? newBase.creditLimit));
+      setDays(String(pendingChanges.credit_days ?? newBase.creditDays));
+      setQueuedOffline(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [partyId, creditLimit, creditDays]);
 
   if (!open) {
     return (
