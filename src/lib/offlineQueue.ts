@@ -107,7 +107,16 @@ export type QueuedCreate = SyncMeta & {
     | "sales_returns"
     | "purchase_returns"
     | "stock_transfers"
-    | "stock_adjustments";
+    | "stock_adjustments"
+    | "product_templates"
+    | "jobs"
+    | "stock_reservations"
+    // Issue/Return aren't distinct real tables (both post into the shared
+    // job_material_events idempotency log — see the Phase 7 migration) but
+    // need two different discriminator values here since each maps to its
+    // own RPC in CREATE_RPC below.
+    | "job_material_issues"
+    | "job_material_returns";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -399,6 +408,56 @@ const CREATE_RPC: {
       p_warehouse_id: write.payload.warehouse_id as string,
       p_qty_delta: write.payload.qty_delta as number,
       p_reason: write.payload.reason as string,
+    }),
+  // Phase 7 (Master Offline-First Roadmap) — Fabrication/Job module. See
+  // supabase/migrations/20260914080000_phase29_07_offline_first_fabrication_create.sql
+  // and 20260914081000_phase29_07b_fix_job_cost_ledger_amount_constraint.sql
+  // for a second genuine pre-existing bug (Material Return, blocking this
+  // phase too) found and fixed while verifying it.
+  product_templates: (supabase, write) =>
+    supabase.rpc("fn_create_product_template_idempotent", {
+      p_id: write.recordId,
+      p_template_code: write.payload.template_code as string,
+      p_name: write.payload.name as string,
+      p_description: (write.payload.description ?? null) as string,
+      p_output_item_id: (write.payload.output_item_id ?? null) as string,
+      p_output_unit: (write.payload.output_unit ?? null) as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  jobs: (supabase, write) =>
+    supabase.rpc("fn_create_job_idempotent", {
+      p_id: write.recordId,
+      p_sales_order_line_id: write.payload.sales_order_line_id as string,
+      p_warehouse_id: write.payload.warehouse_id as string,
+      p_product_template_id: (write.payload.product_template_id ?? null) as string,
+      p_description: write.payload.description as string,
+      p_job_qty: write.payload.job_qty as number,
+      p_responsible_user_id: (write.payload.responsible_user_id ?? null) as string,
+      p_start_date: (write.payload.start_date ?? null) as string,
+      p_required_delivery_date: (write.payload.required_delivery_date ?? null) as string,
+      p_material_lines: write.payload.material_lines as Json,
+    }),
+  stock_reservations: (supabase, write) =>
+    supabase.rpc("fn_reserve_job_material_idempotent", {
+      p_id: write.recordId,
+      p_job_id: write.payload.job_id as string,
+      p_item_id: write.payload.item_id as string,
+      p_warehouse_id: write.payload.warehouse_id as string,
+      p_qty: write.payload.qty as number,
+    }),
+  job_material_issues: (supabase, write) =>
+    supabase.rpc("fn_issue_job_material_idempotent", {
+      p_id: write.recordId,
+      p_job_id: write.payload.job_id as string,
+      p_item_id: write.payload.item_id as string,
+      p_qty: write.payload.qty as number,
+    }),
+  job_material_returns: (supabase, write) =>
+    supabase.rpc("fn_return_job_material_idempotent", {
+      p_id: write.recordId,
+      p_job_id: write.payload.job_id as string,
+      p_item_id: write.payload.item_id as string,
+      p_qty: write.payload.qty as number,
     }),
 };
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createJobAction, type MaterialLineInput } from "@/app/actions/jobs";
 import { MaterialLineEditor, blankMaterialLine, type EditableMaterialLine } from "@/components/MaterialLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type SoLineOption = {
   id: string;
@@ -75,6 +76,8 @@ export function NewJobForm({
   const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const selectedSoLine = soLines.find((l) => l.id === soLineId);
   const selectedTemplate = templates.find((t) => t.id === templateId);
@@ -117,6 +120,35 @@ export function NewJobForm({
         return;
       }
     }
+
+    // Phase 7 (Master Offline-First Roadmap): also auto-reserves free
+    // stock atomically, exactly like the online path (see this form's own
+    // RPC entry in offlineQueue.ts) — re-validated against LIVE free stock
+    // at sync time, never a stale offline snapshot.
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "jobs",
+          recordId: crypto.randomUUID(),
+          label: "Job",
+          payload: {
+            sales_order_line_id: soLineId,
+            warehouse_id: warehouseId,
+            product_template_id: templateId || null,
+            description,
+            job_qty: qty,
+            responsible_user_id: responsibleUserId || null,
+            start_date: startDate || null,
+            required_delivery_date: requiredDeliveryDate || null,
+            material_lines: materialLines,
+          },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createJobAction({
         sales_order_line_id: soLineId,
@@ -139,6 +171,16 @@ export function NewJobForm({
     const qty = Number(jobQty) || 0;
     return { qty };
   }, [selectedTemplate, jobQty]);
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Job saved on this device — it will get its Job number and sync automatically once you&apos;re back online.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -245,6 +287,13 @@ export function NewJobForm({
         )}
       </div>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Job will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -253,7 +302,7 @@ export function NewJobForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Job"}
+        {pending ? "Saving…" : isOnline ? "Create Job" : "Save Offline"}
       </button>
     </div>
   );

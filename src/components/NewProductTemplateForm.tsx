@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createProductTemplateAction, type TemplateLineInput } from "@/app/actions/jobs";
 import { MaterialLineEditor, blankMaterialLine, type EditableMaterialLine } from "@/components/MaterialLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
 
@@ -48,6 +49,18 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
   const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Product Template saved on this device — it will sync automatically once you&apos;re back online.
+        </p>
+      </div>
+    );
+  }
 
   function submit() {
     setError(null);
@@ -65,6 +78,28 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
       setError("At least one raw material line is required.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "product_templates",
+          recordId: crypto.randomUUID(),
+          label: "Product Template",
+          payload: {
+            template_code: templateCode,
+            name,
+            description: description || null,
+            output_item_id: outputItemId || null,
+            output_unit: outputUnit || null,
+            lines: materialLines,
+          },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createProductTemplateAction({
         template_code: templateCode,
@@ -129,6 +164,13 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
         <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Qty / Unit" altUnitsByItem={altUnitsByItem} />
       </div>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Product Template will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -137,7 +179,7 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Template"}
+        {pending ? "Saving…" : isOnline ? "Create Template" : "Save Offline"}
       </button>
     </div>
   );

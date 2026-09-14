@@ -1,0 +1,23 @@
+-- Genuine pre-existing production bug found while empirically verifying
+-- Phase 7 (Fabrication Offline) with real SQL against the live database —
+-- not introduced by this phase's new code, just newly surfaced by it.
+--
+-- job_cost_ledger.amount has always had `check (amount >= 0)`
+-- (phase4_01_fabrication_schema.sql), but the already-live
+-- fn_return_job_material (and this phase's new
+-- fn_return_job_material_idempotent, which faithfully mirrors it) has
+-- always inserted a NEGATIVE amount for a material return — a legitimate
+-- cost reversal (Dr Raw Material Inventory / Cr Work-in-Progress), exactly
+-- mirroring how fn_issue_job_material inserts a positive one. Confirmed via
+-- the actual failing INSERT (23514 check-constraint violation) while
+-- testing fn_return_job_material_idempotent, then confirmed the identical
+-- negative-amount insert exists verbatim in the original, already-live
+-- fn_return_job_material — meaning Material Return has never actually
+-- worked, online or offline, for any item with a nonzero average cost
+-- (i.e. virtually always), in this app's history.
+--
+-- Fix: amount is a signed cost-ledger value (positive = cost added,
+-- negative = cost reversed) — drop the constraint that assumed it could
+-- only ever be added, never reversed. Purely additive/widening, same as
+-- the Phase 6 stock_ledger_txn_type_check fix.
+alter table public.job_cost_ledger drop constraint job_cost_ledger_amount_check;

@@ -1283,6 +1283,51 @@ export type Database = {
           },
         ]
       }
+      job_material_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          item_id: string
+          job_id: string
+          qty: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id: string
+          item_id: string
+          job_id: string
+          qty: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string
+          job_id?: string
+          qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_material_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_material_requirements: {
         Row: {
           id: string
@@ -4355,6 +4400,21 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_job_idempotent: {
+        Args: {
+          p_description: string
+          p_id: string
+          p_job_qty: number
+          p_material_lines: Json
+          p_product_template_id: string
+          p_required_delivery_date: string
+          p_responsible_user_id: string
+          p_sales_order_line_id: string
+          p_start_date: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_party_idempotent: {
         Args: {
           p_billing_address: string
@@ -4424,6 +4484,18 @@ export type Database = {
       fn_create_product_template: {
         Args: {
           p_description: string
+          p_lines: Json
+          p_name: string
+          p_output_item_id: string
+          p_output_unit: string
+          p_template_code: string
+        }
+        Returns: string
+      }
+      fn_create_product_template_idempotent: {
+        Args: {
+          p_description: string
+          p_id: string
           p_lines: Json
           p_name: string
           p_output_item_id: string
@@ -4666,6 +4738,15 @@ export type Database = {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined
       }
+      fn_issue_job_material_idempotent: {
+        Args: {
+          p_id: string
+          p_item_id: string
+          p_job_id: string
+          p_qty: number
+        }
+        Returns: string
+      }
       fn_log_login: {
         Args: { p_device?: string; p_ip?: string }
         Returns: string
@@ -4736,9 +4817,28 @@ export type Database = {
         }
         Returns: string
       }
+      fn_reserve_job_material_idempotent: {
+        Args: {
+          p_id: string
+          p_item_id: string
+          p_job_id: string
+          p_qty: number
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_return_job_material: {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined
+      }
+      fn_return_job_material_idempotent: {
+        Args: {
+          p_id: string
+          p_item_id: string
+          p_job_id: string
+          p_qty: number
+        }
+        Returns: string
       }
       fn_revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       fn_set_period_lock: { Args: { p_lock_date: string }; Returns: undefined }
