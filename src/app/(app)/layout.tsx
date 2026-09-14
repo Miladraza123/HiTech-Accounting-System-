@@ -217,7 +217,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const userRoleLabel = user.roles.length ? user.roles.map((r) => ROLE_LABELS[r] ?? r).join(", ") : "No role assigned";
 
   return (
-    <OfflineQueueProvider>
+    <OfflineQueueProvider
+      buildVersion={process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)}
+    >
       <div className="min-h-screen bg-bg">
         <MobileNav
           categories={navCategories}

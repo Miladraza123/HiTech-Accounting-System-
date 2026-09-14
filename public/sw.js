@@ -28,7 +28,12 @@
 // who already has the app installed would never see the "new version
 // available" toast at all, no matter how many times they closed and
 // reopened it, and would keep running the old, broken JS indefinitely.
-const CACHE_VERSION = "v3";
+//
+// v3 -> v4: same reason again, covering everything since v3 — the
+// periodic/visibilitychange update-check itself, the Offline banner's
+// failure-reason text, and the buildVersion tag used to directly verify
+// which commit a given device is actually running.
+const CACHE_VERSION = "v4";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 

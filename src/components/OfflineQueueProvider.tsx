@@ -77,7 +77,22 @@ async function verifyRealConnectivity(): Promise<{ ok: boolean; reason?: string 
 
 const RECHECK_INTERVAL_MS = 15000;
 
-export function OfflineQueueProvider({ children }: { children: React.ReactNode }) {
+export function OfflineQueueProvider({
+  children,
+  buildVersion,
+}: {
+  children: React.ReactNode;
+  // The deployed git commit's short SHA, resolved server-side (see
+  // (app)/layout.tsx) from Vercel's own VERCEL_GIT_COMMIT_SHA env var —
+  // not readable from a client component directly, since only
+  // NEXT_PUBLIC_-prefixed vars get inlined into the browser bundle.
+  // Shown alongside the Offline banner so a screenshot of it answers,
+  // with certainty, whether the device showing it is even running the
+  // latest deployed code at all — the single question that turned out
+  // to matter most across several rounds of otherwise-unreproducible
+  // reports of this banner.
+  buildVersion?: string;
+}) {
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
   const [offlineReason, setOfflineReason] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
@@ -202,7 +217,12 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
   return (
     <OfflineQueueContext.Provider value={{ isOnline, pendingCount, enqueue }}>
       {children}
-      <OfflineStatusBanner isOnline={isOnline} pendingCount={pendingCount} offlineReason={offlineReason} />
+      <OfflineStatusBanner
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        offlineReason={offlineReason}
+        buildVersion={buildVersion}
+      />
       {syncMessage && <SyncToast message={syncMessage} onDismiss={() => setSyncMessage(null)} />}
       {syncedConflicts.map((conflict) => (
         <SyncConflictBanner
@@ -220,10 +240,12 @@ function OfflineStatusBanner({
   isOnline,
   pendingCount,
   offlineReason,
+  buildVersion,
 }: {
   isOnline: boolean;
   pendingCount: number;
   offlineReason: string | null;
+  buildVersion?: string;
 }) {
   if (isOnline && pendingCount === 0) return null;
   return (
@@ -237,6 +259,10 @@ function OfflineStatusBanner({
               diagnosable on the first report instead of several rounds of
               guessing. */}
           {offlineReason && <span className="ml-1 text-ink-faint">({offlineReason})</span>}
+          {/* Answers "is this device even running the latest deployed
+              code?" directly from a screenshot — see buildVersion's own
+              comment above. */}
+          {buildVersion && <span className="ml-1 text-ink-faint">[{buildVersion}]</span>}
         </span>
       ) : (
         <span className="text-ink-soft">Syncing {pendingCount} pending change{pendingCount > 1 ? "s" : ""}…</span>
