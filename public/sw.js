@@ -54,7 +54,28 @@
 // before ever visiting those specific pages hit the generic
 // offline.html fallback instead — unable to reach the form at all, no
 // matter how good the offline-queue code on that form itself is.
-const CACHE_VERSION = "v7";
+//
+// v7 -> v8: a second real, reported-and-reproduced gap in that same
+// WARM_CACHE feature — it was entirely fire-and-forget. `warmCache()`
+// ran once per online transition, had no per-URL timeout (one slow
+// Vercel/Supabase round trip could stall the whole batch indefinitely),
+// and never told the page which of the ~23 URLs actually made it into
+// the cache. A user who opened the app and went offline again within
+// seconds — before that one background pass had a chance to finish —
+// silently ended up with some or all of those pages never cached, with
+// no retry until a whole new offline->online transition happened, and
+// no way to even tell this had occurred. Reproduced end-to-end with a
+// real Next.js build + real Chromium: a next/link soft navigation to an
+// uncached page fails outright (its RSC fetch is invisible to this file
+// — see the fetch handler's own comment below), Next's router correctly
+// falls back to a real hard navigation, that hard navigation correctly
+// reaches networkFirst() below — and networkFirst() correctly serves
+// OFFLINE_URL when, and only when, the target page was never actually
+// warmed. The fix belongs here: warmCache() now applies a per-URL
+// timeout and reports back exactly which URLs succeeded/failed via
+// postMessage, so OfflineQueueProvider.tsx can retry just the failures
+// instead of assuming the whole pass silently succeeded.
+const CACHE_VERSION = "v8";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -108,28 +129,61 @@ self.addEventListener("message", (event) => {
     return;
   }
   if (event.data && event.data.type === "WARM_CACHE" && Array.isArray(event.data.urls)) {
-    event.waitUntil(warmCache(event.data.urls));
+    const replyTo = event.source;
+    event.waitUntil(
+      warmCache(event.data.urls).then((result) => {
+        // Tell the requesting page exactly which URLs made it into the
+        // cache and which didn't — a silent fire-and-forget pass is
+        // exactly what let this go unnoticed for as long as it did (see
+        // the v7 -> v8 comment above). `replyTo` is the specific tab/
+        // client that sent this WARM_CACHE message, not a broadcast —
+        // only it is waiting on this particular request.
+        replyTo?.postMessage({ type: "WARM_CACHE_RESULT", ...result });
+      })
+    );
   }
 });
 
+// Per-URL timeout so one slow/hanging request (a cold Vercel function, a
+// slow Supabase query) can never stall the rest of the batch — each URL
+// settles (success or failure) within this window independent of every
+// other URL, since they already run concurrently via Promise.all below.
+const WARM_CACHE_URL_TIMEOUT_MS = 8000;
+
 async function warmCache(urls) {
   const cache = await caches.open(CACHE_NAME);
+  const cached = [];
+  const failed = [];
   await Promise.all(
     urls.map(async (url) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), WARM_CACHE_URL_TIMEOUT_MS);
       try {
-        const response = await fetch(url, { credentials: "same-origin" });
-        if (response && response.ok) await cache.put(url, response.clone());
-        // A non-ok response (e.g. a permission redirect for a role that
-        // can't reach this page) leaves any previously-cached copy
-        // untouched rather than overwriting it with something wrong.
+        const response = await fetch(url, { credentials: "same-origin", signal: controller.signal });
+        if (response && response.ok) {
+          await cache.put(url, response.clone());
+          cached.push(url);
+        } else {
+          // A non-ok response (e.g. a permission redirect for a role
+          // that can't reach this page) leaves any previously-cached
+          // copy untouched rather than overwriting it with something
+          // wrong — but is still reported as "failed" so a caller that
+          // actually expects this URL to be reachable can retry it.
+          failed.push(url);
+        }
       } catch {
-        // Offline right now, or some other fetch failure — leave
-        // whatever's already cached (if anything) exactly as it was;
-        // this is a best-effort background warm-up, never a user-facing
-        // action that needs its own error handling.
+        // Offline right now, a timeout, or some other fetch failure —
+        // leave whatever's already cached (if anything) exactly as it
+        // was; this is a best-effort background warm-up, never a
+        // user-facing action that needs its own error handling. Still
+        // reported as failed so the caller can decide whether to retry.
+        failed.push(url);
+      } finally {
+        clearTimeout(timer);
       }
     })
   );
+  return { cached, failed };
 }
 
 function isStaticAsset(url) {

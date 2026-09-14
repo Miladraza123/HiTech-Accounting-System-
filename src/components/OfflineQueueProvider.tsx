@@ -94,6 +94,75 @@ async function verifyRealConnectivity(): Promise<{ ok: boolean; reason?: string 
 
 const RECHECK_INTERVAL_MS = 15000;
 
+// The offline-capable "create" pages — kept as a top-level constant so the
+// retry logic below (WARM_CACHE_RESULT handling) can re-send exactly the
+// URLs the service worker reports as still missing, instead of re-sending
+// the whole list every time.
+//
+// Phase 1 (Master Offline-First Roadmap): /clients, /items, and
+// /setup/warehouses embed their offline-capable create forms
+// (PartyForm/ItemForm/WarehouseForm) directly on the list page itself
+// rather than a separate /new route — same reachability gap as
+// /queries/new before this mechanism existed. Tells the service worker to
+// proactively fetch + cache those specific pages itself (see WARM_CACHE in
+// sw.js) whenever a real connectivity check has confirmed we're online —
+// so by the time anyone actually needs one offline, it's very likely
+// already sitting in cache with reasonably current dropdown data,
+// regardless of what they've personally clicked on today.
+//
+// Phase 9: every OTHER static "create" route from Phases 2-8 had the exact
+// same gap and was never added here — a genuine, previously-undiscovered
+// reachability bug found by actually auditing every `useOfflineQueue`
+// consumer's parent page against this list, not assumed. Added below. Two
+// routes are DELIBERATELY still excluded — /quotations/new?query_id= and
+// /sales-orders/new?quotation_id= — since both 404 without a specific
+// parent record id in the URL; a flat URL list can't warm those
+// (documented, not solved, same as every phase since Phase 2 already noted
+// for this exact constraint).
+const WARM_CACHE_URLS = [
+  "/queries",
+  "/queries/new",
+  "/tasks",
+  "/tasks/new",
+  "/setup/company",
+  "/clients",
+  "/items",
+  "/setup/warehouses",
+  "/purchase-orders/new",
+  "/supplier-bills/new",
+  "/delivery-challans/new",
+  "/invoices/new",
+  "/payments/new",
+  "/payments/new/batch",
+  "/expenses/new",
+  "/journal-vouchers/new",
+  "/stock-transfers/new",
+  "/product-templates/new",
+  "/jobs/new",
+  "/setup/bank-accounts",
+  "/setup/petty-cash-funds",
+  "/setup/expense-heads",
+  "/inventory/adjustments",
+  // Phase 11 addendum: embeds NewVehicleForm directly on the list page,
+  // same reachability shape as /clients, /items, etc.
+  "/setup/vehicles",
+];
+
+// How many additional attempts to make, within the SAME online session, at
+// re-sending WARM_CACHE for whatever the service worker's own
+// WARM_CACHE_RESULT ack reports as still missing — a real, reproduced gap
+// found by testing this end-to-end (see sw.js's v7 -> v8 comment): the
+// original warmCache() was entirely fire-and-forget, so a single transient
+// failure on one of ~23 live Server Component fetches (a cold Vercel
+// function, a slow Supabase query, or the user going offline again mid-pass)
+// silently and permanently left that page unreachable offline until the
+// next full offline->online transition — which, for someone who mostly
+// stays online, might never happen again in that session. Retrying just the
+// reported failures, staggered a few seconds apart, converges within one
+// online session instead of depending on catching everything in one pass.
+const WARM_CACHE_MAX_RETRIES = 4;
+const WARM_CACHE_RETRY_DELAY_MS = 4000;
+
 export function OfflineQueueProvider({
   children,
   buildVersion,
@@ -240,58 +309,38 @@ export function OfflineQueueProvider({
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
     let cancelled = false;
+    let retriesUsed = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function sendWarmCache(registration: ServiceWorkerRegistration, urls: string[]) {
+      registration.active?.postMessage({ type: "WARM_CACHE", urls });
+    }
+
+    // Listens for the service worker's WARM_CACHE_RESULT ack (see sw.js)
+    // and retries only the URLs it reports as still missing, up to
+    // WARM_CACHE_MAX_RETRIES times, staggered WARM_CACHE_RETRY_DELAY_MS
+    // apart — closes the fire-and-forget gap described above without
+    // waiting for a whole new offline->online transition.
+    function handleMessage(event: MessageEvent) {
+      if (cancelled) return;
+      if (!event.data || event.data.type !== "WARM_CACHE_RESULT") return;
+      const failed: string[] = Array.isArray(event.data.failed) ? event.data.failed : [];
+      if (failed.length === 0) return;
+      if (retriesUsed >= WARM_CACHE_MAX_RETRIES) return;
+      retriesUsed += 1;
+      retryTimer = setTimeout(() => {
+        if (cancelled) return;
+        navigator.serviceWorker.ready.then((registration) => {
+          if (cancelled) return;
+          sendWarmCache(registration, failed);
+        });
+      }, WARM_CACHE_RETRY_DELAY_MS);
+    }
+
+    navigator.serviceWorker.addEventListener("message", handleMessage);
     navigator.serviceWorker.ready.then((registration) => {
       if (cancelled) return;
-      registration.active?.postMessage({
-        type: "WARM_CACHE",
-        // Phase 1 (Master Offline-First Roadmap): /clients, /items, and
-        // /setup/warehouses embed their offline-capable create forms
-        // (PartyForm/ItemForm/WarehouseForm) directly on the list page
-        // itself rather than a separate /new route — same reachability
-        // gap as /queries/new before this mechanism existed (see its own
-        // comment above): without this, someone who goes straight offline
-        // before ever visiting one of these pages could never reach the
-        // form at all.
-        //
-        // Phase 9: every OTHER static "create" route from Phases 2-8 had
-        // the exact same gap and was never added here — a genuine,
-        // previously-undiscovered reachability bug found by actually
-        // auditing every `useOfflineQueue` consumer's parent page against
-        // this list, not assumed. Added below. Two routes are
-        // DELIBERATELY still excluded — /quotations/new?query_id= and
-        // /sales-orders/new?quotation_id= — since both 404 without a
-        // specific parent record id in the URL; a flat URL list can't
-        // warm those (documented, not solved, same as every phase since
-        // Phase 2 already noted for this exact constraint).
-        urls: [
-          "/queries",
-          "/queries/new",
-          "/tasks",
-          "/tasks/new",
-          "/setup/company",
-          "/clients",
-          "/items",
-          "/setup/warehouses",
-          "/purchase-orders/new",
-          "/supplier-bills/new",
-          "/delivery-challans/new",
-          "/invoices/new",
-          "/payments/new",
-          "/payments/new/batch",
-          "/expenses/new",
-          "/journal-vouchers/new",
-          "/stock-transfers/new",
-          "/product-templates/new",
-          "/jobs/new",
-          "/setup/bank-accounts",
-          "/setup/petty-cash-funds",
-          "/setup/expense-heads",
-          "/inventory/adjustments",
-          // Phase 11 addendum: embeds NewVehicleForm directly on the list
-          // page, same reachability shape as /clients, /items, etc.
-          "/setup/vehicles",
-        ],
-      });
+      sendWarmCache(registration, WARM_CACHE_URLS);
     });
 
     // Phase 9: a real structured cache for the dropdown master data
@@ -304,6 +353,8 @@ export function OfflineQueueProvider({
 
     return () => {
       cancelled = true;
+      navigator.serviceWorker.removeEventListener("message", handleMessage);
+      clearTimeout(retryTimer);
     };
     // Re-warms on every online transition (a fresh mount, or recovering
     // from a real offline period) rather than just once ever — cheap
