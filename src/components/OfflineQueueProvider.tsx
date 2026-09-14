@@ -63,15 +63,32 @@ export function useOfflineQueue() {
 // nobody watching a phone has access to.
 async function verifyRealConnectivity(): Promise<{ ok: boolean; reason?: string }> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const abortTimer = setTimeout(() => controller.abort(), 5000);
+  let watchdogTimer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: controller.signal });
-    return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+    const fetchAttempt = (async () => {
+      const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: controller.signal });
+      return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+    })();
+    // A second, independent timeout — belt and suspenders. The abort
+    // above is *supposed* to always force fetch() to reject within 5s on
+    // its own, but this makes that guarantee not depend on any single
+    // mechanism: whichever settles first wins, so even an
+    // AbortController/fetch interaction this code hasn't anticipated on
+    // some browser still can't leave reconcile() waiting forever on a
+    // promise that never settles — which is exactly what turns "Offline"
+    // into a permanently stuck banner with no reason attached, since a
+    // reason is only ever set once a check actually completes.
+    const watchdog = new Promise<{ ok: boolean; reason?: string }>((resolve) => {
+      watchdogTimer = setTimeout(() => resolve({ ok: false, reason: "watchdog: check never settled" }), 6000);
+    });
+    return await Promise.race([fetchAttempt, watchdog]);
   } catch (e) {
     const reason = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     return { ok: false, reason };
   } finally {
-    clearTimeout(timer);
+    clearTimeout(abortTimer);
+    clearTimeout(watchdogTimer);
   }
 }
 
@@ -93,7 +110,20 @@ export function OfflineQueueProvider({
   // reports of this banner.
   buildVersion?: string;
 }) {
-  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+  // Deliberately starts optimistic (true) rather than reading
+  // navigator.onLine — that flag is exactly the unreliable signal this
+  // whole mechanism exists to not trust (see verifyRealConnectivity's own
+  // comment). Starting from it meant the FIRST thing shown could be an
+  // unverified guess: if that guess was wrong-but-happened-to-say-offline
+  // and the real check below somehow never got to run even once (network
+  // stack oddity, browser quirk — anything), the banner could get stuck
+  // showing "Offline" with genuinely no reason attached, because a reason
+  // only exists once an actual check has completed. Starting true and
+  // only ever flipping false via a REAL completed check (which always
+  // sets isOnline and offlineReason together, right below) makes that
+  // combination structurally impossible — every "Offline" now carries a
+  // reason, always, with no exception.
+  const [isOnline, setIsOnline] = useState(true);
   const [offlineReason, setOfflineReason] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);

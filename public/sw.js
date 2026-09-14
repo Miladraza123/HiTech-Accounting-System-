@@ -33,7 +33,12 @@
 // periodic/visibilitychange update-check itself, the Offline banner's
 // failure-reason text, and the buildVersion tag used to directly verify
 // which commit a given device is actually running.
-const CACHE_VERSION = "v4";
+//
+// v4 -> v5: same reason again — OfflineQueueProvider.tsx's isOnline now
+// starts optimistic instead of trusting navigator.onLine, and
+// verifyRealConnectivity() gained an independent watchdog timeout so it
+// can never hang indefinitely regardless of cause.
+const CACHE_VERSION = "v5";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
