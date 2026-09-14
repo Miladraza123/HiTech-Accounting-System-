@@ -41,12 +41,28 @@ export function useOfflineQueue() {
 // the case this exists to catch — so it is NEVER trusted on its own in
 // either direction. This always does a real same-origin fetch and only
 // that result decides the banner.
+//
+// Uses a manual AbortController + setTimeout for the request timeout,
+// deliberately NOT the newer `AbortSignal.timeout()` combinator: on any
+// browser/embedded WebView that lacks it (real gap on some older Android
+// System WebView builds, which don't always track current Chrome even
+// when fetch/AbortController themselves work fine), calling
+// `AbortSignal.timeout(5000)` throws a synchronous TypeError while
+// building the fetch options — caught by the catch below and reported as
+// "offline" 100% of the time, completely independent of actual
+// connectivity, on every single check. Confirmed exactly this failure
+// with AbortSignal.timeout deleted in a real headless Chromium page: the
+// old form throws every time; this form still fetches normally.
 async function verifyRealConnectivity(): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: AbortSignal.timeout(5000) });
+    const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: controller.signal });
     return res.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
