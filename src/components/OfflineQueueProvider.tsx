@@ -221,6 +221,41 @@ export function OfflineQueueProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Closes a real, reported gap: the offline-queue create forms
+  // (Queries, Tasks) only ever worked while offline if their page had
+  // ALREADY been successfully visited at least once — each is a live
+  // Server Component fetch (a party/source dropdown list), not a static
+  // file, so with nothing yet cached, networkFirst()'s only fallback was
+  // the generic offline.html page. Someone who opened the app and went
+  // straight offline before ever visiting /queries/new, say, could never
+  // even reach the form — no matter how solid the offline-queue code on
+  // that form itself is. Tells the service worker to proactively fetch
+  // + cache those specific pages itself (see WARM_CACHE in sw.js)
+  // whenever a real connectivity check has confirmed we're online — so
+  // by the time anyone actually needs one offline, it's very likely
+  // already sitting in cache with reasonably current dropdown data,
+  // regardless of what they've personally clicked on today.
+  useEffect(() => {
+    if (!isOnline) return;
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+
+    let cancelled = false;
+    navigator.serviceWorker.ready.then((registration) => {
+      if (cancelled) return;
+      registration.active?.postMessage({
+        type: "WARM_CACHE",
+        urls: ["/queries", "/queries/new", "/tasks", "/tasks/new", "/setup/company"],
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Re-warms on every online transition (a fresh mount, or recovering
+    // from a real offline period) rather than just once ever — cheap
+    // (a handful of small page fetches) and keeps the cached dropdown
+    // data from silently going stale over a long session.
+  }, [isOnline]);
+
   const enqueue = useCallback(
     async (entry: DistributiveOmit<QueuedWrite, "id" | "createdAt">) => {
       await enqueueWrite(entry);

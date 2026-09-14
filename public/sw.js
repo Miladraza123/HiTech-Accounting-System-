@@ -44,7 +44,17 @@
 // below). Anyone still on v5 gets this fix via v5's own (still-buggy)
 // immediate-activate behavior, one last time — from v6 onward, updates
 // correctly wait for an explicit "Refresh" click instead.
-const CACHE_VERSION = "v6";
+//
+// v6 -> v7: added the WARM_CACHE message handler below — a real,
+// reported gap: the offline "create a Query/Task while offline" feature
+// only ever worked if the exact page (/queries/new, /tasks/new — each a
+// live Server Component fetch, not a static file) had *already* been
+// successfully visited at least once, so networkFirst() had something
+// cached to fall back to. Anyone who opened the app and went offline
+// before ever visiting those specific pages hit the generic
+// offline.html fallback instead — unable to reach the form at all, no
+// matter how good the offline-queue code on that form itself is.
+const CACHE_VERSION = "v7";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -80,9 +90,47 @@ self.addEventListener("activate", (event) => {
 // Lets a page tell a waiting worker to activate immediately — used by the
 // "Update available" toast's "Refresh" button so the user controls when
 // the reload happens, instead of it happening silently underneath them.
+//
+// WARM_CACHE proactively fetches + caches a short list of pages the app
+// asks for (see OfflineQueueProvider.tsx) — specifically the pages
+// behind this app's offline-capable forms (Queries, Tasks and their
+// "new" forms, Company Profile). Each is a live Server Component fetch,
+// not a static file, so — unlike PRECACHE_URLS above, which only needs
+// to run once at install — this is sent by the page itself whenever
+// it's confirmed online, so a page nobody has manually opened yet still
+// ends up cached (with reasonably current dropdown data — a party list,
+// a query-source list) before the person actually needs it offline.
+// Deliberately keyed by plain URL, sharing the exact same CACHE_NAME
+// networkFirst() itself reads from — no special-casing needed there.
 self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") self.skipWaiting();
+  if (event.data === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === "WARM_CACHE" && Array.isArray(event.data.urls)) {
+    event.waitUntil(warmCache(event.data.urls));
+  }
 });
+
+async function warmCache(urls) {
+  const cache = await caches.open(CACHE_NAME);
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (response && response.ok) await cache.put(url, response.clone());
+        // A non-ok response (e.g. a permission redirect for a role that
+        // can't reach this page) leaves any previously-cached copy
+        // untouched rather than overwriting it with something wrong.
+      } catch {
+        // Offline right now, or some other fetch failure — leave
+        // whatever's already cached (if anything) exactly as it was;
+        // this is a best-effort background warm-up, never a user-facing
+        // action that needs its own error handling.
+      }
+    })
+  );
+}
 
 function isStaticAsset(url) {
   return (
