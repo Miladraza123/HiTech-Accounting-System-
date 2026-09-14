@@ -75,7 +75,20 @@
 // timeout and reports back exactly which URLs succeeded/failed via
 // postMessage, so OfflineQueueProvider.tsx can retry just the failures
 // instead of assuming the whole pass silently succeeded.
-const CACHE_VERSION = "v8";
+//
+// v8 -> v9: neither of the two follow-up fixes (WARM_CACHE reliability,
+// then forcing a hard navigation from OfflineQueueProvider.tsx instead
+// of relying on next/link's own soft-nav-failure fallback) resolved a
+// real, reproduced device failure — a real device confirmed a target
+// page fully warmed (24/24 in the Offline banner's own diagnostic) yet
+// still hit a native browser "page couldn't load" error offline. Rather
+// than propose a fourth guess, this version adds a persisted debug
+// record of the last navigation this file's own fetch handler actually
+// saw (see recordNavOutcome/NAV_DEBUG_URL below) — readable back from
+// the app afterward — so the next real-device repro produces direct
+// evidence of what this file itself did, instead of inferring it from
+// symptoms two or three layers removed.
+const CACHE_VERSION = "v9";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -206,7 +219,17 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request));
+    // Records that this event fired at all — a persisted, readable trail
+    // (see recordNavOutcome below) proving whether the service worker's
+    // fetch handler was even invoked for a given real-device navigation,
+    // independent of what networkFirst() itself then decides. Two prior
+    // fixes (WARM_CACHE reliability, then forcing a hard navigation
+    // instead of relying on next/link's soft-nav fallback) did not
+    // resolve a real, reproduced device failure — this exists to stop
+    // guessing at the next layer down and see the SW's own actual
+    // decision directly.
+    event.waitUntil(recordNavOutcome(request.url, "fetch-event-fired", {}));
+    event.respondWith(networkFirst(request, event));
     return;
   }
 
@@ -218,18 +241,51 @@ self.addEventListener("fetch", (event) => {
   // service worker didn't exist.
 });
 
-async function networkFirst(request) {
+// Persists a small JSON debug record of the last navigation this service
+// worker actually saw, keyed under a fixed URL inside the SAME versioned
+// cache networkFirst() itself uses — deliberately NOT in-memory (a service
+// worker can be terminated and respawned between events, losing in-memory
+// state) and deliberately NOT gated behind any success/failure condition,
+// so it survives exactly the failed-page -> Back sequence a real device
+// report walks through, and can be read back afterward from the app (see
+// OfflineQueueProvider.tsx). Best-effort only — must never affect the real
+// navigation's own outcome.
+const NAV_DEBUG_URL = "/__debug/last-nav";
+async function recordNavOutcome(url, outcome, extra) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const body = JSON.stringify({ url, outcome, extra, cacheVersion: CACHE_VERSION, at: new Date().toISOString() });
+    await cache.put(NAV_DEBUG_URL, new Response(body, { headers: { "Content-Type": "application/json" } }));
+  } catch {
+    // Never let debug logging itself break a real navigation.
+  }
+}
+
+async function networkFirst(request, event) {
+  // The debug write is always handed to event.waitUntil() rather than
+  // awaited inline — it must never add latency to the actual navigation
+  // response, only be guaranteed to finish before the browser can
+  // terminate this service worker event.
   try {
     const response = await fetch(request);
     if (response && response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }
+    event.waitUntil(recordNavOutcome(request.url, "network", { status: response?.status, ok: response?.ok }));
     return response;
-  } catch {
+  } catch (err) {
     const cached = await caches.match(request);
-    if (cached) return cached;
+    if (cached) {
+      event.waitUntil(recordNavOutcome(request.url, "cache-hit", { fetchError: String(err) }));
+      return cached;
+    }
     const offline = await caches.match(OFFLINE_URL);
+    event.waitUntil(
+      recordNavOutcome(request.url, offline ? "offline-fallback" : "response-error-no-offline-cached", {
+        fetchError: String(err),
+      })
+    );
     return offline ?? Response.error();
   }
 }

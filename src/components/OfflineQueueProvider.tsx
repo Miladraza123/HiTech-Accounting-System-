@@ -206,6 +206,22 @@ export function OfflineQueueProvider({
   const [warmCacheStatus, setWarmCacheStatus] = useState<{ cachedCount: number; total: number; failed: string[] } | null>(
     null
   );
+  // Mirrors sw.js's own persisted NAV_DEBUG_URL record — the last
+  // navigation its fetch handler actually saw and what it decided to do
+  // with it. Two prior fixes (WARM_CACHE reliability, then forcing a hard
+  // navigation instead of relying on next/link's soft-nav-failure
+  // fallback) did not resolve a real, reproduced device failure — this
+  // exists to show the service worker's own decision directly on the next
+  // repro instead of inferring it from symptoms two or three layers
+  // removed. Read directly from Cache Storage (available to the page
+  // itself, not just the service worker) — see the polling effect below.
+  const [lastNavDebug, setLastNavDebug] = useState<{
+    url: string;
+    outcome: string;
+    extra: unknown;
+    cacheVersion: string;
+    at: string;
+  } | null>(null);
   // Read inside the retry interval below without needing it in that
   // effect's dependency array (which must stay `[]` — it sets up
   // listeners/intervals once for the component's lifetime).
@@ -275,6 +291,38 @@ export function OfflineQueueProvider({
     document.addEventListener("click", handleDocumentClick, true);
     return () => {
       document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, []);
+
+  // Polls sw.js's persisted NAV_DEBUG_URL record directly from Cache
+  // Storage (the same store the service worker itself writes to — no
+  // message-passing needed, since Cache Storage is shared between a page
+  // and the service worker controlling it). Polls unconditionally on an
+  // interval, rather than only once, specifically because a hard
+  // navigation (including the one this file's own click interceptor now
+  // forces) unmounts and remounts this whole component — an effect that
+  // only ran once on mount would miss whatever the service worker records
+  // for that very navigation.
+  useEffect(() => {
+    if (typeof window === "undefined" || !("caches" in window)) return;
+    let cancelled = false;
+
+    async function readNavDebug() {
+      try {
+        const res = await caches.match("/__debug/last-nav");
+        if (!res) return;
+        const data = await res.json();
+        if (!cancelled) setLastNavDebug(data);
+      } catch {
+        // Best-effort diagnostic only.
+      }
+    }
+
+    readNavDebug();
+    const interval = setInterval(readNavDebug, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 
@@ -472,6 +520,7 @@ export function OfflineQueueProvider({
         offlineReason={offlineReason}
         buildVersion={buildVersion}
         warmCacheStatus={warmCacheStatus}
+        lastNavDebug={lastNavDebug}
       />
       {syncMessage && <SyncToast message={syncMessage} onDismiss={() => setSyncMessage(null)} />}
       {syncedConflicts.map((conflict) => (
@@ -492,12 +541,14 @@ function OfflineStatusBanner({
   offlineReason,
   buildVersion,
   warmCacheStatus,
+  lastNavDebug,
 }: {
   isOnline: boolean;
   pendingCount: number;
   offlineReason: string | null;
   buildVersion?: string;
   warmCacheStatus: { cachedCount: number; total: number; failed: string[] } | null;
+  lastNavDebug: { url: string; outcome: string; extra: unknown; cacheVersion: string; at: string } | null;
 }) {
   if (isOnline && pendingCount === 0) return null;
   return (
@@ -532,6 +583,17 @@ function OfflineStatusBanner({
           {warmCacheStatus.failed.length > 0 && (
             <span className="text-warn"> — not ready: {warmCacheStatus.failed.join(", ")}</span>
           )}
+        </div>
+      )}
+      {/* Mirrors sw.js's own persisted NAV_DEBUG_URL record — see its own
+          comment and this component's lastNavDebug state. Shows exactly
+          what the service worker's fetch handler last did with a real
+          navigation: whether the event fired at all, and whether it
+          served the network, a cache hit, the offline.html fallback, or
+          had nothing to fall back to. */}
+      {lastNavDebug && (
+        <div className="mt-0.5 break-all text-[10px] text-ink-faint">
+          Last nav [{lastNavDebug.cacheVersion}]: {lastNavDebug.url} → {lastNavDebug.outcome}
         </div>
       )}
     </div>
