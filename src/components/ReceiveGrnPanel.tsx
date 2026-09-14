@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createGrnAction } from "@/app/actions/purchaseOrders";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 export function ReceiveGrnPanel({
   supplierId,
@@ -29,8 +30,26 @@ export function ReceiveGrnPanel({
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
-  if (!pendingLines.length) return null;
+  if (!pendingLines.length && !savedOffline) return null;
+
+  // Phase 3 (Master Offline-First Roadmap): GRN is the app's first
+  // stock-AND-accounting-posting offline create — see this form's own RPC
+  // entry in offlineQueue.ts for why it's still safe: the server-side RPC
+  // always re-reads the true, current `received_qty` at sync time rather
+  // than trusting anything this offline device remembers.
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          GRN saved on this device — it will get its GRN number, post to stock, and sync automatically once
+          you&apos;re back online.
+        </p>
+      </div>
+    );
+  }
 
   if (!open) {
     return (
@@ -56,6 +75,29 @@ export function ReceiveGrnPanel({
     }
     if (purchaseType === "stock" && !warehouseId) {
       setError("Select Warehouse.");
+      return;
+    }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "grns",
+          recordId: crypto.randomUUID(),
+          label: "GRN",
+          payload: {
+            supplier_id: supplierId,
+            purchase_order_id: purchaseOrderId,
+            received_date: receivedDate,
+            warehouse_id: purchaseType === "stock" ? warehouseId : null,
+            remarks: remarks || null,
+            lines: grnLines,
+          },
+        });
+        setOpen(false);
+        setQtys({});
+        setSavedOffline(true);
+      });
       return;
     }
 
@@ -140,6 +182,13 @@ export function ReceiveGrnPanel({
 
       <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} placeholder="Remarks (optional)" className="input resize-none" />
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this GRN will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <div className="flex gap-2">
@@ -152,7 +201,7 @@ export function ReceiveGrnPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Save GRN"}
+          {pending ? "…" : isOnline ? "Save GRN" : "Save Offline"}
         </button>
       </div>
     </div>

@@ -87,7 +87,17 @@ export type QueuedEdit = SyncMeta & {
 export type QueuedCreate = SyncMeta & {
   kind: "create";
   id: string;
-  table: "queries" | "tasks" | "parties" | "items" | "warehouses" | "quotations" | "sales_orders";
+  table:
+    | "queries"
+    | "tasks"
+    | "parties"
+    | "items"
+    | "warehouses"
+    | "quotations"
+    | "sales_orders"
+    | "purchase_orders"
+    | "grns"
+    | "supplier_bills";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -224,6 +234,38 @@ const CREATE_RPC: {
       p_business_line: write.payload.business_line as string,
       p_lines: write.payload.lines as Json,
       p_confirm_duplicate: (write.payload.confirm_duplicate ?? false) as boolean,
+    }),
+  // Phase 3 (Master Offline-First Roadmap) — Purchase Order, GRN (the
+  // app's first stock-AND-accounting-posting offline create), and
+  // Supplier Bill. Same reachability constraint as Phase 2's Quotation/
+  // Sales Order — see
+  // supabase/migrations/20260914040000_phase29_03_offline_first_procurement_create.sql.
+  purchase_orders: (supabase, write) =>
+    supabase.rpc("fn_create_purchase_order_idempotent", {
+      p_id: write.recordId,
+      p_supplier_id: write.payload.supplier_id as string,
+      p_purchase_type: write.payload.purchase_type as string,
+      p_linked_sales_order_id: (write.payload.linked_sales_order_id ?? null) as string,
+      p_warehouse_id: (write.payload.warehouse_id ?? null) as string,
+      p_expected_delivery: (write.payload.expected_delivery ?? null) as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  grns: (supabase, write) =>
+    supabase.rpc("fn_create_grn_idempotent", {
+      p_id: write.recordId,
+      p_supplier_id: write.payload.supplier_id as string,
+      p_purchase_order_id: write.payload.purchase_order_id as string,
+      p_received_date: write.payload.received_date as string,
+      p_warehouse_id: (write.payload.warehouse_id ?? null) as string,
+      p_remarks: (write.payload.remarks ?? null) as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  supplier_bills: (supabase, write) =>
+    supabase.rpc("fn_create_supplier_bill_idempotent", {
+      p_id: write.recordId,
+      p_grn_id: write.payload.grn_id as string,
+      p_bill_date: write.payload.bill_date as string,
+      p_supplier_bill_ref: (write.payload.supplier_bill_ref ?? null) as string,
     }),
 };
 

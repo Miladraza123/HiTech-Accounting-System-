@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createPurchaseOrderAction, type PurchaseOrderLineInput } from "@/app/actions/purchaseOrders";
 import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 function serialize(lines: EditableLine[]): PurchaseOrderLineInput[] {
   return lines
@@ -51,7 +52,15 @@ export function NewPurchaseOrderForm({
   const [lines, setLines] = useState<EditableLine[]>([blankLine(0)]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
+  // Phase 3 (Master Offline-First Roadmap): Purchase Order creation is
+  // pure document creation (no stock posting yet — that happens at GRN),
+  // so like Quotation/Sales Order it's genuinely low-risk offline. NOTE:
+  // this is only reachable offline if the linked Sales Order (for a
+  // "direct" purchase) already exists server-side — see this form's own
+  // RPC entry in offlineQueue.ts.
   function submit() {
     setError(null);
     if (!supplierId) {
@@ -66,6 +75,28 @@ export function NewPurchaseOrderForm({
       setError("Select a warehouse for stock purchase.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "purchase_orders",
+          recordId: crypto.randomUUID(),
+          label: "Purchase Order",
+          payload: {
+            supplier_id: supplierId,
+            purchase_type: purchaseType,
+            linked_sales_order_id: purchaseType === "direct" ? linkedSoId : null,
+            warehouse_id: purchaseType === "stock" ? warehouseId : null,
+            expected_delivery: expectedDelivery || null,
+            lines: serialize(lines),
+          },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createPurchaseOrderAction({
         supplier_id: supplierId,
@@ -78,6 +109,17 @@ export function NewPurchaseOrderForm({
       if (res.error) setError(res.error);
       else router.push(`/purchase-orders/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Purchase Order saved on this device — it will get its PO number and sync automatically once you&apos;re
+          back online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -150,6 +192,13 @@ export function NewPurchaseOrderForm({
 
       <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} />
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Purchase Order will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -158,7 +207,7 @@ export function NewPurchaseOrderForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Purchase Order"}
+        {pending ? "Saving…" : isOnline ? "Create Purchase Order" : "Save Offline"}
       </button>
     </div>
   );

@@ -4250,6 +4250,18 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_grn_idempotent: {
+        Args: {
+          p_id: string
+          p_lines: Json
+          p_purchase_order_id: string
+          p_received_date: string
+          p_remarks: string
+          p_supplier_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_invoice: {
         Args: {
           p_invoice_date: string
@@ -4342,6 +4354,18 @@ export type Database = {
       fn_create_purchase_order: {
         Args: {
           p_expected_delivery: string
+          p_lines: Json
+          p_linked_sales_order_id: string
+          p_purchase_type: string
+          p_supplier_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_purchase_order_idempotent: {
+        Args: {
+          p_expected_delivery: string
+          p_id: string
           p_lines: Json
           p_linked_sales_order_id: string
           p_purchase_type: string
@@ -4458,6 +4482,15 @@ export type Database = {
         Args: {
           p_bill_date: string
           p_grn_id: string
+          p_supplier_bill_ref: string
+        }
+        Returns: string
+      }
+      fn_create_supplier_bill_idempotent: {
+        Args: {
+          p_bill_date: string
+          p_grn_id: string
+          p_id: string
           p_supplier_bill_ref: string
         }
         Returns: string

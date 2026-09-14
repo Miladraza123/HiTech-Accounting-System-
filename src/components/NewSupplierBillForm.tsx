@@ -3,9 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSupplierBillAction } from "@/app/actions/supplierBills";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type GrnOption = { id: string; grn_no: string; received_date: string; parties: { legal_name: string } | null };
 
+// Phase 3 (Master Offline-First Roadmap): same offline-enqueue pattern as
+// the rest of the procurement pipeline. NOTE: this is only reachable
+// offline if the parent GRN already exists server-side (and this page's
+// own `grns` list was fetched while last online) — see this form's own
+// RPC entry in offlineQueue.ts.
 export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
   const router = useRouter();
   const [grnId, setGrnId] = useState("");
@@ -13,6 +19,8 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
   const [billRef, setBillRef] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   function submit() {
     setError(null);
@@ -20,11 +28,37 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
       setError("Select GRN.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "supplier_bills",
+          recordId: crypto.randomUUID(),
+          label: "Supplier Bill",
+          payload: { grn_id: grnId, bill_date: billDate, supplier_bill_ref: billRef || null },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createSupplierBillAction({ grn_id: grnId, bill_date: billDate, supplier_bill_ref: billRef || null });
       if (res.error) setError(res.error);
       else router.push(`/supplier-bills/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Supplier Bill saved on this device — it will get its Bill number and sync automatically once you&apos;re
+          back online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -58,6 +92,13 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
         </p>
       </div>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Supplier Bill will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -66,7 +107,7 @@ export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Supplier Bill"}
+        {pending ? "Saving…" : isOnline ? "Create Supplier Bill" : "Save Offline"}
       </button>
     </div>
   );
