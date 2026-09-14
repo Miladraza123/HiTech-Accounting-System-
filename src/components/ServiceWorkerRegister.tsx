@@ -68,8 +68,20 @@ export function ServiceWorkerRegister() {
     }
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // visibilitychange alone still misses a real case: a regular browser
+    // tab that's simply left open and stays the active/visible tab the
+    // whole time (never actually hidden — no tab switch, no minimize) —
+    // visibilitychange never fires there at all, so a tab someone just
+    // keeps open for a long session could sit on old code indefinitely
+    // with no re-check ever triggered. A periodic timer closes that last
+    // gap unconditionally, independent of any visibility transition.
+    const interval = setInterval(() => {
+      activeRegistration?.update().catch(() => {});
+    }, 5 * 60 * 1000);
+
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
     };
   }, []);
 
