@@ -38,19 +38,34 @@
 // starts optimistic instead of trusting navigator.onLine, and
 // verifyRealConnectivity() gained an independent watchdog timeout so it
 // can never hang indefinitely regardless of cause.
-const CACHE_VERSION = "v5";
+//
+// v5 -> v6: an actual strategy change this time — removed the
+// unconditional self.skipWaiting() from `install` (see its own comment
+// below). Anyone still on v5 gets this fix via v5's own (still-buggy)
+// immediate-activate behavior, one last time — from v6 onward, updates
+// correctly wait for an explicit "Refresh" click instead.
+const CACHE_VERSION = "v6";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [OFFLINE_URL, "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
+  // Deliberately no self.skipWaiting() here. Calling it unconditionally
+  // on every install (including an update, not just the very first
+  // install) is exactly what silently breaks the "user decides when to
+  // reload" promise below: it makes the new worker activate and claim
+  // every open tab almost immediately once installed, firing
+  // ServiceWorkerRegister.tsx's controllerchange -> window.location.reload()
+  // before that toast's "Refresh" button was ever clicked — or often
+  // before it even had a chance to render. Left unconditional, this
+  // meant every deploy could reload someone's tab mid-edit with zero
+  // warning, silently discarding whatever they were filling in — the
+  // exact failure mode the toast exists to prevent. Now the new worker
+  // properly stays "waiting" (this event's default behavior) until the
+  // message handler below calls skipWaiting() itself, triggered only by
+  // that button.
 });
 
 self.addEventListener("activate", (event) => {
