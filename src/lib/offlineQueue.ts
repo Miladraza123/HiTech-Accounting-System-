@@ -39,6 +39,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { smartMergeUpdate, type SmartMergeConflict, type SmartMergeError } from "@/lib/smartMerge";
+import type { Json } from "@/lib/supabase/database.types";
 
 /**
  * Lifecycle of one queued write. "syncing"/"conflict"/"synced" are never
@@ -86,7 +87,7 @@ export type QueuedEdit = SyncMeta & {
 export type QueuedCreate = SyncMeta & {
   kind: "create";
   id: string;
-  table: "queries" | "tasks" | "parties" | "items" | "warehouses";
+  table: "queries" | "tasks" | "parties" | "items" | "warehouses" | "quotations" | "sales_orders";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -190,6 +191,39 @@ const CREATE_RPC: {
       p_code: write.payload.code as string,
       p_name: write.payload.name as string,
       p_address: (write.payload.address ?? null) as string,
+    }),
+  // Phase 2 (Master Offline-First Roadmap) — Quotation (Rev-0) and Sales
+  // Order creation. Both are pure document creation (no stock posting, no
+  // financial commitment) so, like Query/Task, genuinely low-risk offline.
+  // NOTE: neither is reachable offline when its parent (the Query for a
+  // Quotation, the Quotation for a Sales Order) was ITSELF created offline
+  // and hasn't synced yet — /quotations/new and /sales-orders/new are
+  // Server Component pages that live-fetch their parent by id and 404 if
+  // it isn't found server-side. Same constraint the original Phase 0 audit
+  // already noted for Query/Task only ever referencing an *existing*,
+  // already-synced Party. See
+  // supabase/migrations/20260914030000_phase29_02_offline_first_quotation_so_create.sql.
+  quotations: (supabase, write) =>
+    supabase.rpc("fn_create_quotation_idempotent", {
+      p_id: write.recordId,
+      p_query_id: write.payload.query_id as string,
+      p_terms: (write.payload.terms ?? null) as string,
+      p_validity_date: (write.payload.validity_date ?? null) as string,
+      p_delivery_terms: (write.payload.delivery_terms ?? null) as string,
+      p_payment_terms: (write.payload.payment_terms ?? null) as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  sales_orders: (supabase, write) =>
+    supabase.rpc("fn_create_sales_order_idempotent", {
+      p_id: write.recordId,
+      p_quotation_id: write.payload.quotation_id as string,
+      p_client_po_number: write.payload.client_po_number as string,
+      p_po_date: write.payload.po_date as string,
+      p_delivery_schedule: (write.payload.delivery_schedule ?? null) as string,
+      p_payment_terms: (write.payload.payment_terms ?? null) as string,
+      p_business_line: write.payload.business_line as string,
+      p_lines: write.payload.lines as Json,
+      p_confirm_duplicate: (write.payload.confirm_duplicate ?? false) as boolean,
     }),
 };
 

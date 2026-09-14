@@ -4,9 +4,33 @@ import { useActionState, useState } from "react";
 import { createQuotationAction, type ActionResult } from "@/app/actions/quotations";
 import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 const initialState: ActionResult = { error: null };
 
+function serializeLines(lines: EditableLine[]) {
+  return lines
+    .filter((l) => l.description.trim())
+    .map((l) => ({
+      item_id: l.item_id || undefined,
+      description: l.description,
+      qty: Number(l.qty) || 0,
+      unit: l.unit || undefined,
+      rate: Number(l.rate) || 0,
+      tax_pct: Number(l.tax_pct) || 0,
+    }));
+}
+
+// Phase 2 (Master Offline-First Roadmap): Quotation (Rev-0) creation is
+// pure document creation (no stock posting, no financial commitment), so
+// like Query/Task it's genuinely low-risk offline. Same pattern as
+// QueryForm.tsx: online, this form behaves exactly as before (native form
+// action -> createQuotationAction); offline, submission is intercepted
+// before the native action runs and queued in IndexedDB with a
+// browser-generated UUID, replayed through `fn_create_quotation_idempotent`
+// the moment connectivity returns. NOTE: this is only reachable offline if
+// the parent Query already exists server-side — see this form's own RPC
+// entry in offlineQueue.ts for why.
 export function NewQuotationForm({
   queryId,
   items,
@@ -20,9 +44,43 @@ export function NewQuotationForm({
 }) {
   const [state, formAction, pending] = useActionState(createQuotationAction, initialState);
   const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct)]);
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (isOnline) return; // let the normal <form action> submission run, unchanged
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    await enqueue({
+      kind: "create",
+      table: "quotations",
+      recordId: crypto.randomUUID(),
+      label: "Quotation",
+      payload: {
+        query_id: queryId,
+        terms: String(formData.get("terms") ?? "").trim() || null,
+        validity_date: String(formData.get("validity_date") ?? "") || null,
+        delivery_terms: String(formData.get("delivery_terms") ?? "").trim() || null,
+        payment_terms: String(formData.get("payment_terms") ?? "").trim() || null,
+        lines: serializeLines(lines),
+      },
+    });
+    setSavedOffline(true);
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Quotation saved on this device — it will get its Quotation number and sync automatically once you&apos;re
+          back online.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} onSubmit={handleSubmit} className="space-y-4">
       <input type="hidden" name="query_id" value={queryId} />
       <input
         type="hidden"
@@ -65,6 +123,13 @@ export function NewQuotationForm({
         </label>
       </div>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Quotation will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
 
       <button
@@ -72,7 +137,7 @@ export function NewQuotationForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Save Quotation (Rev-0)"}
+        {pending ? "Saving…" : isOnline ? "Save Quotation (Rev-0)" : "Save Offline"}
       </button>
     </form>
   );

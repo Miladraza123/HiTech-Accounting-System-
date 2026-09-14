@@ -4383,6 +4383,18 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_quotation_idempotent: {
+        Args: {
+          p_delivery_terms: string
+          p_id: string
+          p_lines: Json
+          p_payment_terms: string
+          p_query_id: string
+          p_terms: string
+          p_validity_date: string
+        }
+        Returns: string
+      }
       fn_create_quotation_revision: {
         Args: {
           p_delivery_terms: string
@@ -4401,6 +4413,20 @@ export type Database = {
           p_client_po_number: string
           p_confirm_duplicate?: boolean
           p_delivery_schedule: string
+          p_lines: Json
+          p_payment_terms: string
+          p_po_date: string
+          p_quotation_id: string
+        }
+        Returns: string
+      }
+      fn_create_sales_order_idempotent: {
+        Args: {
+          p_business_line: string
+          p_client_po_number: string
+          p_confirm_duplicate?: boolean
+          p_delivery_schedule: string
+          p_id: string
           p_lines: Json
           p_payment_terms: string
           p_po_date: string

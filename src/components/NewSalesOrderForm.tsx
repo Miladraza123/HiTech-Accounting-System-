@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createSalesOrderAction, type SalesOrderLineInput } from "@/app/actions/salesOrders";
 import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 function fromQuotationLines(lines: Tables<"quotation_lines">[], defaultTaxPct: number): EditableLine[] {
   if (!lines.length) return [blankLine(defaultTaxPct)];
@@ -66,13 +67,48 @@ export function NewSalesOrderForm({
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
+  // Phase 2 (Master Offline-First Roadmap): Sales Order creation is pure
+  // document creation (no stock posting yet — that only happens at GRN/
+  // Delivery, later phases), so like Quotation it's genuinely low-risk
+  // offline. NOTE: this is only reachable offline if the parent Quotation
+  // already exists server-side — see this form's own RPC entry in
+  // offlineQueue.ts for why. DUPLICATE_PO's "Proceed Anyway" confirmation
+  // needs a live round-trip to detect in the first place, so it can only
+  // be resolved online — the offline path here always queues with
+  // confirm_duplicate left at whatever the user already decided.
   function submit(confirmDuplicate: boolean) {
     setError(null);
     if (!clientPoNumber.trim()) {
       setError("Client PO Number is required.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "sales_orders",
+          recordId: crypto.randomUUID(),
+          label: "Sales Order",
+          payload: {
+            quotation_id: quotationId,
+            client_po_number: clientPoNumber.trim(),
+            po_date: poDate,
+            delivery_schedule: deliverySchedule || null,
+            payment_terms: paymentTerms || null,
+            business_line: businessLine,
+            lines: serialize(lines),
+            confirm_duplicate: confirmDuplicate,
+          },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createSalesOrderAction({
         quotation_id: quotationId,
@@ -94,6 +130,17 @@ export function NewSalesOrderForm({
       }
       router.push(`/sales-orders/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Sales Order saved on this device — it will get its SO number and sync automatically once you&apos;re back
+          online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -176,6 +223,13 @@ export function NewSalesOrderForm({
         </div>
       )}
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Sales Order will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -184,7 +238,7 @@ export function NewSalesOrderForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Sales Order"}
+        {pending ? "Saving…" : isOnline ? "Create Sales Order" : "Save Offline"}
       </button>
     </div>
   );
