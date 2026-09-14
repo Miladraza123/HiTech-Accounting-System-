@@ -74,7 +74,7 @@ type SyncMeta = {
 export type QueuedEdit = SyncMeta & {
   kind: "edit";
   id: string;
-  table: "company" | "parties" | "warehouses";
+  table: "company" | "parties" | "warehouses" | "vehicles";
   rowId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Company Profile". */
   label: string;
@@ -116,7 +116,9 @@ export type QueuedCreate = SyncMeta & {
     // need two different discriminator values here since each maps to its
     // own RPC in CREATE_RPC below.
     | "job_material_issues"
-    | "job_material_returns";
+    | "job_material_returns"
+    | "journal_vouchers"
+    | "expense_heads";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -458,6 +460,24 @@ const CREATE_RPC: {
       p_job_id: write.payload.job_id as string,
       p_item_id: write.payload.item_id as string,
       p_qty: write.payload.qty as number,
+    }),
+  // Phase 8 (Master Offline-First Roadmap) — Journal Vouchers & Expense
+  // Heads. See supabase/migrations/20260914090000_phase29_08_offline_first_journal_voucher_expense_head_and_vehicle_edit.sql
+  // for two more genuine pre-existing bugs (both server-generated ids
+  // with no idempotency, exactly like every phase before this one) found
+  // and fixed while verifying it.
+  journal_vouchers: (supabase, write) =>
+    supabase.rpc("fn_post_journal_entry_idempotent", {
+      p_id: write.recordId,
+      p_entry_date: write.payload.entry_date as string,
+      p_narration: write.payload.narration as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  expense_heads: (supabase, write) =>
+    supabase.rpc("fn_create_expense_head_idempotent", {
+      p_id: write.recordId,
+      p_name: write.payload.name as string,
+      p_code: (write.payload.code ?? null) as string,
     }),
 };
 

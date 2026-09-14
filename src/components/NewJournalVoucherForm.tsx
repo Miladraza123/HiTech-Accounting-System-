@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createJournalVoucherAction, type JournalVoucherLineInput } from "@/app/actions/cashBank";
 import { JournalVoucherLineEditor, blankJvLine, decodeDimension, type EditableJvLine } from "@/components/JournalVoucherLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 function serialize(lines: EditableJvLine[]): JournalVoucherLineInput[] {
   return lines
@@ -35,6 +36,19 @@ export function NewJournalVoucherForm({
   const [lines, setLines] = useState<EditableJvLine[]>([blankJvLine(), blankJvLine()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Journal Voucher saved on this device — it will get its JV number and sync automatically once you&apos;re
+          back online.
+        </p>
+      </div>
+    );
+  }
 
   function submit() {
     setError(null);
@@ -53,6 +67,25 @@ export function NewJournalVoucherForm({
       setError("Entry is not balanced — Debit and Credit totals must be equal.");
       return;
     }
+
+    // Phase 8 (Master Offline-First Roadmap): the Dr=Cr balance check
+    // above is only advisory (client-side) — the authoritative check is
+    // the deferred SQL constraint trigger, which fires at sync time too
+    // (see this form's own RPC entry in offlineQueue.ts).
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "journal_vouchers",
+          recordId: crypto.randomUUID(),
+          label: "Journal Voucher",
+          payload: { entry_date: entryDate, narration: narration.trim(), lines: serialized },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createJournalVoucherAction({ entry_date: entryDate, narration: narration.trim(), lines: serialized });
       if (res.error) {
@@ -80,6 +113,13 @@ export function NewJournalVoucherForm({
 
       <JournalVoucherLineEditor accounts={accounts} parties={parties} bankAccounts={bankAccounts} pettyCashFunds={pettyCashFunds} lines={lines} onChange={setLines} />
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Journal Voucher will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -88,7 +128,7 @@ export function NewJournalVoucherForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Posting…" : "Post Journal Voucher"}
+        {pending ? "Posting…" : isOnline ? "Post Journal Voucher" : "Save Offline"}
       </button>
     </div>
   );

@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
-export type ActionResult = { error: string | null; id?: string };
+export type ActionResult = { error: string | null; id?: string; success?: boolean; conflicts?: SmartMergeConflict[] };
 
 export async function createVehicleAction(input: {
   vehicle_no: string;
@@ -35,25 +36,25 @@ export async function createVehicleAction(input: {
   return { error: null, id: data.id };
 }
 
+// Phase 8 (Master Offline-First Roadmap): now routes through the same
+// generic Smart Merge engine as Company/Party/Warehouse instead of a
+// direct `.update()` — a genuine field-level 3-way merge (someone else's
+// concurrent change to a different field is never lost) instead of a
+// blind overwrite, and offline-safe via the same queue path.
 export async function updateVehicleAction(
   id: string,
-  input: {
-    assigned_user_id: string | null;
-    assignment_date: string | null;
-    status: "Active" | "UnderMaintenance" | "Retired" | "Unassigned";
-  }
+  base: { assigned_user_id: string | null; assignment_date: string | null; status: string },
+  next: { assigned_user_id: string | null; assignment_date: string | null; status: string }
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("vehicles")
-    .update({
-      assigned_user_id: input.assigned_user_id,
-      assignment_date: input.assignment_date,
-      status: input.status,
-    })
-    .eq("id", id);
+  const changes = diffFields(base, next);
+  const { result, error } = await smartMergeUpdate(supabase, "vehicles", id, base, changes);
   if (error) return { error: error.message };
+  if (result && result.conflicts.length > 0) {
+    return { error: null, conflicts: result.conflicts };
+  }
+
   revalidatePath("/setup/vehicles");
   revalidatePath(`/setup/vehicles/${id}`);
-  return { error: null };
+  return { error: null, success: true };
 }

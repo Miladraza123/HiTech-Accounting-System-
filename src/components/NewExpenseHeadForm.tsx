@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createExpenseHeadAction } from "@/app/actions/cashBank";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 export function NewExpenseHeadForm() {
   const router = useRouter();
@@ -10,6 +11,8 @@ export function NewExpenseHeadForm() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   function submit() {
     setError(null);
@@ -17,6 +20,23 @@ export function NewExpenseHeadForm() {
       setError("Name is required.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "expense_heads",
+          recordId: crypto.randomUUID(),
+          label: "Expense Head",
+          payload: { name: name.trim(), code: code.trim() || null },
+        });
+        setName("");
+        setCode("");
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createExpenseHeadAction(name.trim(), code.trim() || null);
       if (res.error) {
@@ -42,6 +62,13 @@ export function NewExpenseHeadForm() {
         </label>
       </div>
       <p className="text-xs text-ink-faint">Adding a new head will automatically create a corresponding expense account in accounting.</p>
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Expense Head will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+      {savedOffline && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">⏳ Saved offline — waiting to sync.</p>}
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
       <button
         type="button"
@@ -49,7 +76,7 @@ export function NewExpenseHeadForm() {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Expense Head"}
+        {pending ? "Saving…" : isOnline ? "Create Expense Head" : "Save Offline"}
       </button>
     </div>
   );

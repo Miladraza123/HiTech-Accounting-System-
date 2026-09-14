@@ -4309,6 +4309,10 @@ export type Database = {
         Args: { p_code: string; p_name: string }
         Returns: string
       }
+      fn_create_expense_head_idempotent: {
+        Args: { p_code: string; p_id: string; p_name: string }
+        Returns: string
+      }
       fn_create_expense_idempotent: {
         Args: {
           p_amount: number
@@ -4769,6 +4773,15 @@ export type Database = {
           p_narration: string
           p_source_id: string
           p_source_table: string
+        }
+        Returns: string
+      }
+      fn_post_journal_entry_idempotent: {
+        Args: {
+          p_entry_date: string
+          p_id: string
+          p_lines: Json
+          p_narration: string
         }
         Returns: string
       }
