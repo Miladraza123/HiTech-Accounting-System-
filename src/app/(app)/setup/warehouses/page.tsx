@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { WarehouseForm } from "@/components/WarehouseForm";
 import { ToggleWarehouseButton } from "@/components/ToggleWarehouseButton";
+import { EditWarehouseForm } from "@/components/EditWarehouseForm";
 
 export default async function WarehousesPage() {
   const user = await getCurrentUser();
@@ -49,8 +50,11 @@ export default async function WarehousesPage() {
                     {w.is_active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-right">
-                  <ToggleWarehouseButton id={w.id} isActive={w.is_active} />
+                <td className="px-4 py-2.5">
+                  <div className="flex items-start justify-end gap-2">
+                    <EditWarehouseForm warehouseId={w.id} code={w.code} name={w.name} address={w.address} />
+                    <ToggleWarehouseButton id={w.id} isActive={w.is_active} />
+                  </div>
                 </td>
               </tr>
             ))}

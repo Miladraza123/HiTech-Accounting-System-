@@ -4258,6 +4258,22 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_item_idempotent: {
+        Args: {
+          p_base_unit: string
+          p_category: string
+          p_description: string
+          p_hs_code: string
+          p_id: string
+          p_is_stocked: boolean
+          p_item_code: string
+          p_reorder_level: number
+          p_spec: string
+          p_standard_cost: number
+          p_tax_category: string
+        }
+        Returns: string
+      }
       fn_create_job: {
         Args: {
           p_description: string
@@ -4269,6 +4285,21 @@ export type Database = {
           p_sales_order_line_id: string
           p_start_date: string
           p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_create_party_idempotent: {
+        Args: {
+          p_billing_address: string
+          p_cnic: string
+          p_credit_days: number
+          p_credit_limit: number
+          p_id: string
+          p_legal_name: string
+          p_ntn: string
+          p_party_type: string
+          p_province: string
+          p_strn: string
         }
         Returns: string
       }
@@ -4427,6 +4458,15 @@ export type Database = {
           p_related_id?: string
           p_related_table?: string
           p_title: string
+        }
+        Returns: string
+      }
+      fn_create_warehouse_idempotent: {
+        Args: {
+          p_address: string
+          p_code: string
+          p_id: string
+          p_name: string
         }
         Returns: string
       }

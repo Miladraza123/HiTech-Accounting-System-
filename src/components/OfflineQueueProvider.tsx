@@ -243,7 +243,15 @@ export function OfflineQueueProvider({
       if (cancelled) return;
       registration.active?.postMessage({
         type: "WARM_CACHE",
-        urls: ["/queries", "/queries/new", "/tasks", "/tasks/new", "/setup/company"],
+        // Phase 1 (Master Offline-First Roadmap): /clients, /items, and
+        // /setup/warehouses embed their offline-capable create forms
+        // (PartyForm/ItemForm/WarehouseForm) directly on the list page
+        // itself rather than a separate /new route — same reachability
+        // gap as /queries/new before this mechanism existed (see its own
+        // comment above): without this, someone who goes straight offline
+        // before ever visiting one of these pages could never reach the
+        // form at all.
+        urls: ["/queries", "/queries/new", "/tasks", "/tasks/new", "/setup/company", "/clients", "/items", "/setup/warehouses"],
       });
     });
     return () => {
@@ -350,6 +358,7 @@ const CONFLICT_FIELD_LABEL: Record<string, string> = {
   credit_limit: "Credit Limit",
   credit_days: "Credit Days",
   legal_name: "Company Name",
+  name: "Name",
   ntn: "NTN",
   strn: "STRN",
   address: "Address",

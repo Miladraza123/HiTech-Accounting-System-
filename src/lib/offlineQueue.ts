@@ -73,7 +73,7 @@ type SyncMeta = {
 export type QueuedEdit = SyncMeta & {
   kind: "edit";
   id: string;
-  table: "company" | "parties";
+  table: "company" | "parties" | "warehouses";
   rowId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Company Profile". */
   label: string;
@@ -86,7 +86,7 @@ export type QueuedEdit = SyncMeta & {
 export type QueuedCreate = SyncMeta & {
   kind: "create";
   id: string;
-  table: "queries" | "tasks";
+  table: "queries" | "tasks" | "parties" | "items" | "warehouses";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -152,6 +152,44 @@ const CREATE_RPC: {
       p_priority: (write.payload.priority ?? "Medium") as string,
       p_related_table: (write.payload.related_table ?? null) as string,
       p_related_id: (write.payload.related_id ?? null) as string,
+    }),
+  // Phase 1 (Master Offline-First Roadmap) — master data every later
+  // document (Sales Order, Purchase Order, ...) references, so it has to
+  // be creatable offline first. See
+  // supabase/migrations/20260914020000_phase29_01_offline_first_master_data_create.sql.
+  parties: (supabase, write) =>
+    supabase.rpc("fn_create_party_idempotent", {
+      p_id: write.recordId,
+      p_party_type: write.payload.party_type as string,
+      p_legal_name: write.payload.legal_name as string,
+      p_ntn: (write.payload.ntn ?? null) as string,
+      p_strn: (write.payload.strn ?? null) as string,
+      p_cnic: (write.payload.cnic ?? null) as string,
+      p_billing_address: (write.payload.billing_address ?? null) as string,
+      p_province: (write.payload.province ?? null) as string,
+      p_credit_limit: (write.payload.credit_limit ?? 0) as number,
+      p_credit_days: (write.payload.credit_days ?? 0) as number,
+    }),
+  items: (supabase, write) =>
+    supabase.rpc("fn_create_item_idempotent", {
+      p_id: write.recordId,
+      p_item_code: write.payload.item_code as string,
+      p_description: write.payload.description as string,
+      p_base_unit: write.payload.base_unit as string,
+      p_category: (write.payload.category ?? null) as string,
+      p_spec: (write.payload.spec ?? null) as string,
+      p_hs_code: (write.payload.hs_code ?? null) as string,
+      p_tax_category: (write.payload.tax_category ?? "standard") as string,
+      p_is_stocked: (write.payload.is_stocked ?? true) as boolean,
+      p_standard_cost: (write.payload.standard_cost ?? 0) as number,
+      p_reorder_level: (write.payload.reorder_level ?? null) as number,
+    }),
+  warehouses: (supabase, write) =>
+    supabase.rpc("fn_create_warehouse_idempotent", {
+      p_id: write.recordId,
+      p_code: write.payload.code as string,
+      p_name: write.payload.name as string,
+      p_address: (write.payload.address ?? null) as string,
     }),
 };
 

@@ -94,6 +94,29 @@ export async function addWarehouseAction(
   return { error: null, success: true };
 }
 
+// Smart Merge: `base` is the name/address this browser tab last loaded —
+// only the fields that actually changed are sent as `changes`, so someone
+// else's concurrent edit to the OTHER field never gets clobbered. Mirrors
+// updateCreditTermsAction in actions/parties.ts.
+export async function updateWarehouseAction(
+  id: string,
+  base: { name: string; address: string },
+  next: { name: string; address: string }
+): Promise<ActionResult> {
+  if (!next.name.trim()) return { error: "Warehouse name is required." };
+
+  const supabase = await createClient();
+  const changes = diffFields(base, next);
+  const { result, error } = await smartMergeUpdate(supabase, "warehouses", id, base, changes);
+  if (error) return { error: error.message };
+  if (result && result.conflicts.length > 0) {
+    return { error: null, conflicts: result.conflicts };
+  }
+
+  revalidatePath("/setup/warehouses");
+  return { error: null, success: true };
+}
+
 export async function toggleWarehouseAction(id: string, isActive: boolean) {
   const supabase = await createClient();
   await supabase.from("warehouses").update({ is_active: isActive }).eq("id", id);

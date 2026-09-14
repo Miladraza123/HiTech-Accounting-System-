@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useRef, useEffect } from "react";
+import { useActionState, useRef, useEffect, useState } from "react";
 import { createItemAction, type ActionResult } from "@/app/actions/items";
 import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 const initialState: ActionResult = { error: null };
 
@@ -18,16 +19,66 @@ function Field({ label, required = false, children }: { label: string; required?
   );
 }
 
+// Phase 1 (Master Offline-First Roadmap): Item is master data every later
+// document (GRN, Sales Order, Delivery, ...) references, so it has to be
+// creatable offline first. Same pattern as QueryForm.tsx (Phase 22 pilot):
+// online, this form behaves exactly as before (native form action ->
+// createItemAction); offline, submission is intercepted before the native
+// action runs and queued in IndexedDB with a browser-generated UUID,
+// replayed through `fn_create_item_idempotent` (safe to retry) the moment
+// connectivity returns.
 export function ItemForm({ units }: { units: Tables<"units">[] }) {
   const [state, formAction, pending] = useActionState(createItemAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
   }, [state.success]);
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (isOnline) return; // let the normal <form action> submission run, unchanged
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const reorderLevelRaw = String(formData.get("reorder_level") ?? "").trim();
+    await enqueue({
+      kind: "create",
+      table: "items",
+      recordId: crypto.randomUUID(),
+      label: "Item",
+      payload: {
+        item_code: String(formData.get("item_code") ?? "").trim(),
+        description: String(formData.get("description") ?? "").trim(),
+        base_unit: String(formData.get("base_unit") ?? ""),
+        category: String(formData.get("category") ?? "").trim() || null,
+        spec: String(formData.get("spec") ?? "").trim() || null,
+        hs_code: String(formData.get("hs_code") ?? "").trim() || null,
+        tax_category: String(formData.get("tax_category") ?? "standard"),
+        is_stocked: formData.get("is_stocked") === "on",
+        standard_cost: Number(formData.get("standard_cost") ?? 0),
+        reorder_level: reorderLevelRaw ? Number(reorderLevelRaw) : null,
+      },
+    });
+    e.currentTarget.reset();
+    setSavedOffline(true);
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Saved on this device — it will sync automatically once you&apos;re back online.
+        </p>
+        <button type="button" onClick={() => setSavedOffline(false)} className={buttonClass("secondary", "sm")}>
+          + Add another
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <form ref={formRef} action={formAction} className="rounded-xl border border-line bg-surface p-5 space-y-5">
+    <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="rounded-xl border border-line bg-surface p-5 space-y-5">
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Basic Info</p>
         <div className="grid grid-cols-[140px_1fr] gap-3">
@@ -101,12 +152,19 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
         </p>
       </div>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Item will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
       {state.success && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
 
       <div className="border-t border-line pt-4">
         <button type="submit" disabled={pending} className={buttonClass("primary", "md", "disabled:opacity-60")}>
-          {pending ? "Adding…" : "Add Item"}
+          {pending ? "Adding…" : isOnline ? "Add Item" : "Save Offline"}
         </button>
       </div>
     </form>
