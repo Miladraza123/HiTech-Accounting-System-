@@ -216,6 +216,68 @@ export function OfflineQueueProvider({
     pendingCountRef.current = pendingCount;
   }, [isOnline, pendingCount]);
 
+  // Forces every same-origin link click to use a real hard (browser-level)
+  // navigation instead of next/link's client-side soft transition,
+  // whenever the app is offline.
+  //
+  // Why: a next/link soft navigation fetches its destination's RSC payload
+  // with a plain fetch() that this app's service worker never intercepts
+  // (see sw.js's fetch handler — it only handles request.mode ===
+  // "navigate", which an RSC fetch never is). Next.js is documented to
+  // fall back to a real hard navigation automatically when that fetch
+  // fails, and a from-scratch reproduction (real Next.js 16.3.4 build,
+  // the real unmodified sw.js, real Chromium) confirmed that fallback
+  // does reach the service worker correctly. But a real-device report
+  // disproved relying on it: the offline banner's own WARM_CACHE_RESULT
+  // diagnostic confirmed /queries/new WAS fully cached (24/24 pages
+  // ready) at the exact moment the user hit a native "This page couldn't
+  // load" browser error clicking a next/link "+ New Query" button while
+  // offline — meaning the framework's internal fallback did not reliably
+  // reach this app's own service worker on that real device/PWA context,
+  // for reasons this sandbox cannot further isolate (no way to attach a
+  // real-device debugger here). Rather than keep depending on an
+  // unverified framework internal, this intercepts the click ourselves
+  // and always performs the hard navigation directly — the one path
+  // already proven, with real evidence, to reach networkFirst() and
+  // correctly serve the cached page.
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (isOnlineRef.current) return;
+      if (event.defaultPrevented) return;
+      if (event.button !== 0) return; // left-click only
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; // respect open-in-new-tab etc.
+
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+
+      let url: URL;
+      try {
+        url = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      // A same-page hash/anchor link (or a click that doesn't actually
+      // change the URL) keeps its normal default behavior.
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      window.location.href = url.href;
+    }
+
+    // Capture phase, on `document` — runs before the click reaches the
+    // anchor itself, so it pre-empts next/link's own bubble-phase click
+    // handler (the one that would otherwise start the soft navigation).
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, []);
+
   const refreshPendingCount = useCallback(async () => {
     const items = await listQueuedWrites();
     setPendingCount(items.length);
