@@ -197,6 +197,15 @@ export function OfflineQueueProvider({
   const [pendingCount, setPendingCount] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncedConflicts, setSyncedConflicts] = useState<SyncedConflict[]>([]);
+  // Surfaces the service worker's own WARM_CACHE_RESULT ack (see sw.js and
+  // the effect below) directly in the Offline banner — added specifically
+  // so a real device that still fails to reach an offline-capable page
+  // after a full WARM_CACHE pass produces hard, reproducible evidence (a
+  // screenshot naming exactly which URLs never made it into the cache)
+  // instead of another round of guessing at the cause.
+  const [warmCacheStatus, setWarmCacheStatus] = useState<{ cachedCount: number; total: number; failed: string[] } | null>(
+    null
+  );
   // Read inside the retry interval below without needing it in that
   // effect's dependency array (which must stay `[]` — it sets up
   // listeners/intervals once for the component's lifetime).
@@ -311,6 +320,7 @@ export function OfflineQueueProvider({
     let cancelled = false;
     let retriesUsed = 0;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const cachedSoFar = new Set<string>();
 
     function sendWarmCache(registration: ServiceWorkerRegistration, urls: string[]) {
       registration.active?.postMessage({ type: "WARM_CACHE", urls });
@@ -320,11 +330,17 @@ export function OfflineQueueProvider({
     // and retries only the URLs it reports as still missing, up to
     // WARM_CACHE_MAX_RETRIES times, staggered WARM_CACHE_RETRY_DELAY_MS
     // apart — closes the fire-and-forget gap described above without
-    // waiting for a whole new offline->online transition.
+    // waiting for a whole new offline->online transition. Also mirrors
+    // the running result into warmCacheStatus (see its own comment above)
+    // so a real device that still can't reach an offline-capable page
+    // after this whole pass produces hard evidence, not another guess.
     function handleMessage(event: MessageEvent) {
       if (cancelled) return;
       if (!event.data || event.data.type !== "WARM_CACHE_RESULT") return;
+      const cached: string[] = Array.isArray(event.data.cached) ? event.data.cached : [];
       const failed: string[] = Array.isArray(event.data.failed) ? event.data.failed : [];
+      cached.forEach((url) => cachedSoFar.add(url));
+      setWarmCacheStatus({ cachedCount: cachedSoFar.size, total: WARM_CACHE_URLS.length, failed });
       if (failed.length === 0) return;
       if (retriesUsed >= WARM_CACHE_MAX_RETRIES) return;
       retriesUsed += 1;
@@ -393,6 +409,7 @@ export function OfflineQueueProvider({
         pendingCount={pendingCount}
         offlineReason={offlineReason}
         buildVersion={buildVersion}
+        warmCacheStatus={warmCacheStatus}
       />
       {syncMessage && <SyncToast message={syncMessage} onDismiss={() => setSyncMessage(null)} />}
       {syncedConflicts.map((conflict) => (
@@ -412,15 +429,17 @@ function OfflineStatusBanner({
   pendingCount,
   offlineReason,
   buildVersion,
+  warmCacheStatus,
 }: {
   isOnline: boolean;
   pendingCount: number;
   offlineReason: string | null;
   buildVersion?: string;
+  warmCacheStatus: { cachedCount: number; total: number; failed: string[] } | null;
 }) {
   if (isOnline && pendingCount === 0) return null;
   return (
-    <div className="fixed left-1/2 top-3 z-50 -translate-x-1/2 max-w-[90vw] rounded-full border border-line-strong bg-surface px-3 py-1.5 text-xs shadow-md">
+    <div className="fixed left-1/2 top-3 z-50 -translate-x-1/2 max-w-[90vw] rounded-2xl border border-line-strong bg-surface px-3 py-1.5 text-xs shadow-md">
       {!isOnline ? (
         <span className="text-warn">
           ⚠ Offline{pendingCount > 0 ? ` — ${pendingCount} change${pendingCount > 1 ? "s" : ""} pending sync` : ""}
@@ -437,6 +456,21 @@ function OfflineStatusBanner({
         </span>
       ) : (
         <span className="text-ink-soft">Syncing {pendingCount} pending change{pendingCount > 1 ? "s" : ""}…</span>
+      )}
+      {/* Surfaces the service worker's own WARM_CACHE_RESULT ack (see
+          OfflineQueueProvider's WARM_CACHE effect and sw.js) — added so a
+          real device that still can't reach an offline-capable page after
+          a full warm pass produces hard evidence (exactly which URLs never
+          made it into the cache, visible right on the Offline banner a
+          screenshot already captures) instead of another round of
+          guessing at the cause. */}
+      {warmCacheStatus && (
+        <div className="mt-0.5 text-[10px] text-ink-faint">
+          Offline pages ready: {warmCacheStatus.cachedCount}/{warmCacheStatus.total}
+          {warmCacheStatus.failed.length > 0 && (
+            <span className="text-warn"> — not ready: {warmCacheStatus.failed.join(", ")}</span>
+          )}
+        </div>
       )}
     </div>
   );
