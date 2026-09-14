@@ -6,6 +6,11 @@ import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/sma
 
 export type ActionResult = { error: string | null; id?: string; success?: boolean; conflicts?: SmartMergeConflict[] };
 
+// Online path — unchanged (same direct insert every other phase's online
+// path also keeps, per the established pattern: only the OFFLINE path
+// calls the new idempotent RPC, via NewVehicleForm.tsx's enqueue() ->
+// offlineQueue.ts's CREATE_RPC map -> fn_create_vehicle_idempotent, at
+// sync time). See that RPC's own migration for the Phase 11 addendum.
 export async function createVehicleAction(input: {
   vehicle_no: string;
   registration_no: string | null;

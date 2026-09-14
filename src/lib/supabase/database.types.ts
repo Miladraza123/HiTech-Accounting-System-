@@ -4710,6 +4710,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_vehicle_idempotent: {
+        Args: {
+          p_assigned_user_id: string
+          p_assignment_date: string
+          p_id: string
+          p_make_model: string
+          p_opening_meter_reading: number
+          p_registration_no: string
+          p_vehicle_no: string
+          p_vehicle_type: string
+        }
+        Returns: string
+      }
       fn_create_warehouse_idempotent: {
         Args: {
           p_address: string

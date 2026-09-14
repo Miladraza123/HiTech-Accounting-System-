@@ -118,7 +118,8 @@ export type QueuedCreate = SyncMeta & {
     | "job_material_issues"
     | "job_material_returns"
     | "journal_vouchers"
-    | "expense_heads";
+    | "expense_heads"
+    | "vehicles";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -478,6 +479,21 @@ const CREATE_RPC: {
       p_id: write.recordId,
       p_name: write.payload.name as string,
       p_code: (write.payload.code ?? null) as string,
+    }),
+  // Phase 11 (Master Offline-First Roadmap, addendum): closes the one
+  // remaining master-data create with no offline path at all —
+  // createVehicleAction had never gone through any RPC, online or
+  // offline, unlike Party/Item/Warehouse since Phase 1.
+  vehicles: (supabase, write) =>
+    supabase.rpc("fn_create_vehicle_idempotent", {
+      p_id: write.recordId,
+      p_vehicle_no: write.payload.vehicle_no as string,
+      p_registration_no: (write.payload.registration_no ?? null) as string,
+      p_vehicle_type: (write.payload.vehicle_type ?? null) as string,
+      p_make_model: (write.payload.make_model ?? null) as string,
+      p_assigned_user_id: (write.payload.assigned_user_id ?? null) as string,
+      p_assignment_date: (write.payload.assignment_date ?? null) as string,
+      p_opening_meter_reading: write.payload.opening_meter_reading as number,
     }),
 };
 

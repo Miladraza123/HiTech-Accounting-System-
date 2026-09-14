@@ -287,6 +287,9 @@ export function OfflineQueueProvider({
           "/setup/petty-cash-funds",
           "/setup/expense-heads",
           "/inventory/adjustments",
+          // Phase 11 addendum: embeds NewVehicleForm directly on the list
+          // page, same reachability shape as /clients, /items, etc.
+          "/setup/vehicles",
         ],
       });
     });
