@@ -53,14 +53,23 @@ export function useOfflineQueue() {
 // connectivity, on every single check. Confirmed exactly this failure
 // with AbortSignal.timeout deleted in a real headless Chromium page: the
 // old form throws every time; this form still fetches normally.
-async function verifyRealConnectivity(): Promise<boolean> {
+//
+// Returns the actual failure reason alongside the boolean (rather than
+// silently swallowing it) — this exact check has already been wrong for
+// reasons that took multiple rounds of guessing to track down (a proxy
+// redirect, a missing browser API); the next time a check fails for a
+// reason nobody has seen yet, that reason needs to be visible directly
+// in the banner on whatever device hits it, not invisible in a console
+// nobody watching a phone has access to.
+async function verifyRealConnectivity(): Promise<{ ok: boolean; reason?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch("/api/ping", { method: "GET", cache: "no-store", signal: controller.signal });
-    return res.ok;
-  } catch {
-    return false;
+    return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+  } catch (e) {
+    const reason = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    return { ok: false, reason };
   } finally {
     clearTimeout(timer);
   }
@@ -70,6 +79,7 @@ const RECHECK_INTERVAL_MS = 15000;
 
 export function OfflineQueueProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+  const [offlineReason, setOfflineReason] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncedConflicts, setSyncedConflicts] = useState<SyncedConflict[]>([]);
@@ -109,8 +119,9 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
     // and lets the app recover from a false "Offline" without waiting on
     // a browser `online` event that may never fire.
     async function reconcile() {
-      const reallyOnline = await verifyRealConnectivity();
+      const { ok: reallyOnline, reason } = await verifyRealConnectivity();
       if (cancelled) return;
+      setOfflineReason(reallyOnline ? null : (reason ?? null));
       setIsOnline((prev) => {
         if (reallyOnline && !prev) runFlush();
         return reallyOnline;
@@ -191,7 +202,7 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
   return (
     <OfflineQueueContext.Provider value={{ isOnline, pendingCount, enqueue }}>
       {children}
-      <OfflineStatusBanner isOnline={isOnline} pendingCount={pendingCount} />
+      <OfflineStatusBanner isOnline={isOnline} pendingCount={pendingCount} offlineReason={offlineReason} />
       {syncMessage && <SyncToast message={syncMessage} onDismiss={() => setSyncMessage(null)} />}
       {syncedConflicts.map((conflict) => (
         <SyncConflictBanner
@@ -205,13 +216,27 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
   );
 }
 
-function OfflineStatusBanner({ isOnline, pendingCount }: { isOnline: boolean; pendingCount: number }) {
+function OfflineStatusBanner({
+  isOnline,
+  pendingCount,
+  offlineReason,
+}: {
+  isOnline: boolean;
+  pendingCount: number;
+  offlineReason: string | null;
+}) {
   if (isOnline && pendingCount === 0) return null;
   return (
-    <div className="fixed left-1/2 top-3 z-50 -translate-x-1/2 rounded-full border border-line-strong bg-surface px-3 py-1.5 text-xs shadow-md">
+    <div className="fixed left-1/2 top-3 z-50 -translate-x-1/2 max-w-[90vw] rounded-full border border-line-strong bg-surface px-3 py-1.5 text-xs shadow-md">
       {!isOnline ? (
         <span className="text-warn">
           ⚠ Offline{pendingCount > 0 ? ` — ${pendingCount} change${pendingCount > 1 ? "s" : ""} pending sync` : ""}
+          {/* Shown so a report of "this is wrong, I'm actually online" comes
+              with the exact reason attached (a screenshot) instead of just
+              a boolean — turns the next mystery case into something
+              diagnosable on the first report instead of several rounds of
+              guessing. */}
+          {offlineReason && <span className="ml-1 text-ink-faint">({offlineReason})</span>}
         </span>
       ) : (
         <span className="text-ink-soft">Syncing {pendingCount} pending change{pendingCount > 1 ? "s" : ""}…</span>
