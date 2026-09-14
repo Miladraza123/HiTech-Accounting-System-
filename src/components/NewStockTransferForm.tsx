@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createStockTransferAction } from "@/app/actions/stockTransfers";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type Line = { item_id: string; qty: string };
 
@@ -16,6 +17,8 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
   const [lines, setLines] = useState<Line[]>([{ item_id: "", qty: "" }]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   function updateLine(i: number, patch: Partial<Line>) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -45,6 +48,24 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
       return;
     }
 
+    // Phase 6 (Master Offline-First Roadmap): already atomic across both
+    // warehouses even offline (see this form's own RPC entry in
+    // offlineQueue.ts) — a rejected "out" leg (insufficient stock,
+    // re-checked live at sync time) rolls back the "in" leg too.
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "stock_transfers",
+          recordId: crypto.randomUUID(),
+          label: "Stock Transfer",
+          payload: { from_warehouse_id: fromWarehouseId, to_warehouse_id: toWarehouseId, transfer_date: transferDate, remarks: remarks || null, lines: cleanLines },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createStockTransferAction({
         from_warehouse_id: fromWarehouseId,
@@ -56,6 +77,17 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
       if (res.error) setError(res.error);
       else router.push(`/stock-transfers/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Stock Transfer saved on this device — it will get its Transfer number and sync automatically once
+          you&apos;re back online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -144,6 +176,13 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
 
       <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} placeholder="Remarks (optional)" className="input resize-none" />
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Stock Transfer will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -152,7 +191,7 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Stock Transfer"}
+        {pending ? "Saving…" : isOnline ? "Create Stock Transfer" : "Save Offline"}
       </button>
     </div>
   );

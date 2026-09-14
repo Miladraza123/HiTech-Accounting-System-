@@ -1,0 +1,36 @@
+-- Phase 29.06b — genuine pre-existing bug found via real empirical
+-- testing while verifying Phase 6 (not assumed, not guessed): trying to
+-- actually create a Sales Return, Purchase Return, or Stock Transfer
+-- with a stock-affecting line — through the brand-new idempotent
+-- wrapper OR the original, already-live, non-idempotent RPC, it makes
+-- no difference, both call the exact same `_fn_post_stock_ledger` —
+-- fails with `stock_ledger_txn_type_check` violated. `stock_ledger`'s
+-- txn_type check constraint (phase3_01_purchase_grn_schema.sql) was
+-- only ever `check (txn_type in ('GRN','Issue','Return','DC',
+-- 'Adjustment','OpeningStock'))` — it never included 'SRN' (Sales
+-- Return), 'PRN' (Purchase Return), 'STN' (Stock Transfer), or
+-- 'DC-Reversal' (Delivery Challan cancellation), even though every one
+-- of those four literal values has been passed to
+-- `_fn_post_stock_ledger` by fn_create_sales_return,
+-- fn_create_purchase_return, fn_create_stock_transfer (both creation
+-- AND their own cancel functions), and fn_cancel_delivery_challan since
+-- Phase 14/15 were first written. None of those four operations could
+-- ever have actually completed for a stock-affecting line, online or
+-- offline, in this app's entire history — confirmed directly by
+-- grep'ing every `_fn_post_stock_ledger` call site in
+-- supabase/migrations/ for its literal txn_type argument and comparing
+-- against the constraint's allowed list.
+--
+-- This blocks Phase 6 of the Master Offline-First Roadmap directly (its
+-- own idempotent Sales/Purchase Return and Stock Transfer wrappers
+-- cannot be verified, or ever actually used, while this constraint
+-- stays this way) — fixing the shared root cause here, rather than
+-- routing around it, is the only fix that actually makes both the
+-- pre-existing online path AND the new offline path work correctly.
+--
+-- Purely additive (widening, never narrowing) — every value the
+-- constraint already allowed stays allowed; four values every stock-
+-- ledger call site already needed are added.
+alter table public.stock_ledger drop constraint stock_ledger_txn_type_check;
+alter table public.stock_ledger add constraint stock_ledger_txn_type_check
+  check (txn_type in ('GRN','Issue','Return','DC','Adjustment','OpeningStock','SRN','PRN','STN','DC-Reversal'));

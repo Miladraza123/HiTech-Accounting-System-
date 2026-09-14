@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { requestStockAdjustmentAction } from "@/app/actions/inventory";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 export function StockAdjustmentRequestForm({
   items,
@@ -20,7 +21,13 @@ export function StockAdjustmentRequestForm({
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
+  // Phase 6 (Master Offline-First Roadmap): offline-enables only the
+  // REQUEST step — a plain pending-row insert with no stock/accounting
+  // impact at all (approval stays a distinct, Owner-only, always-online
+  // review action). See this form's own RPC entry in offlineQueue.ts.
   function submit() {
     setError(null);
     setOk(false);
@@ -29,6 +36,25 @@ export function StockAdjustmentRequestForm({
       setError("All fields are required — enter a negative number if the count is lower, positive if it's higher.");
       return;
     }
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "stock_adjustments",
+          recordId: crypto.randomUUID(),
+          label: "Stock Adjustment Request",
+          payload: { item_id: itemId, warehouse_id: warehouseId, qty_delta: delta, reason },
+        });
+        setItemId("");
+        setWarehouseId("");
+        setQtyDelta("");
+        setReason("");
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await requestStockAdjustmentAction(itemId, warehouseId, delta, reason);
       if (res.error) setError(res.error);
@@ -77,8 +103,15 @@ export function StockAdjustmentRequestForm({
       />
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason (refer to the physical count)…" className="input resize-none" />
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this request will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
       {ok && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Request sent — waiting for Owner approval.</p>}
+      {savedOffline && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">⏳ Saved offline — waiting to sync.</p>}
 
       <button
         type="button"
@@ -86,7 +119,7 @@ export function StockAdjustmentRequestForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "…" : "Send Request"}
+        {pending ? "…" : isOnline ? "Send Request" : "Save Offline"}
       </button>
     </div>
   );

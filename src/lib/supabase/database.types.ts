@@ -4465,6 +4465,17 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_purchase_return_idempotent: {
+        Args: {
+          p_id: string
+          p_lines: Json
+          p_reason: string
+          p_return_date: string
+          p_supplier_bill_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_query_idempotent: {
         Args: {
           p_id: string
@@ -4549,9 +4560,31 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_sales_return_idempotent: {
+        Args: {
+          p_id: string
+          p_invoice_id: string
+          p_lines: Json
+          p_reason: string
+          p_return_date: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_stock_transfer: {
         Args: {
           p_from_warehouse_id: string
+          p_lines: Json
+          p_remarks: string
+          p_to_warehouse_id: string
+          p_transfer_date: string
+        }
+        Returns: string
+      }
+      fn_create_stock_transfer_idempotent: {
+        Args: {
+          p_from_warehouse_id: string
+          p_id: string
           p_lines: Json
           p_remarks: string
           p_to_warehouse_id: string
@@ -4677,6 +4710,16 @@ export type Database = {
       fn_reopen_task: { Args: { p_task_id: string }; Returns: undefined }
       fn_request_stock_adjustment: {
         Args: {
+          p_item_id: string
+          p_qty_delta: number
+          p_reason: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      fn_request_stock_adjustment_idempotent: {
+        Args: {
+          p_id: string
           p_item_id: string
           p_qty_delta: number
           p_reason: string

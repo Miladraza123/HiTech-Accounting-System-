@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSalesReturnAction } from "@/app/actions/returns";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 export function SalesReturnPanel({
   invoiceId,
@@ -23,8 +24,21 @@ export function SalesReturnPanel({
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
-  if (!returnableLines.length) return null;
+  if (!returnableLines.length && !savedOffline) return null;
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-5">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Sales Return saved on this device — it will get its Return number and sync automatically once you&apos;re
+          back online.
+        </p>
+      </div>
+    );
+  }
 
   if (!open) {
     return (
@@ -54,6 +68,24 @@ export function SalesReturnPanel({
     }
     if (!reason.trim()) {
       setError("A reason for the return is required.");
+      return;
+    }
+
+    // Phase 6 (Master Offline-First Roadmap): re-validated against LIVE
+    // returned_qty at sync time (see this form's own RPC entry in
+    // offlineQueue.ts) — never a stale offline snapshot.
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "sales_returns",
+          recordId: crypto.randomUUID(),
+          label: "Sales Return",
+          payload: { invoice_id: invoiceId, warehouse_id: warehouseId, return_date: returnDate, reason: reason.trim(), lines: returnLines },
+        });
+        setOpen(false);
+        setSavedOffline(true);
+      });
       return;
     }
 
@@ -138,6 +170,13 @@ export function SalesReturnPanel({
 
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason for return… (e.g. quality issue, excess qty)" className="input resize-none" />
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Sales Return will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <div className="flex gap-2">
@@ -150,7 +189,7 @@ export function SalesReturnPanel({
           disabled={pending}
           className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
         >
-          {pending ? "…" : "Save Sales Return"}
+          {pending ? "…" : isOnline ? "Save Sales Return" : "Save Offline"}
         </button>
       </div>
     </div>

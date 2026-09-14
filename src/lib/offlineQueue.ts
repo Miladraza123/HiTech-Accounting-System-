@@ -103,7 +103,11 @@ export type QueuedCreate = SyncMeta & {
     | "payments"
     | "expenses"
     | "bank_accounts"
-    | "petty_cash_funds";
+    | "petty_cash_funds"
+    | "sales_returns"
+    | "purchase_returns"
+    | "stock_transfers"
+    | "stock_adjustments";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -353,6 +357,48 @@ const CREATE_RPC: {
       p_custodian_user_id: (write.payload.custodian_user_id ?? null) as string,
       p_opening_balance: (write.payload.opening_balance ?? 0) as number,
       p_opening_balance_date: write.payload.opening_balance_date as string,
+    }),
+  // Phase 6 (Master Offline-First Roadmap) — Sales Return, Purchase
+  // Return, Stock Transfer, Stock Adjustment (request only — approval
+  // stays online-only, see this migration's own comment). See
+  // supabase/migrations/20260914070000_phase29_06_offline_first_returns_adjustments_create.sql,
+  // and 20260914071000_phase29_06b_fix_stock_ledger_txn_type_constraint.sql
+  // for a genuine pre-existing bug (blocking these three online too)
+  // found and fixed while verifying this phase.
+  sales_returns: (supabase, write) =>
+    supabase.rpc("fn_create_sales_return_idempotent", {
+      p_id: write.recordId,
+      p_invoice_id: write.payload.invoice_id as string,
+      p_warehouse_id: write.payload.warehouse_id as string,
+      p_return_date: write.payload.return_date as string,
+      p_reason: write.payload.reason as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  purchase_returns: (supabase, write) =>
+    supabase.rpc("fn_create_purchase_return_idempotent", {
+      p_id: write.recordId,
+      p_supplier_bill_id: write.payload.supplier_bill_id as string,
+      p_warehouse_id: write.payload.warehouse_id as string,
+      p_return_date: write.payload.return_date as string,
+      p_reason: write.payload.reason as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  stock_transfers: (supabase, write) =>
+    supabase.rpc("fn_create_stock_transfer_idempotent", {
+      p_id: write.recordId,
+      p_from_warehouse_id: write.payload.from_warehouse_id as string,
+      p_to_warehouse_id: write.payload.to_warehouse_id as string,
+      p_transfer_date: write.payload.transfer_date as string,
+      p_remarks: (write.payload.remarks ?? null) as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  stock_adjustments: (supabase, write) =>
+    supabase.rpc("fn_request_stock_adjustment_idempotent", {
+      p_id: write.recordId,
+      p_item_id: write.payload.item_id as string,
+      p_warehouse_id: write.payload.warehouse_id as string,
+      p_qty_delta: write.payload.qty_delta as number,
+      p_reason: write.payload.reason as string,
     }),
 };
 
