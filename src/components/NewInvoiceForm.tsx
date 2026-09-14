@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createInvoiceAction, type InvoiceLineInput } from "@/app/actions/invoices";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type SoLine = {
   id: string;
@@ -24,6 +25,8 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   const [taxPcts, setTaxPcts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const so = salesOrders.find((s) => s.id === soId);
 
@@ -64,11 +67,39 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
       setError("Enter qty in at least one line.");
       return;
     }
+    // Phase 4 (Master Offline-First Roadmap): re-validated against LIVE
+    // delivered_qty/invoiced_qty at sync time (see this form's own RPC
+    // entry in offlineQueue.ts) — never a stale offline snapshot.
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "invoices",
+          recordId: crypto.randomUUID(),
+          label: "Invoice",
+          payload: { sales_order_id: soId, invoice_date: invoiceDate, lines },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createInvoiceAction({ sales_order_id: soId, invoice_date: invoiceDate, lines });
       if (res.error) setError(res.error);
       else router.push(`/invoices/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Invoice saved on this device — it will get its Invoice number and sync automatically once you&apos;re back
+          online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -165,6 +196,13 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         </div>
       )}
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Invoice will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -173,7 +211,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Invoice"}
+        {pending ? "Saving…" : isOnline ? "Create Invoice" : "Save Offline"}
       </button>
     </div>
   );

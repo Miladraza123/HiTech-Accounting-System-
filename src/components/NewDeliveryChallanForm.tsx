@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createDeliveryChallanAction, type DeliveryChallanLineInput } from "@/app/actions/deliveryChallans";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type SoLine = {
   id: string;
@@ -45,6 +46,8 @@ export function NewDeliveryChallanForm({
   const [issueFlags, setIssueFlags] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const so = salesOrders.find((s) => s.id === soId);
 
@@ -95,6 +98,34 @@ export function NewDeliveryChallanForm({
         stock_qty: stockQty,
       });
     }
+    // Phase 4 (Master Offline-First Roadmap): Delivery Challan is the
+    // app's first offline create that DEDUCTS stock — see this form's own
+    // RPC entry in offlineQueue.ts for why that's still safe: the
+    // server-side RPC re-validates both "not more than ordered" and "not
+    // more than physical stock on hand" against the TRUE, live state at
+    // sync time, never trusting what this offline device last saw.
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "delivery_challans",
+          recordId: crypto.randomUUID(),
+          label: "Delivery Challan",
+          payload: {
+            sales_order_id: soId,
+            warehouse_id: warehouseId,
+            delivery_date: deliveryDate,
+            vehicle_no: vehicleNo || null,
+            driver_name: driverName || null,
+            remarks: remarks || null,
+            lines,
+          },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createDeliveryChallanAction({
         sales_order_id: soId,
@@ -108,6 +139,18 @@ export function NewDeliveryChallanForm({
       if (res.error) setError(res.error);
       else router.push(`/delivery-challans/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Delivery Challan saved on this device — it will get its DC number, deduct stock, and sync automatically
+          once you&apos;re back online. If the stock this device saw is no longer available by then, the sync will
+          fail with a clear reason instead of allowing stock to go negative.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -230,6 +273,13 @@ export function NewDeliveryChallanForm({
         </div>
       )}
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Delivery Challan will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -238,7 +288,7 @@ export function NewDeliveryChallanForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Create Delivery Challan"}
+        {pending ? "Saving…" : isOnline ? "Create Delivery Challan" : "Save Offline"}
       </button>
     </div>
   );

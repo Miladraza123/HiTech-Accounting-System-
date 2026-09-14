@@ -4215,6 +4215,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_delivery_challan_idempotent: {
+        Args: {
+          p_delivery_date: string
+          p_driver_name: string
+          p_id: string
+          p_lines: Json
+          p_remarks: string
+          p_sales_order_id: string
+          p_vehicle_no: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       fn_create_expense: {
         Args: {
           p_amount: number
@@ -4264,6 +4277,15 @@ export type Database = {
       }
       fn_create_invoice: {
         Args: {
+          p_invoice_date: string
+          p_lines: Json
+          p_sales_order_id: string
+        }
+        Returns: string
+      }
+      fn_create_invoice_idempotent: {
+        Args: {
+          p_id: string
           p_invoice_date: string
           p_lines: Json
           p_sales_order_id: string

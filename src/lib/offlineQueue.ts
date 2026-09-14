@@ -97,6 +97,8 @@ export type QueuedCreate = SyncMeta & {
     | "sales_orders"
     | "purchase_orders"
     | "grns"
+    | "delivery_challans"
+    | "invoices"
     | "supplier_bills";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
@@ -266,6 +268,28 @@ const CREATE_RPC: {
       p_grn_id: write.payload.grn_id as string,
       p_bill_date: write.payload.bill_date as string,
       p_supplier_bill_ref: (write.payload.supplier_bill_ref ?? null) as string,
+    }),
+  // Phase 4 (Master Offline-First Roadmap) — Delivery Challan (the app's
+  // first offline create that DEDUCTS stock, not just adds it) and
+  // Invoice. Same reachability constraint as Phases 2-3 — see
+  // supabase/migrations/20260914050000_phase29_04_offline_first_fulfillment_billing_create.sql.
+  delivery_challans: (supabase, write) =>
+    supabase.rpc("fn_create_delivery_challan_idempotent", {
+      p_id: write.recordId,
+      p_sales_order_id: write.payload.sales_order_id as string,
+      p_warehouse_id: write.payload.warehouse_id as string,
+      p_delivery_date: write.payload.delivery_date as string,
+      p_vehicle_no: (write.payload.vehicle_no ?? null) as string,
+      p_driver_name: (write.payload.driver_name ?? null) as string,
+      p_remarks: (write.payload.remarks ?? null) as string,
+      p_lines: write.payload.lines as Json,
+    }),
+  invoices: (supabase, write) =>
+    supabase.rpc("fn_create_invoice_idempotent", {
+      p_id: write.recordId,
+      p_sales_order_id: write.payload.sales_order_id as string,
+      p_invoice_date: write.payload.invoice_date as string,
+      p_lines: write.payload.lines as Json,
     }),
 };
 
