@@ -18,8 +18,17 @@
 // Versioned cache: bump CACHE_VERSION whenever the strategy changes.
 // `activate` deletes every cache from an older version so nothing stale
 // ever lingers on a user's device across deploys.
-
-const CACHE_VERSION = "v2";
+//
+// v2 -> v3: no strategy change here — bumped purely so this file's own
+// bytes differ, which is what actually makes an already-INSTALLED PWA
+// notice there's an update at all (see ServiceWorkerRegister.tsx). The
+// two real bug fixes that motivated this bump (proxy.ts's /api/ping
+// exclusion, and the AbortController fix in OfflineQueueProvider.tsx)
+// only touched app code, not this file — so without this bump, someone
+// who already has the app installed would never see the "new version
+// available" toast at all, no matter how many times they closed and
+// reopened it, and would keep running the old, broken JS indefinitely.
+const CACHE_VERSION = "v3";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 

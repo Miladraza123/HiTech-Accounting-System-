@@ -19,28 +19,58 @@ export function ServiceWorkerRegister() {
       window.location.reload();
     });
 
+    let activeRegistration: ServiceWorkerRegistration | null = null;
+
+    function watchForUpdate(registration: ServiceWorkerRegistration) {
+      // A worker was already waiting when this tab loaded (e.g. it
+      // installed in another tab).
+      if (registration.waiting) setWaitingWorker(registration.waiting);
+
+      registration.addEventListener("updatefound", () => {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed" && navigator.serviceWorker.controller) {
+            setWaitingWorker(installing);
+          }
+        });
+      });
+    }
+
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
-        // A worker was already waiting when this tab loaded (e.g. it
-        // installed in another tab).
-        if (registration.waiting) setWaitingWorker(registration.waiting);
-
-        registration.addEventListener("updatefound", () => {
-          const installing = registration.installing;
-          if (!installing) return;
-          installing.addEventListener("statechange", () => {
-            if (installing.state === "installed" && navigator.serviceWorker.controller) {
-              setWaitingWorker(installing);
-            }
-          });
-        });
+        activeRegistration = registration;
+        watchForUpdate(registration);
       })
       .catch(() => {
         // Offline support is a progressive enhancement — a registration
         // failure (unsupported browser, blocked storage, etc.) should
         // never break the app itself.
       });
+
+    // An installed PWA opened from its home-screen icon is very often
+    // resuming an already-running, backgrounded process rather than
+    // performing a genuine fresh page navigation — no network request
+    // happens at all in that case. The browser's own automatic update
+    // check normally piggybacks on navigations (or an internal ~24h
+    // timer), so on a PWA that's mostly reopened rather than freshly
+    // loaded, a real fix already live on the server could sit
+    // undetected indefinitely, no matter how many times the user closes
+    // and reopens the app. Forcing an explicit check whenever the app
+    // becomes visible again closes that gap — this is what actually
+    // makes the "new version available" toast below show up promptly on
+    // a resumed PWA instead of only on a true cold start.
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        activeRegistration?.update().catch(() => {});
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   if (!waitingWorker) return null;
