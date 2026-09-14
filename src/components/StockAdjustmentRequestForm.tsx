@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { requestStockAdjustmentAction } from "@/app/actions/inventory";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
 
 export function StockAdjustmentRequestForm({
   items,
@@ -24,6 +25,18 @@ export function StockAdjustmentRequestForm({
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
 
+  // Phase 9 (Master Offline-First Roadmap): an Item/Warehouse created
+  // offline is otherwise invisible in these dropdowns until it syncs —
+  // merged in here as extra options; picking one threads a `dependsOn`
+  // entry so this request only ever syncs after its Item/Warehouse has
+  // (see offlineQueue.ts).
+  const [pendingItems, setPendingItems] = useState<PendingCreateOption[]>([]);
+  const [pendingWarehouses, setPendingWarehouses] = useState<PendingCreateOption[]>([]);
+  useEffect(() => {
+    getPendingCreateOptions("items").then(setPendingItems);
+    getPendingCreateOptions("warehouses").then(setPendingWarehouses);
+  }, []);
+
   // Phase 6 (Master Offline-First Roadmap): offline-enables only the
   // REQUEST step — a plain pending-row insert with no stock/accounting
   // impact at all (approval stays a distinct, Owner-only, always-online
@@ -39,12 +52,19 @@ export function StockAdjustmentRequestForm({
 
     if (!isOnline) {
       startTransition(async () => {
+        const pendingItem = pendingItems.find((i) => i.id === itemId);
+        const pendingWarehouse = pendingWarehouses.find((w) => w.id === warehouseId);
+        const dependsOn = [
+          ...(pendingItem ? [{ queuedId: pendingItem.queuedId, field: "item_id" }] : []),
+          ...(pendingWarehouse ? [{ queuedId: pendingWarehouse.queuedId, field: "warehouse_id" }] : []),
+        ];
         await enqueue({
           kind: "create",
           table: "stock_adjustments",
           recordId: crypto.randomUUID(),
           label: "Stock Adjustment Request",
           payload: { item_id: itemId, warehouse_id: warehouseId, qty_delta: delta, reason },
+          ...(dependsOn.length ? { dependsOn } : {}),
         });
         setItemId("");
         setWarehouseId("");
@@ -83,12 +103,22 @@ export function StockAdjustmentRequestForm({
               {i.item_code} — {i.description}
             </option>
           ))}
+          {pendingItems.map((i) => (
+            <option key={i.id} value={i.id}>
+              {String(i.payload.item_code ?? i.label)} (offline — pending sync)
+            </option>
+          ))}
         </select>
         <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="input">
           <option value="">— Warehouse —</option>
           {warehouses.map((w) => (
             <option key={w.id} value={w.id}>
               {w.name}
+            </option>
+          ))}
+          {pendingWarehouses.map((w) => (
+            <option key={w.id} value={w.id}>
+              {String(w.payload.name ?? w.label)} (offline — pending sync)
             </option>
           ))}
         </select>

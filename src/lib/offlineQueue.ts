@@ -483,13 +483,17 @@ const CREATE_RPC: {
 
 const DB_NAME = "hitech-offline-queue";
 // v1 -> v2: added the idMappings store (temp-id -> server-id, for
-// dependent offline creates). Existing `writes` entries from a v1
-// database are read fine as-is — every new SyncMeta field is optional
-// at the READING sites below (`??` fallbacks), so an old stored item
-// without them just behaves as "pending, never retried yet".
-const DB_VERSION = 2;
+// dependent offline creates). v2 -> v3 (Phase 9): added the
+// masterDataCache store (see below). Existing `writes`/`idMappings`
+// entries from an older database are read fine as-is — every new
+// SyncMeta field is optional at the READING sites below (`??`
+// fallbacks), so an old stored item without them just behaves as
+// "pending, never retried yet"; the `if (!db.objectStoreNames.contains(...))`
+// guards make every upgrade purely additive, never touching existing data.
+const DB_VERSION = 3;
 const STORE = "writes";
 const ID_MAP_STORE = "idMappings";
+const MASTER_DATA_STORE = "masterDataCache";
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -505,6 +509,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(ID_MAP_STORE)) {
         db.createObjectStore(ID_MAP_STORE, { keyPath: "queuedId" });
+      }
+      if (!db.objectStoreNames.contains(MASTER_DATA_STORE)) {
+        db.createObjectStore(MASTER_DATA_STORE, { keyPath: "table" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -541,6 +548,86 @@ export async function findPendingEdit(table: QueuedEdit["table"], rowId: string)
   const all = await listQueuedWrites();
   const match = all.find((w): w is QueuedEdit => w.kind === "edit" && w.table === table && w.rowId === rowId);
   return match ?? null;
+}
+
+// ---- Phase 9 (Master Offline-First Roadmap): versioned local cache for
+// dropdown master data, extending the WARM_CACHE mechanism (which only
+// ever caches whole HTML page snapshots) with a real structured store
+// shared across every consumer, plus a way to surface a still-pending
+// offline create in another form's dropdown instead of it being
+// invisible until sync. ----
+
+/** Master-data tables cached locally — the ones named by the roadmap
+ * (dropdown data "used by offline-create forms") and, not coincidentally,
+ * the exact three tables Phase 1 first made offline-creatable. */
+export const CACHED_MASTER_DATA_TABLES = ["parties", "items", "warehouses"] as const;
+export type CachedMasterDataTable = (typeof CACHED_MASTER_DATA_TABLES)[number];
+
+type MasterDataCacheEntry = { table: CachedMasterDataTable; rows: Record<string, unknown>[]; cachedAt: string };
+
+/**
+ * Refreshes the local cache for every table in CACHED_MASTER_DATA_TABLES
+ * from the live server. Called from OfflineQueueProvider on the same
+ * online-transition trigger as WARM_CACHE (see there for why: reconnect
+ * is the moment this is actually worth doing). A fetch failure for one
+ * table leaves that table's existing cached copy untouched rather than
+ * wiping it — the same "best-effort, never destroy good data on a
+ * failed refresh" rule warmCache() already follows in sw.js. This never
+ * reads or writes the `writes` store, so it can never "clobber" a
+ * still-pending local edit or create — see getPendingCreateOptions below
+ * for how those stay visible instead.
+ */
+export async function refreshMasterDataCache(supabase: SupabaseBrowserClient): Promise<void> {
+  await Promise.all(
+    CACHED_MASTER_DATA_TABLES.map(async (table) => {
+      const { data, error } = await supabase.from(table).select("*");
+      if (error || !data) return;
+      const entry: MasterDataCacheEntry = { table, rows: data, cachedAt: new Date().toISOString() };
+      try {
+        await withStoreNamed(MASTER_DATA_STORE, "readwrite", (store) => store.put(entry));
+      } catch {
+        // IndexedDB hiccup — next reconnect will retry; the page's own
+        // server-fetched props still work for however it was reached.
+      }
+    })
+  );
+}
+
+/** Reads the locally cached rows for one master-data table — `[]` if this
+ * device has never been online long enough to cache it yet (the page's
+ * own server-fetched props are still the primary source when online;
+ * this is purely a same-session offline fallback/merge source). */
+export async function getCachedMasterData<T = Record<string, unknown>>(table: CachedMasterDataTable): Promise<T[]> {
+  try {
+    const entry = await withStoreNamed<MasterDataCacheEntry | undefined>(MASTER_DATA_STORE, "readonly", (store) =>
+      store.get(table)
+    );
+    return (entry?.rows as T[] | undefined) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** One still-queued offline create for a dropdown to merge in alongside
+ * its server/cached rows, so e.g. a Party created offline is immediately
+ * selectable when creating a Query offline too — instead of being
+ * invisible until the device reconnects and the queue flushes (the
+ * reachability gap this exact scenario was documented, not solved, at
+ * in every phase since Phase 2). `id` is the create's own
+ * client-generated `recordId` — already the row's real, permanent id
+ * once synced, since every idempotent-create RPC in this app inserts
+ * with that exact id — so it's safe to use as the dependent write's
+ * foreign-key value right away. `queuedId` is the separate id a caller
+ * needs to build a `dependsOn` entry, so the dependent write waits for
+ * this one to actually sync (and doesn't retry forever chasing a
+ * dependency that failed for good) rather than racing it. */
+export type PendingCreateOption = { id: string; queuedId: string; label: string; payload: Record<string, unknown> };
+
+export async function getPendingCreateOptions(table: QueuedCreate["table"]): Promise<PendingCreateOption[]> {
+  const all = await listQueuedWrites();
+  return all
+    .filter((w): w is QueuedCreate => w.kind === "create" && w.table === table)
+    .map((w) => ({ id: w.recordId, queuedId: w.id, label: w.label, payload: w.payload }));
 }
 
 /**

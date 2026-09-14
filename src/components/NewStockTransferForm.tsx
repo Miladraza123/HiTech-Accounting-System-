@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createStockTransferAction } from "@/app/actions/stockTransfers";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
 
 type Line = { item_id: string; qty: string };
 
@@ -19,6 +20,22 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+
+  // Phase 9 (Master Offline-First Roadmap): a Warehouse created offline
+  // is otherwise invisible in these dropdowns until it syncs — merged in
+  // as extra options, threading a `dependsOn` entry per side so this
+  // transfer only ever syncs after its warehouse(s) have. NOTE: an Item
+  // created offline is NOT merged into the line-item dropdown below —
+  // its id lives inside the nested `lines[]` array, and the existing
+  // dependsOn field-override mechanism only ever substitutes a top-level
+  // payload key (see flushQueue() in offlineQueue.ts), not a nested
+  // array path. Left as a documented, not-solved limitation, matching
+  // this roadmap's established pattern for every other reachability
+  // constraint it couldn't fully close.
+  const [pendingWarehouses, setPendingWarehouses] = useState<PendingCreateOption[]>([]);
+  useEffect(() => {
+    getPendingCreateOptions("warehouses").then(setPendingWarehouses);
+  }, []);
 
   function updateLine(i: number, patch: Partial<Line>) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -54,12 +71,19 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
     // re-checked live at sync time) rolls back the "in" leg too.
     if (!isOnline) {
       startTransition(async () => {
+        const pendingFrom = pendingWarehouses.find((w) => w.id === fromWarehouseId);
+        const pendingTo = pendingWarehouses.find((w) => w.id === toWarehouseId);
+        const dependsOn = [
+          ...(pendingFrom ? [{ queuedId: pendingFrom.queuedId, field: "from_warehouse_id" }] : []),
+          ...(pendingTo ? [{ queuedId: pendingTo.queuedId, field: "to_warehouse_id" }] : []),
+        ];
         await enqueue({
           kind: "create",
           table: "stock_transfers",
           recordId: crypto.randomUUID(),
           label: "Stock Transfer",
           payload: { from_warehouse_id: fromWarehouseId, to_warehouse_id: toWarehouseId, transfer_date: transferDate, remarks: remarks || null, lines: cleanLines },
+          ...(dependsOn.length ? { dependsOn } : {}),
         });
         setSavedOffline(true);
       });
@@ -102,6 +126,11 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
                 {w.name}
               </option>
             ))}
+            {pendingWarehouses.map((w) => (
+              <option key={w.id} value={w.id}>
+                {String(w.payload.name ?? w.label)} (offline — pending sync)
+              </option>
+            ))}
           </select>
         </label>
         <label className="block space-y-1.5">
@@ -111,6 +140,11 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
             {warehouses.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}
+              </option>
+            ))}
+            {pendingWarehouses.map((w) => (
+              <option key={w.id} value={w.id}>
+                {String(w.payload.name ?? w.label)} (offline — pending sync)
               </option>
             ))}
           </select>

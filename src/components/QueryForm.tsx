@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createQueryAction, type ActionResult } from "@/app/actions/queries";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { buttonClass } from "@/components/ui/Button";
+import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
 import type { Tables } from "@/lib/supabase/database.types";
 
 const initialState: ActionResult = { error: null };
@@ -31,23 +32,37 @@ export function QueryForm({
   const [savedOffline, setSavedOffline] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
+  // Phase 9 (Master Offline-First Roadmap): a Party created offline (on
+  // /clients, also warmed) is otherwise invisible in this dropdown until
+  // it syncs — the exact reachability gap this whole roadmap's Phase 0
+  // comment named as "a later phase" to solve. Merged in here as extra
+  // options; picking one threads a `dependsOn` entry so this Query only
+  // ever syncs after that Party has (see offlineQueue.ts).
+  const [pendingParties, setPendingParties] = useState<PendingCreateOption[]>([]);
+  useEffect(() => {
+    getPendingCreateOptions("parties").then(setPendingParties);
+  }, []);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const partyId = String(formData.get("party_id") ?? "");
+    const pendingParty = pendingParties.find((p) => p.id === partyId);
     await enqueue({
       kind: "create",
       table: "queries",
       recordId: crypto.randomUUID(),
       label: "Query",
       payload: {
-        party_id: String(formData.get("party_id") ?? ""),
+        party_id: partyId,
         requirement: String(formData.get("requirement") ?? "").trim(),
         source: String(formData.get("source") ?? "") || null,
         query_date: String(formData.get("query_date") ?? "") || today,
         next_followup_at: String(formData.get("next_followup_at") ?? "") || null,
         notes: String(formData.get("notes") ?? "").trim() || null,
       },
+      ...(pendingParty ? { dependsOn: [{ queuedId: pendingParty.queuedId, field: "party_id" }] } : {}),
     });
     e.currentTarget.reset();
     setSavedOffline(true);
@@ -79,6 +94,11 @@ export function QueryForm({
             {parties.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.legal_name}
+              </option>
+            ))}
+            {pendingParties.map((p) => (
+              <option key={p.id} value={p.id}>
+                {String(p.payload.legal_name ?? p.label)} (offline — pending sync)
               </option>
             ))}
           </select>

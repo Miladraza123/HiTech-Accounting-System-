@@ -7,6 +7,7 @@ import {
   enqueueWrite,
   flushQueue,
   listQueuedWrites,
+  refreshMasterDataCache,
   type QueuedWriteInput,
   type SyncedConflict,
 } from "@/lib/offlineQueue";
@@ -251,9 +252,53 @@ export function OfflineQueueProvider({
         // comment above): without this, someone who goes straight offline
         // before ever visiting one of these pages could never reach the
         // form at all.
-        urls: ["/queries", "/queries/new", "/tasks", "/tasks/new", "/setup/company", "/clients", "/items", "/setup/warehouses"],
+        //
+        // Phase 9: every OTHER static "create" route from Phases 2-8 had
+        // the exact same gap and was never added here — a genuine,
+        // previously-undiscovered reachability bug found by actually
+        // auditing every `useOfflineQueue` consumer's parent page against
+        // this list, not assumed. Added below. Two routes are
+        // DELIBERATELY still excluded — /quotations/new?query_id= and
+        // /sales-orders/new?quotation_id= — since both 404 without a
+        // specific parent record id in the URL; a flat URL list can't
+        // warm those (documented, not solved, same as every phase since
+        // Phase 2 already noted for this exact constraint).
+        urls: [
+          "/queries",
+          "/queries/new",
+          "/tasks",
+          "/tasks/new",
+          "/setup/company",
+          "/clients",
+          "/items",
+          "/setup/warehouses",
+          "/purchase-orders/new",
+          "/supplier-bills/new",
+          "/delivery-challans/new",
+          "/invoices/new",
+          "/payments/new",
+          "/payments/new/batch",
+          "/expenses/new",
+          "/journal-vouchers/new",
+          "/stock-transfers/new",
+          "/product-templates/new",
+          "/jobs/new",
+          "/setup/bank-accounts",
+          "/setup/petty-cash-funds",
+          "/setup/expense-heads",
+          "/inventory/adjustments",
+        ],
       });
     });
+
+    // Phase 9: a real structured cache for the dropdown master data
+    // itself (Parties/Items/Warehouses), not just whole cached HTML page
+    // snapshots — shared across every consumer form instead of frozen
+    // per-page at whatever moment that specific page last got warmed.
+    // Same online-transition trigger as WARM_CACHE above, for the same
+    // reason: reconnect is the moment a refresh is actually worth doing.
+    refreshMasterDataCache(createClient());
+
     return () => {
       cancelled = true;
     };
