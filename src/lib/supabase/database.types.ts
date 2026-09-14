@@ -4466,6 +4466,8 @@ export type Database = {
         Args: { p_quotation_id: string }
         Returns: undefined
       }
+      fn_owner_bootstrap_already_used: { Args: never; Returns: boolean }
+      fn_owner_exists: { Args: never; Returns: boolean }
       fn_post_journal_entry: {
         Args: {
           p_entry_date: string

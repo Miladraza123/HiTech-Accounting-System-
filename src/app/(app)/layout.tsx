@@ -54,8 +54,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const owner = isOwner(user);
 
   const supabase = await createClient();
-  const [{ count: ownerCount }, { count: dueTaskCount }, notifications] = await Promise.all([
-    supabase.from("user_roles").select("*, roles!inner(code)", { count: "exact", head: true }).eq("roles.code", "owner"),
+  const [{ data: ownerExists }, { count: dueTaskCount }, notifications] = await Promise.all([
+    // A plain count query here (`.from("user_roles")...`) is subject to
+    // user_roles' own RLS select policy — `user_id = auth.uid() OR
+    // is_owner() OR has_role('backup')` — which hides every OTHER user's
+    // row from anyone who isn't themselves an Owner or the backup role.
+    // For ordinary staff (Sales/Store/Dispatch/etc.) that silently came
+    // back as 0 regardless of whether a real Owner existed. This RPC is
+    // SECURITY DEFINER and checks system-wide, bypassing RLS entirely.
+    supabase.rpc("fn_owner_exists"),
     supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
@@ -65,7 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getNotifications(supabase, user),
   ]);
 
-  const noOwnerYet = (ownerCount ?? 0) === 0;
+  const noOwnerYet = !ownerExists;
   const noRoleYet = user.roles.length === 0 && !noOwnerYet;
 
   // Grouped by how the business actually thinks about its own workflow —
