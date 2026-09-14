@@ -88,7 +88,20 @@
 // the app afterward — so the next real-device repro produces direct
 // evidence of what this file itself did, instead of inferring it from
 // symptoms two or three layers removed.
-const CACHE_VERSION = "v9";
+//
+// v9 -> v10: the v9 instrumentation paid off immediately — a real
+// device's persisted nav-debug record showed networkFirst() eventually
+// resolving with "cache-hit" for the exact page that had just shown the
+// user a native browser "page couldn't load" error. That combination
+// (the fallback logic succeeds, but the user still sees the browser's
+// own error) means networkFirst()'s own fetch(request) — which had no
+// timeout — took too long to actually fail on that device's network
+// transition, letting the browser's own navigation UI give up before
+// this function ever got a chance to respond with the cached page. Fixed
+// with the same bounded AbortController pattern warmCache() already
+// uses, so this function always resolves quickly regardless of how slow
+// the underlying network failure is.
+const CACHE_VERSION = "v10";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -261,13 +274,32 @@ async function recordNavOutcome(url, outcome, extra) {
   }
 }
 
+// The real, final root cause (found via the nav-debug record added in
+// v9): networkFirst()'s own fetch(request) had no timeout. When a device
+// transitions to offline in a way where the underlying network request
+// hangs for a while before actually rejecting (a slow negative
+// transition — DNS/TCP retries, a radio still "associated" but with no
+// real route — rather than an instant, clean failure), the browser's own
+// navigation UI can give up and show its native "page couldn't load"
+// error before this function ever gets to fall back to the cache. A real
+// device confirmed exactly this: its own persisted nav-debug record
+// showed networkFirst() eventually succeeding with a "cache-hit" for the
+// failed page — proving the fallback logic itself was correct all along,
+// just too slow to ever reach the user. Bounding the fetch attempt (the
+// same AbortController pattern warmCache() already uses) guarantees this
+// function always resolves quickly, well within the fallback path, so
+// the browser never has a chance to give up on its own first.
+const NAVIGATION_FETCH_TIMEOUT_MS = 5000;
+
 async function networkFirst(request, event) {
   // The debug write is always handed to event.waitUntil() rather than
   // awaited inline — it must never add latency to the actual navigation
   // response, only be guaranteed to finish before the browser can
   // terminate this service worker event.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), NAVIGATION_FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { signal: controller.signal });
     if (response && response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
@@ -287,6 +319,8 @@ async function networkFirst(request, event) {
       })
     );
     return offline ?? Response.error();
+  } finally {
+    clearTimeout(timer);
   }
 }
 
