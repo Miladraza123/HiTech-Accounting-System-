@@ -6,6 +6,7 @@ import { createPaymentsBatchAction, type BatchPaymentInput, type BatchPaymentRes
 import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
 import { Plus, Trash2 } from "lucide-react";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type Row = {
   key: string;
@@ -56,6 +57,8 @@ export function MultiPaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<BatchPaymentResult[] | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOfflineCount, setSavedOfflineCount] = useState<number | null>(null);
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -99,11 +102,53 @@ export function MultiPaymentForm({
       petty_cash_fund_id: r.source.startsWith("petty:") ? r.source.slice(6) : null,
     }));
 
+    // Phase 5 (Master Offline-First Roadmap): offline, each row is queued
+    // as its own independent "payments" create (see this form's own note
+    // in offlineQueue.ts) rather than one atomic batch call — every row
+    // gets its own client-generated id and its own retry if it fails, and
+    // one bad row never blocks the others from syncing.
+    if (!isOnline) {
+      startTransition(async () => {
+        for (const p of payments) {
+          await enqueue({
+            kind: "create",
+            table: "payments",
+            recordId: crypto.randomUUID(),
+            label: p.direction === "receipt" ? "Receipt" : "Payment",
+            payload: { ...p, allocations: [] },
+          });
+        }
+        setSavedOfflineCount(payments.length);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createPaymentsBatchAction(payments);
       if (res.error) setError(res.error);
       else setResults(res.payments ?? []);
     });
+  }
+
+  if (savedOfflineCount !== null) {
+    return (
+      <div className="rounded-xl border border-good bg-good-soft p-5 space-y-3">
+        <p className="text-sm font-semibold text-good">
+          {savedOfflineCount} payment{savedOfflineCount === 1 ? "" : "s"} saved on this device — each will get its own
+          Payment number and sync automatically once you&apos;re back online.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setSavedOfflineCount(null);
+            setRows([newRow("receipt"), newRow("receipt")]);
+          }}
+          className={buttonClass("secondary", "sm")}
+        >
+          Record More
+        </button>
+      </div>
+    );
   }
 
   if (results) {
@@ -271,10 +316,21 @@ export function MultiPaymentForm({
         </div>
       </div>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — these payments will be saved on this device and synced automatically once
+          you&apos;re back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button type="button" onClick={submit} disabled={pending} className={buttonClass("primary", "md", "disabled:opacity-60")}>
-        {pending ? "Saving…" : `Record ${rows.length} Payment${rows.length === 1 ? "" : "s"}`}
+        {pending
+          ? "Saving…"
+          : isOnline
+            ? `Record ${rows.length} Payment${rows.length === 1 ? "" : "s"}`
+            : "Save Offline"}
       </button>
     </div>
   );

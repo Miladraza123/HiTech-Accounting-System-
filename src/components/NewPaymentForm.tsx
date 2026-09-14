@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPaymentAction, type PaymentAllocationInput } from "@/app/actions/payments";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 type OutstandingInvoice = { invoice_id: string; party_id: string; outstanding_amount: number; invoice_no: string; invoice_date: string };
 type OutstandingBill = { supplier_bill_id: string; supplier_id: string; outstanding_amount: number; bill_no: string; bill_date: string };
@@ -39,6 +40,8 @@ export function NewPaymentForm({
   const [allocAmounts, setAllocAmounts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const eligibleParties = parties.filter((p) => (direction === "receipt" ? p.party_type !== "supplier" : p.party_type !== "client"));
 
@@ -90,6 +93,36 @@ export function NewPaymentForm({
       .filter((r) => r.amount > 0)
       .map((r) => (direction === "receipt" ? { invoice_id: r.key, amount: r.amount } : { supplier_bill_id: r.key, amount: r.amount }));
 
+    // Phase 5 (Master Offline-First Roadmap) — the plan's own "highest
+    // financial-sensitivity phase": see this form's own RPC entry in
+    // offlineQueue.ts for why a duplicate sync retry can never double-
+    // post real money, and why any allocation is re-validated against
+    // the TRUE, live outstanding amount at sync time.
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "payments",
+          recordId: crypto.randomUUID(),
+          label: direction === "receipt" ? "Receipt" : "Payment",
+          payload: {
+            party_id: partyId,
+            direction,
+            payment_date: paymentDate,
+            method: method || null,
+            reference_no: referenceNo || null,
+            amount: amountNum,
+            notes: notes || null,
+            allocations,
+            bank_account_id: source === "bank" ? bankAccountId : null,
+            petty_cash_fund_id: source === "petty_cash" ? pettyCashFundId : null,
+          },
+        });
+        setSavedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createPaymentAction({
         party_id: partyId,
@@ -106,6 +139,17 @@ export function NewPaymentForm({
       if (res.error) setError(res.error);
       else router.push(`/payments/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-6 max-w-xl space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Payment saved on this device — it will get its Payment number and sync automatically once you&apos;re back
+          online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -268,6 +312,13 @@ export function NewPaymentForm({
         </div>
       )}
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Payment will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -276,7 +327,7 @@ export function NewPaymentForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Record Payment"}
+        {pending ? "Saving…" : isOnline ? "Record Payment" : "Save Offline"}
       </button>
     </div>
   );

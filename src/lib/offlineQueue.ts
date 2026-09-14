@@ -99,7 +99,11 @@ export type QueuedCreate = SyncMeta & {
     | "grns"
     | "delivery_challans"
     | "invoices"
-    | "supplier_bills";
+    | "supplier_bills"
+    | "payments"
+    | "expenses"
+    | "bank_accounts"
+    | "petty_cash_funds";
   recordId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Query". */
   label: string;
@@ -290,6 +294,65 @@ const CREATE_RPC: {
       p_sales_order_id: write.payload.sales_order_id as string,
       p_invoice_date: write.payload.invoice_date as string,
       p_lines: write.payload.lines as Json,
+    }),
+  // Phase 5 (Master Offline-First Roadmap) — the plan's own "highest
+  // financial-sensitivity phase": Payment/Receipt, Expense, Bank Account,
+  // Petty Cash Fund. See
+  // supabase/migrations/20260914060000_phase29_05_offline_first_payments_cash_bank_create.sql
+  // for why fn_create_payment_idempotent's allocation re-validation is
+  // already safe against a stale offline snapshot, and why batch payments
+  // (MultiPaymentForm.tsx) are queued as N independent "payments" creates
+  // here rather than one new "batch" RPC.
+  payments: (supabase, write) =>
+    supabase.rpc("fn_create_payment_idempotent", {
+      p_id: write.recordId,
+      p_party_id: write.payload.party_id as string,
+      p_direction: write.payload.direction as string,
+      p_payment_date: write.payload.payment_date as string,
+      p_method: (write.payload.method ?? null) as string,
+      p_reference_no: (write.payload.reference_no ?? null) as string,
+      p_amount: write.payload.amount as number,
+      p_notes: (write.payload.notes ?? null) as string,
+      p_allocations: (write.payload.allocations ?? []) as Json,
+      p_bank_account_id: (write.payload.bank_account_id ?? null) as string,
+      p_petty_cash_fund_id: (write.payload.petty_cash_fund_id ?? null) as string,
+    }),
+  expenses: (supabase, write) =>
+    supabase.rpc("fn_create_expense_idempotent", {
+      p_id: write.recordId,
+      p_expense_date: write.payload.expense_date as string,
+      p_expense_head_id: write.payload.expense_head_id as string,
+      p_amount: write.payload.amount as number,
+      p_payment_source: write.payload.payment_source as string,
+      p_bank_account_id: (write.payload.bank_account_id ?? null) as string,
+      p_petty_cash_fund_id: (write.payload.petty_cash_fund_id ?? null) as string,
+      p_job_id: (write.payload.job_id ?? null) as string,
+      p_responsible_user_id: (write.payload.responsible_user_id ?? null) as string,
+      p_department: (write.payload.department ?? null) as string,
+      p_description: (write.payload.description ?? null) as string,
+      p_vehicle_id: (write.payload.vehicle_id ?? null) as string,
+      p_odometer_reading: (write.payload.odometer_reading ?? null) as number,
+      p_fuel_litres: (write.payload.fuel_litres ?? null) as number,
+      p_fuel_rate: (write.payload.fuel_rate ?? null) as number,
+      p_settlement_status: (write.payload.settlement_status ?? "Settled") as string,
+    }),
+  bank_accounts: (supabase, write) =>
+    supabase.rpc("fn_create_bank_account_idempotent", {
+      p_id: write.recordId,
+      p_account_name: write.payload.account_name as string,
+      p_bank_name: (write.payload.bank_name ?? null) as string,
+      p_account_number: (write.payload.account_number ?? null) as string,
+      p_branch: (write.payload.branch ?? null) as string,
+      p_opening_balance: (write.payload.opening_balance ?? 0) as number,
+      p_opening_balance_date: write.payload.opening_balance_date as string,
+    }),
+  petty_cash_funds: (supabase, write) =>
+    supabase.rpc("fn_create_petty_cash_fund_idempotent", {
+      p_id: write.recordId,
+      p_fund_name: write.payload.fund_name as string,
+      p_custodian_user_id: (write.payload.custodian_user_id ?? null) as string,
+      p_opening_balance: (write.payload.opening_balance ?? 0) as number,
+      p_opening_balance_date: write.payload.opening_balance_date as string,
     }),
 };
 

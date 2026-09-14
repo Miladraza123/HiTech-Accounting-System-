@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createExpenseAction } from "@/app/actions/cashBank";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 export function NewExpenseForm({
   expenseHeads,
@@ -38,6 +39,8 @@ export function NewExpenseForm({
   const [settlementStatus, setSettlementStatus] = useState<"Settled" | "Pending">("Settled");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { isOnline, enqueue } = useOfflineQueue();
+  const [savedOffline, setSavedOffline] = useState(false);
 
   const selectedHead = expenseHeads.find((h) => h.id === expenseHeadId);
   const isFuel = selectedHead?.code === "FUEL";
@@ -61,30 +64,58 @@ export function NewExpenseForm({
       setError("Select Petty Cash Fund.");
       return;
     }
-    startTransition(async () => {
-      const res = await createExpenseAction({
-        expense_date: expenseDate,
-        expense_head_id: expenseHeadId,
-        amount: amt,
-        payment_source: paymentSource,
-        bank_account_id: paymentSource === "bank" ? bankAccountId : null,
-        petty_cash_fund_id: paymentSource === "petty_cash" ? pettyCashFundId : null,
-        job_id: jobId || null,
-        responsible_user_id: responsibleUserId || null,
-        department: department || null,
-        description: description || null,
-        vehicle_id: vehicleId || null,
-        odometer_reading: odometerReading ? Number(odometerReading) : null,
-        fuel_litres: isFuel && fuelLitres ? Number(fuelLitres) : null,
-        fuel_rate: isFuel && fuelRate ? Number(fuelRate) : null,
-        settlement_status: settlementStatus,
+
+    const payload = {
+      expense_date: expenseDate,
+      expense_head_id: expenseHeadId,
+      amount: amt,
+      payment_source: paymentSource,
+      bank_account_id: paymentSource === "bank" ? bankAccountId : null,
+      petty_cash_fund_id: paymentSource === "petty_cash" ? pettyCashFundId : null,
+      job_id: jobId || null,
+      responsible_user_id: responsibleUserId || null,
+      department: department || null,
+      description: description || null,
+      vehicle_id: vehicleId || null,
+      odometer_reading: odometerReading ? Number(odometerReading) : null,
+      fuel_litres: isFuel && fuelLitres ? Number(fuelLitres) : null,
+      fuel_rate: isFuel && fuelRate ? Number(fuelRate) : null,
+      settlement_status: settlementStatus,
+    };
+
+    if (!isOnline) {
+      startTransition(async () => {
+        await enqueue({
+          kind: "create",
+          table: "expenses",
+          recordId: crypto.randomUUID(),
+          label: "Expense",
+          payload,
+        });
+        setSavedOffline(true);
       });
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await createExpenseAction(payload);
       if (res.error) {
         setError(res.error);
         return;
       }
       router.push(`/expenses/${res.id}`);
     });
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">
+          Expense saved on this device — it will get its Expense number and sync automatically once you&apos;re back
+          online.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -225,6 +256,13 @@ export function NewExpenseForm({
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="input resize-none" />
       </label>
 
+      {!isOnline && (
+        <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
+          ⏳ You&apos;re offline — this Expense will be saved on this device and synced automatically once you&apos;re
+          back online.
+        </p>
+      )}
+
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       <button
@@ -233,7 +271,7 @@ export function NewExpenseForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Record Expense"}
+        {pending ? "Saving…" : isOnline ? "Record Expense" : "Save Offline"}
       </button>
     </div>
   );

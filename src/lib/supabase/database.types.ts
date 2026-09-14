@@ -4189,6 +4189,18 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_bank_account_idempotent: {
+        Args: {
+          p_account_name: string
+          p_account_number: string
+          p_bank_name: string
+          p_branch: string
+          p_id: string
+          p_opening_balance?: number
+          p_opening_balance_date?: string
+        }
+        Returns: string
+      }
       fn_create_contra_entry: {
         Args: {
           p_amount: number
@@ -4250,6 +4262,27 @@ export type Database = {
       }
       fn_create_expense_head: {
         Args: { p_code: string; p_name: string }
+        Returns: string
+      }
+      fn_create_expense_idempotent: {
+        Args: {
+          p_amount: number
+          p_bank_account_id: string
+          p_department: string
+          p_description: string
+          p_expense_date: string
+          p_expense_head_id: string
+          p_fuel_litres?: number
+          p_fuel_rate?: number
+          p_id: string
+          p_job_id: string
+          p_odometer_reading?: number
+          p_payment_source: string
+          p_petty_cash_fund_id: string
+          p_responsible_user_id: string
+          p_settlement_status?: string
+          p_vehicle_id?: string
+        }
         Returns: string
       }
       fn_create_grn: {
@@ -4352,11 +4385,37 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_payment_idempotent: {
+        Args: {
+          p_allocations: Json
+          p_amount: number
+          p_bank_account_id?: string
+          p_direction: string
+          p_id: string
+          p_method: string
+          p_notes: string
+          p_party_id: string
+          p_payment_date: string
+          p_petty_cash_fund_id?: string
+          p_reference_no: string
+        }
+        Returns: string
+      }
       fn_create_payments_batch: { Args: { p_payments: Json }; Returns: Json }
       fn_create_petty_cash_fund: {
         Args: {
           p_custodian_user_id: string
           p_fund_name: string
+          p_opening_balance?: number
+          p_opening_balance_date?: string
+        }
+        Returns: string
+      }
+      fn_create_petty_cash_fund_idempotent: {
+        Args: {
+          p_custodian_user_id: string
+          p_fund_name: string
+          p_id: string
           p_opening_balance?: number
           p_opening_balance_date?: string
         }
