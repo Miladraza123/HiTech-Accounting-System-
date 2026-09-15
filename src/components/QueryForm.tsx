@@ -5,6 +5,7 @@ import { createQueryAction, type ActionResult } from "@/app/actions/queries";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { buttonClass } from "@/components/ui/Button";
 import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
+import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 import type { Tables } from "@/lib/supabase/database.types";
 
 const initialState: ActionResult = { error: null };
@@ -31,6 +32,10 @@ export function QueryForm({
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
+  // Guards the offline branch below against a rapid double-click — see
+  // useOfflineSubmitGuard's own comment for why `pending` above (from
+  // useActionState) can't do this on its own for this specific path.
+  const { isSubmitting, guard } = useOfflineSubmitGuard();
 
   // Phase 9 (Master Offline-First Roadmap): a Party created offline (on
   // /clients, also warmed) is otherwise invisible in this dropdown until
@@ -46,26 +51,29 @@ export function QueryForm({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     const partyId = String(formData.get("party_id") ?? "");
     const pendingParty = pendingParties.find((p) => p.id === partyId);
-    await enqueue({
-      kind: "create",
-      table: "queries",
-      recordId: crypto.randomUUID(),
-      label: "Query",
-      payload: {
-        party_id: partyId,
-        requirement: String(formData.get("requirement") ?? "").trim(),
-        source: String(formData.get("source") ?? "") || null,
-        query_date: String(formData.get("query_date") ?? "") || today,
-        next_followup_at: String(formData.get("next_followup_at") ?? "") || null,
-        notes: String(formData.get("notes") ?? "").trim() || null,
-      },
-      ...(pendingParty ? { dependsOn: [{ queuedId: pendingParty.queuedId, field: "party_id" }] } : {}),
+    await guard(async () => {
+      await enqueue({
+        kind: "create",
+        table: "queries",
+        recordId: crypto.randomUUID(),
+        label: "Query",
+        payload: {
+          party_id: partyId,
+          requirement: String(formData.get("requirement") ?? "").trim(),
+          source: String(formData.get("source") ?? "") || null,
+          query_date: String(formData.get("query_date") ?? "") || today,
+          next_followup_at: String(formData.get("next_followup_at") ?? "") || null,
+          notes: String(formData.get("notes") ?? "").trim() || null,
+        },
+        ...(pendingParty ? { dependsOn: [{ queuedId: pendingParty.queuedId, field: "party_id" }] } : {}),
+      });
+      form.reset();
+      setSavedOffline(true);
     });
-    e.currentTarget.reset();
-    setSavedOffline(true);
   }
 
   if (savedOffline) {
@@ -148,10 +156,10 @@ export function QueryForm({
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || isSubmitting}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : isOnline ? "Save Query" : "Save Offline"}
+        {pending || isSubmitting ? "Saving…" : isOnline ? "Save Query" : "Save Offline"}
       </button>
     </form>
   );

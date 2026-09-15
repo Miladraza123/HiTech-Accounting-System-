@@ -3,6 +3,7 @@
 import { useActionState, useRef, useEffect, useState } from "react";
 import { addWarehouseAction, type ActionResult } from "@/app/actions/setup";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 
 const initialState: ActionResult = { error: null };
 
@@ -19,6 +20,10 @@ export function WarehouseForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  // Guards the offline branch below against a rapid double-click — see
+  // useOfflineSubmitGuard's own comment for why `pending` above (from
+  // useActionState) can't do this on its own for this specific path.
+  const { isSubmitting, guard } = useOfflineSubmitGuard();
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -27,20 +32,23 @@ export function WarehouseForm() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    await enqueue({
-      kind: "create",
-      table: "warehouses",
-      recordId: crypto.randomUUID(),
-      label: "Warehouse",
-      payload: {
-        code: String(formData.get("code") ?? "").trim().toUpperCase(),
-        name: String(formData.get("name") ?? "").trim(),
-        address: String(formData.get("address") ?? "").trim() || null,
-      },
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await guard(async () => {
+      await enqueue({
+        kind: "create",
+        table: "warehouses",
+        recordId: crypto.randomUUID(),
+        label: "Warehouse",
+        payload: {
+          code: String(formData.get("code") ?? "").trim().toUpperCase(),
+          name: String(formData.get("name") ?? "").trim(),
+          address: String(formData.get("address") ?? "").trim() || null,
+        },
+      });
+      form.reset();
+      setSavedOffline(true);
     });
-    e.currentTarget.reset();
-    setSavedOffline(true);
   }
 
   if (savedOffline) {
@@ -76,10 +84,10 @@ export function WarehouseForm() {
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || isSubmitting}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Adding…" : isOnline ? "Add Warehouse" : "Save Offline"}
+        {pending || isSubmitting ? "Adding…" : isOnline ? "Add Warehouse" : "Save Offline"}
       </button>
     </form>
   );

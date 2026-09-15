@@ -5,6 +5,7 @@ import { createPartyAction, type ActionResult } from "@/app/actions/parties";
 import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 
 const initialState: ActionResult = { error: null };
 
@@ -32,6 +33,10 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
   const formRef = useRef<HTMLFormElement>(null);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  // Guards the offline branch below against a rapid double-click — see
+  // useOfflineSubmitGuard's own comment for why `pending` above (from
+  // useActionState) can't do this on its own for this specific path.
+  const { isSubmitting, guard } = useOfflineSubmitGuard();
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -40,26 +45,29 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    await enqueue({
-      kind: "create",
-      table: "parties",
-      recordId: crypto.randomUUID(),
-      label: "Client/Supplier",
-      payload: {
-        legal_name: String(formData.get("legal_name") ?? "").trim(),
-        party_type: String(formData.get("party_type") ?? "client"),
-        ntn: String(formData.get("ntn") ?? "").trim() || null,
-        strn: String(formData.get("strn") ?? "").trim() || null,
-        cnic: String(formData.get("cnic") ?? "").trim() || null,
-        billing_address: String(formData.get("billing_address") ?? "").trim() || null,
-        province: String(formData.get("province") ?? "").trim() || null,
-        credit_limit: Number(formData.get("credit_limit") ?? 0),
-        credit_days: Number(formData.get("credit_days") ?? 0),
-      },
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await guard(async () => {
+      await enqueue({
+        kind: "create",
+        table: "parties",
+        recordId: crypto.randomUUID(),
+        label: "Client/Supplier",
+        payload: {
+          legal_name: String(formData.get("legal_name") ?? "").trim(),
+          party_type: String(formData.get("party_type") ?? "client"),
+          ntn: String(formData.get("ntn") ?? "").trim() || null,
+          strn: String(formData.get("strn") ?? "").trim() || null,
+          cnic: String(formData.get("cnic") ?? "").trim() || null,
+          billing_address: String(formData.get("billing_address") ?? "").trim() || null,
+          province: String(formData.get("province") ?? "").trim() || null,
+          credit_limit: Number(formData.get("credit_limit") ?? 0),
+          credit_days: Number(formData.get("credit_days") ?? 0),
+        },
+      });
+      form.reset();
+      setSavedOffline(true);
     });
-    e.currentTarget.reset();
-    setSavedOffline(true);
   }
 
   if (savedOffline) {
@@ -144,8 +152,8 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
       {state.success && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
 
       <div className="border-t border-line pt-4">
-        <button type="submit" disabled={pending} className={buttonClass("primary", "md", "disabled:opacity-60")}>
-          {pending ? "Adding…" : isOnline ? "Add" : "Save Offline"}
+        <button type="submit" disabled={pending || isSubmitting} className={buttonClass("primary", "md", "disabled:opacity-60")}>
+          {pending || isSubmitting ? "Adding…" : isOnline ? "Add" : "Save Offline"}
         </button>
       </div>
     </form>

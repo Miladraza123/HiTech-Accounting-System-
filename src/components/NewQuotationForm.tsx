@@ -5,6 +5,7 @@ import { createQuotationAction, type ActionResult } from "@/app/actions/quotatio
 import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 
 const initialState: ActionResult = { error: null };
 
@@ -46,26 +47,32 @@ export function NewQuotationForm({
   const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct)]);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  // Guards the offline branch below against a rapid double-click — see
+  // useOfflineSubmitGuard's own comment for why `pending` above (from
+  // useActionState) can't do this on its own for this specific path.
+  const { isSubmitting, guard } = useOfflineSubmitGuard();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    await enqueue({
-      kind: "create",
-      table: "quotations",
-      recordId: crypto.randomUUID(),
-      label: "Quotation",
-      payload: {
-        query_id: queryId,
-        terms: String(formData.get("terms") ?? "").trim() || null,
-        validity_date: String(formData.get("validity_date") ?? "") || null,
-        delivery_terms: String(formData.get("delivery_terms") ?? "").trim() || null,
-        payment_terms: String(formData.get("payment_terms") ?? "").trim() || null,
-        lines: serializeLines(lines),
-      },
+    await guard(async () => {
+      await enqueue({
+        kind: "create",
+        table: "quotations",
+        recordId: crypto.randomUUID(),
+        label: "Quotation",
+        payload: {
+          query_id: queryId,
+          terms: String(formData.get("terms") ?? "").trim() || null,
+          validity_date: String(formData.get("validity_date") ?? "") || null,
+          delivery_terms: String(formData.get("delivery_terms") ?? "").trim() || null,
+          payment_terms: String(formData.get("payment_terms") ?? "").trim() || null,
+          lines: serializeLines(lines),
+        },
+      });
+      setSavedOffline(true);
     });
-    setSavedOffline(true);
   }
 
   if (savedOffline) {
@@ -134,10 +141,10 @@ export function NewQuotationForm({
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || isSubmitting}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : isOnline ? "Save Quotation (Rev-0)" : "Save Offline"}
+        {pending || isSubmitting ? "Saving…" : isOnline ? "Save Quotation (Rev-0)" : "Save Offline"}
       </button>
     </form>
   );
