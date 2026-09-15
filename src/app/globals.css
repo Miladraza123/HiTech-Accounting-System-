@@ -140,3 +140,21 @@ button:focus-visible,
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* SplashScreen.tsx — a subtle fade-in + very slight scale-in for the
+   logo on mount, matching the brief's "premium and fast, no bouncing"
+   requirement. Kept out of Tailwind's animate-* utilities since it's a
+   one-shot entrance, not a looping animation. */
+@keyframes splash-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.splash-logo-in {
+  animation: splash-logo-in 320ms ease-out both;
+}

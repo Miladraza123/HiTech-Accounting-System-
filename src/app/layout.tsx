@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { SplashScreen } from "@/components/SplashScreen";
+import packageJson from "../../package.json";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -50,6 +52,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className={`${plexSans.variable} ${plexMono.variable} antialiased`}>
+        {/* Mounted once per real document load — a client-side
+            navigation between pages never remounts RootLayout, so this
+            naturally never reappears while moving around inside the
+            app, only on a genuine fresh/cold open. */}
+        <SplashScreen appVersion={packageJson.version} />
         {children}
         <ServiceWorkerRegister />
       </body>
