@@ -141,38 +141,282 @@ button:focus-visible,
   border-radius: 4px;
 }
 
-/* SplashScreen.tsx — a subtle fade-in + very slight scale-in for the
-   logo on mount, matching the brief's "premium and fast, no bouncing"
-   requirement. Kept out of Tailwind's animate-* utilities since it's a
-   one-shot entrance, not a looping animation. */
-@keyframes splash-logo-in {
+/* ==========================================================================
+   SplashScreen.tsx
+   --------------------------------------------------------------------------
+   All geometry is expressed as custom properties so light/dark and
+   mobile/tablet/desktop each set values rather than re-declaring layout, and
+   so the whole composition resolves in pure CSS — the logo lands in its final
+   centred position on the very first painted frame, with no JS measurement
+   and no layout shift.
+
+   The logo asset (oht-logo-mark.png) has its transparent canvas trimmed, so
+   its element box IS its visible artwork: a 1.8803:1 wide lockup. That ratio
+   is what lets the loader position below it be computed in CSS.
+
+   Light mode: bare logo directly on the cream background, no card.
+   Dark mode:  the same element becomes a compact light card — the only way
+               to keep the logo's own navy ink legible on a dark background
+               without altering the artwork.
+   ========================================================================== */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: var(--bg);
+  opacity: 1;
+  transition-property: opacity;
+  transition-timing-function: ease-out;
+  /* duration comes from the component, so JS and CSS can't drift */
+
+  /* --- light / mobile defaults --- */
+  --splash-top: 38.45vh;
+  --splash-logo-w: clamp(216px, 58.7vw, 257px);
+  --splash-pad-v: 0px;
+  --splash-pad-h: 0px;
+  --splash-gap: 162px;
+  --splash-card-bg: transparent;
+  --splash-card-shadow: none;
+  --splash-card-radius: 0px;
+  --splash-spinner: 32px;
+  --splash-text: 15px;
+  --splash-foot: 12px;
+  --splash-foot-x: 22px;
+  --splash-foot-y: 28px;
+  --splash-foot-color: var(--ink-faint);
+  --splash-track-op: 0.22;
+  --splash-deco: block;
+}
+.splash[data-phase="fading"] {
+  opacity: 0;
+}
+
+@media (min-width: 600px) {
+  .splash {
+    --splash-logo-w: clamp(277px, 35.9vw, 343px);
+  }
+}
+@media (min-width: 1024px) {
+  .splash {
+    --splash-top: 39vh;
+    --splash-logo-w: clamp(410px, 30.5vw, 470px);
+    --splash-gap: 82px;
+    --splash-spinner: 38px;
+    --splash-text: 16px;
+    --splash-foot: 13px;
+    --splash-foot-x: 36px;
+    --splash-foot-y: 32px;
+  }
+}
+
+/* Dark mode turns the logo slot into a compact light card. Declared twice —
+   once for the system preference, once for the explicit in-app toggle —
+   exactly like the colour tokens at the top of this file. Mobile first, then
+   tablet, then desktop: these all share one specificity, so source order is
+   what resolves them. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .splash {
+    --splash-logo-w: calc(clamp(300px, 82vw, 335px) - 102px);
+    --splash-pad-v: 51px;
+    --splash-pad-h: 51px;
+    --splash-gap: 85px;
+    --splash-card-bg: #f7f8fa;
+    --splash-card-shadow: 0 16px 36px -16px rgb(0 0 0 / 0.35), 0 4px 12px -4px rgb(0 0 0 / 0.12),
+      inset 0 0 0 1px rgb(15 23 42 / 0.07);
+    --splash-card-radius: 22px;
+    --splash-foot-color: var(--ink-soft);
+    --splash-track-op: 0.32;
+    --splash-deco: none;
+  }
+}
+:root[data-theme="dark"] .splash {
+  --splash-logo-w: calc(clamp(300px, 82vw, 335px) - 102px);
+  --splash-pad-v: 51px;
+  --splash-pad-h: 51px;
+  --splash-gap: 85px;
+  --splash-card-bg: #f7f8fa;
+  --splash-card-shadow: 0 16px 36px -16px rgb(0 0 0 / 0.35), 0 4px 12px -4px rgb(0 0 0 / 0.12),
+    inset 0 0 0 1px rgb(15 23 42 / 0.07);
+  --splash-card-radius: 22px;
+  --splash-foot-color: var(--ink-soft);
+  --splash-track-op: 0.32;
+  --splash-deco: none;
+}
+
+@media (prefers-color-scheme: dark) and (min-width: 600px) {
+  :root:not([data-theme="light"]) .splash {
+    --splash-logo-w: calc(clamp(380px, 50vw, 440px) - 112px);
+    --splash-pad-v: 44px;
+    --splash-pad-h: 56px;
+    --splash-card-radius: 24px;
+  }
+}
+@media (min-width: 600px) {
+  :root[data-theme="dark"] .splash {
+    --splash-logo-w: calc(clamp(380px, 50vw, 440px) - 112px);
+    --splash-pad-v: 44px;
+    --splash-pad-h: 56px;
+    --splash-card-radius: 24px;
+  }
+}
+
+@media (prefers-color-scheme: dark) and (min-width: 1024px) {
+  :root:not([data-theme="light"]) .splash {
+    --splash-logo-w: calc(clamp(500px, 38.5vw, 580px) - 136px);
+    --splash-pad-v: 40px;
+    --splash-pad-h: 68px;
+    --splash-gap: 80px;
+    --splash-card-radius: 28px;
+  }
+}
+@media (min-width: 1024px) {
+  :root[data-theme="dark"] .splash {
+    --splash-logo-w: calc(clamp(500px, 38.5vw, 580px) - 136px);
+    --splash-pad-v: 40px;
+    --splash-pad-h: 68px;
+    --splash-gap: 80px;
+    --splash-card-radius: 28px;
+  }
+}
+
+/* Logo slot — mathematically centred: left:50% + translateX(-50%), no
+   offsets, no margins, at every viewport width. */
+.splash-slot {
+  position: absolute;
+  left: 50%;
+  top: var(--splash-top);
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: calc(var(--splash-logo-w) + var(--splash-pad-h) * 2);
+  padding: var(--splash-pad-v) var(--splash-pad-h);
+  background: var(--splash-card-bg);
+  border-radius: var(--splash-card-radius);
+  box-shadow: var(--splash-card-shadow);
+  line-height: 0;
+  animation: splash-in 300ms ease-out both;
+}
+.splash-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Sits a fixed gap below the slot's bottom edge. The slot's height is known
+   from the logo's aspect ratio plus its padding, so this needs no measuring. */
+.splash-loader {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(
+    var(--splash-top) + (var(--splash-logo-w) / 1.8803 + var(--splash-pad-v) * 2) / 2 + var(--splash-gap)
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: splash-fade-in 300ms ease-out 80ms both;
+}
+.splash-spinner {
+  width: var(--splash-spinner);
+  height: var(--splash-spinner);
+  color: var(--accent);
+  animation: spin 900ms linear infinite;
+}
+.splash-spinner-track {
+  stroke-opacity: var(--splash-track-op);
+}
+.splash-text {
+  margin-top: 16px;
+  font-size: var(--splash-text);
+  font-weight: 500;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.splash-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--splash-foot-y) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--splash-foot-x);
+  font-size: var(--splash-foot);
+  color: var(--splash-foot-color);
+  animation: splash-fade-in 300ms ease-out 80ms both;
+}
+
+/* Light-mode-only background texture: neutral beige, heavily blurred, so it
+   reads as the faintest warmth rather than as shapes. */
+.splash-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: var(--splash-deco);
+}
+.splash-deco span {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--surface-2);
+}
+.splash-deco span:nth-child(1) {
+  top: -160px;
+  left: -160px;
+  width: 420px;
+  height: 420px;
+  opacity: 0.85;
+  filter: blur(70px);
+}
+.splash-deco span:nth-child(2) {
+  right: -160px;
+  bottom: -200px;
+  width: 460px;
+  height: 460px;
+  opacity: 0.8;
+  filter: blur(70px);
+}
+.splash-deco span:nth-child(3) {
+  bottom: -80px;
+  left: -120px;
+  width: 280px;
+  height: 280px;
+  opacity: 0.65;
+  filter: blur(60px);
+}
+
+/* Entrance: a fade with a very slight scale-in. No bounce, no rotation. */
+@keyframes splash-in {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: translate(-50%, -50%) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
-.splash-logo-in {
-  animation: splash-logo-in 380ms ease-out both;
+@keyframes splash-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* SplashScreen.tsx logo backdrop — transparent in light mode (the logo
-   sits directly on the cream splash background, no box), but a plain
-   white backdrop in dark mode, since the logo's own navy/blue ink has
-   no way to stay legible directly on the dark theme's near-black
-   background otherwise. Mirrors the same explicit dark-mode/data-theme
-   override pattern already used for the color tokens above. */
-.splash-logo-frame {
-  background: transparent;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .splash-logo-frame {
-    background: #ffffff;
+@media (prefers-reduced-motion: reduce) {
+  .splash-slot,
+  .splash-loader,
+  .splash-foot {
+    animation: none;
   }
-}
-:root[data-theme="dark"] .splash-logo-frame {
-  background: #ffffff;
+  .splash-spinner {
+    animation-duration: 2400ms;
+  }
 }
