@@ -101,11 +101,67 @@
 // with the same bounded AbortController pattern warmCache() already
 // uses, so this function always resolves quickly regardless of how slow
 // the underlying network failure is.
-const CACHE_VERSION = "v10";
+//
+// v10 -> v11: closes the remaining real gap — every CACHE_VERSION bump
+// wipes the previous cache outright (see `activate` below), and until
+// now WARM_CACHE only ever ran when the app's own React code mounted,
+// hydrated, and posted the message, which could take a real user
+// several seconds after opening a freshly-updated app before it even
+// started, let alone finished. Someone who updated and went straight
+// offline within that window would correctly see every offline page as
+// not-yet-cached — expected given how the mechanism worked, but still a
+// real gap: it required a person to know to wait, rather than the app
+// just handling it. `activate` now self-triggers the exact same warm
+// pass immediately as part of the service worker's own lifecycle — no
+// dependency on the page's JS having loaded or mounted at all, so a
+// fresh install or update is far more likely to already be fully warmed
+// by the time anyone could plausibly go offline. Also hardens warmCache()
+// itself: a response that got redirected (e.g. bounced to /login because
+// this ran before any session cookie existed yet) is now treated as
+// failed rather than cached — a real, if narrow, risk this self-trigger
+// newly introduces, since it can now run before a user has ever signed
+// in. The client-triggered WARM_CACHE (OfflineQueueProvider.tsx) stays
+// in place too, as a second layer — refreshing dropdown data on every
+// reconnect and retrying whatever this pass didn't catch.
+const CACHE_VERSION = "v11";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_URLS = [OFFLINE_URL, "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+
+// The offline-capable "create" pages — kept in sync by hand with
+// OfflineQueueProvider.tsx's own WARM_CACHE_URLS list (which is what the
+// client-side warm pass and its retry-of-failures logic use). Duplicated
+// here, rather than the client sending it over, specifically so this
+// file's own `activate` handler (below) can self-trigger the exact same
+// warm pass without waiting for any page's JS to load, hydrate, or post
+// a message first — see this file's v10 -> v11 comment above for why.
+const WARM_CACHE_URLS = [
+  "/queries",
+  "/queries/new",
+  "/tasks",
+  "/tasks/new",
+  "/setup/company",
+  "/clients",
+  "/items",
+  "/setup/warehouses",
+  "/purchase-orders/new",
+  "/supplier-bills/new",
+  "/delivery-challans/new",
+  "/invoices/new",
+  "/payments/new",
+  "/payments/new/batch",
+  "/expenses/new",
+  "/journal-vouchers/new",
+  "/stock-transfers/new",
+  "/product-templates/new",
+  "/jobs/new",
+  "/setup/bank-accounts",
+  "/setup/petty-cash-funds",
+  "/setup/expense-heads",
+  "/inventory/adjustments",
+  "/setup/vehicles",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
@@ -131,6 +187,12 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
+      // Self-triggered, not dependent on any page's JS having loaded,
+      // hydrated, or posted a WARM_CACHE message — see the v10 -> v11
+      // comment above. Every CACHE_VERSION bump wipes the cache this
+      // activate call itself just finished purging above, so this is
+      // the earliest possible moment to start refilling it.
+      .then(() => warmCache(WARM_CACHE_URLS))
   );
 });
 
@@ -186,15 +248,23 @@ async function warmCache(urls) {
       const timer = setTimeout(() => controller.abort(), WARM_CACHE_URL_TIMEOUT_MS);
       try {
         const response = await fetch(url, { credentials: "same-origin", signal: controller.signal });
-        if (response && response.ok) {
+        if (response && response.ok && !response.redirected) {
           await cache.put(url, response.clone());
           cached.push(url);
         } else {
-          // A non-ok response (e.g. a permission redirect for a role
-          // that can't reach this page) leaves any previously-cached
-          // copy untouched rather than overwriting it with something
-          // wrong — but is still reported as "failed" so a caller that
-          // actually expects this URL to be reachable can retry it.
+          // Either a non-ok response (e.g. a permission redirect for a
+          // role that can't reach this page), or response.redirected —
+          // true when this URL got bounced somewhere else, which is
+          // exactly what proxy.ts does to a signed-out visitor (-> /login).
+          // Since `activate` can now self-trigger this warm pass before
+          // any session cookie exists (see the v10 -> v11 comment above),
+          // caching that redirected response under the ORIGINAL url would
+          // silently serve someone's login page offline when they asked
+          // for /queries/new — worse than the generic offline.html
+          // fallback it would otherwise get. Either way, this leaves any
+          // previously-cached copy untouched rather than overwriting it
+          // with something wrong, and is reported as "failed" so a later,
+          // authenticated warm pass can retry it.
           failed.push(url);
         }
       } catch {
