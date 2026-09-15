@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { computeHealth, daysSince, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE, type HealthLabel } from "@/lib/orderHealth";
 import { agingBucket, dueDateFrom } from "@/lib/aging";
 import { resolveRange, toExclusiveUpperBound, buildTimeBuckets, countInBuckets, RANGE_LABEL } from "@/lib/dashboardHelpers";
@@ -30,7 +30,10 @@ type SearchParams = { line?: string; range?: string; from?: string; to?: string 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
+  // Owner-exclusive by explicit request — every individual report under
+  // /reports/* keeps its own, unchanged access list; only this overview
+  // page itself is now Owner-only.
+  if (!isOwner(user)) redirect("/");
 
   const { line, range, from: fromParam, to: toParam } = await searchParams;
   const selectedLine = line === "material_supply" || line === "fabrication" ? line : "combined";

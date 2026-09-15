@@ -85,7 +85,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {
           href: "/reports",
           label: "Owner Dashboard",
-          show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
+          // Owner-exclusive by explicit request — Accounts/Auditor keep
+          // access to every individual report under /reports/* (each has
+          // its own, unchanged access list below), just not this specific
+          // overview page.
+          show: owner,
           icon: <LayoutDashboard size={ICON_SIZE} />,
         },
         { href: "/tasks", label: "Tasks & Follow-ups", show: true, badge: dueTaskCount || undefined, icon: <ListChecks size={ICON_SIZE} /> },
