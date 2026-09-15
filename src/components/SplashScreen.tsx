@@ -64,26 +64,7 @@ export function SplashScreen({ appVersion }: { appVersion: string }) {
     <div
       aria-hidden={phase === "fading"}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-bg px-4 transition-opacity ease-out"
-      style={
-        {
-          opacity: phase === "fading" ? 0 : 1,
-          transitionDuration: `${FADE_MS}ms`,
-          // The splash always renders in the light palette, regardless of
-          // the device/app dark-mode preference — the official logo's own
-          // navy/blue ink has no white card behind it to sit on anymore,
-          // so it needs a light backdrop to stay legible (verified: on
-          // the dark palette it was nearly unreadable). These are the
-          // exact light-mode values from globals.css's bare :root block,
-          // scoped locally so every bg-*/text-* utility below resolves to
-          // them without touching the app's real dark mode anywhere else.
-          "--bg": "#f6f3ec",
-          "--surface-2": "#efeae0",
-          "--accent": "#a85a28",
-          "--accent-soft": "#f0dec9",
-          "--ink-soft": "#565b68",
-          "--ink-faint": "#8b8f99",
-        } as React.CSSProperties
-      }
+      style={{ opacity: phase === "fading" ? 0 : 1, transitionDuration: `${FADE_MS}ms` }}
     >
       {/* Very subtle decorative cream/beige blobs, derived from the same
           theme tokens the rest of the app uses (no new colors) — purely
@@ -97,11 +78,14 @@ export function SplashScreen({ appVersion }: { appVersion: string }) {
 
       <div className="relative flex w-full max-w-sm flex-1 -translate-y-4 flex-col items-center justify-center gap-8 sm:-translate-y-6">
         {/* Logo asset used exactly as provided — no recoloring, no
-            redrawing, no cropping, no background box behind it. The PNG
-            already has a real transparent background, so it sits
-            directly on the splash's cream backdrop, matching the
-            reference design. */}
-        <div className="splash-logo-in w-44 sm:w-52 md:w-56">
+            redrawing, no cropping. In light mode it sits directly on the
+            cream backdrop with no box (matching the reference design);
+            in dark mode `.splash-logo-frame` (globals.css) adds a plain
+            white backdrop behind it — with no white card, the logo's own
+            navy/blue ink is nearly illegible on the dark theme's
+            near-black background, so this keeps it legible without
+            forcing the whole splash out of the dark theme. */}
+        <div className="splash-logo-in splash-logo-frame w-[70%] max-w-[300px] rounded-3xl p-4">
           <Image
             src={ohtLogo}
             alt="OHT Solutions"

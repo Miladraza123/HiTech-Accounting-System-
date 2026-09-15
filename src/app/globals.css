@@ -158,3 +158,21 @@ button:focus-visible,
 .splash-logo-in {
   animation: splash-logo-in 380ms ease-out both;
 }
+
+/* SplashScreen.tsx logo backdrop — transparent in light mode (the logo
+   sits directly on the cream splash background, no box), but a plain
+   white backdrop in dark mode, since the logo's own navy/blue ink has
+   no way to stay legible directly on the dark theme's near-black
+   background otherwise. Mirrors the same explicit dark-mode/data-theme
+   override pattern already used for the color tokens above. */
+.splash-logo-frame {
+  background: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .splash-logo-frame {
+    background: #ffffff;
+  }
+}
+:root[data-theme="dark"] .splash-logo-frame {
+  background: #ffffff;
+}
