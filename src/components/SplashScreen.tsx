@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 // Static import (rather than a string src) so Next.js reads the file's real
 // dimensions at build time, reserves the exact box before the bytes arrive
@@ -32,9 +33,19 @@ const MIN_VISIBLE_MS = 1800;
 const FADE_MS = 280;
 
 export function SplashScreen({ appVersion }: { appVersion: string }) {
+  // The /print routes live outside the (app) group but still render through
+  // RootLayout, so without this they would get the splash too — and they
+  // auto-fire window.print() 300ms after load (AUTO_PRINT_SCRIPT), well
+  // inside MIN_VISIBLE_MS, so the print/PDF output captured the splash
+  // overlay instead of the document. They are standalone document views
+  // opened in their own tab; a branding splash has no business there.
+  const pathname = usePathname();
+  const isPrintRoute = pathname?.endsWith("/print") ?? false;
+
   const [phase, setPhase] = useState<"visible" | "fading" | "hidden">("visible");
 
   useEffect(() => {
+    if (isPrintRoute) return;
     const mountedAt = Date.now();
     let cancelled = false;
 
@@ -60,9 +71,9 @@ export function SplashScreen({ appVersion }: { appVersion: string }) {
       cancelled = true;
       window.removeEventListener("load", startHide);
     };
-  }, []);
+  }, [isPrintRoute]);
 
-  if (phase === "hidden") return null;
+  if (isPrintRoute || phase === "hidden") return null;
 
   return (
     <div

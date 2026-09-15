@@ -420,3 +420,13 @@ button:focus-visible,
     animation-duration: 2400ms;
   }
 }
+
+/* Never let the splash reach paper or a PDF. SplashScreen.tsx already skips
+   the /print routes outright; this is the backstop for Ctrl+P on any other
+   page, where a print fired inside MIN_VISIBLE_MS would otherwise capture
+   the overlay instead of the page. */
+@media print {
+  .splash {
+    display: none !important;
+  }
+}

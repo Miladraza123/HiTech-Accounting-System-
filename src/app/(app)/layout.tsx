@@ -11,6 +11,9 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import { getNotifications } from "@/lib/notifications";
+// Single source of truth for the version shown to users — the splash screen
+// reads the same field, so the footer and the splash can never drift apart.
+import packageJson from "../../../package.json";
 import {
   LayoutDashboard,
   ListChecks,
@@ -297,7 +300,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <footer className="border-t border-line bg-surface px-5 py-3 flex items-center justify-between">
           <span className="text-[11px] text-ink-faint">Powered by &quot;OHT Solutions&quot;</span>
-          <span className="font-mono text-[11px] text-ink-faint">v1.0.0</span>
+          <span className="font-mono text-[11px] text-ink-faint">v{packageJson.version}</span>
         </footer>
       </div>
     </OfflineQueueProvider>
