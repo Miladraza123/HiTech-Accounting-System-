@@ -23,8 +23,8 @@ import ohtLogo from "../../public/oht-logo.png";
 // minimum) is never cut short; a fast one never lingers past the
 // minimum just to feel "deliberate" — that's exactly what MIN_VISIBLE_MS
 // alone would risk.
-const MIN_VISIBLE_MS = 900;
-const FADE_MS = 280;
+const MIN_VISIBLE_MS = 1600;
+const FADE_MS = 320;
 
 export function SplashScreen({ appVersion }: { appVersion: string }) {
   const [phase, setPhase] = useState<"visible" | "fading" | "hidden">("visible");
@@ -63,20 +63,52 @@ export function SplashScreen({ appVersion }: { appVersion: string }) {
   return (
     <div
       aria-hidden={phase === "fading"}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-bg px-4 transition-opacity ease-out"
-      style={{ opacity: phase === "fading" ? 0 : 1, transitionDuration: `${FADE_MS}ms` }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-bg px-4 transition-opacity ease-out"
+      style={
+        {
+          opacity: phase === "fading" ? 0 : 1,
+          transitionDuration: `${FADE_MS}ms`,
+          // The splash always renders in the light palette, regardless of
+          // the device/app dark-mode preference — the official logo's own
+          // navy/blue ink has no white card behind it to sit on anymore,
+          // so it needs a light backdrop to stay legible (verified: on
+          // the dark palette it was nearly unreadable). These are the
+          // exact light-mode values from globals.css's bare :root block,
+          // scoped locally so every bg-*/text-* utility below resolves to
+          // them without touching the app's real dark mode anywhere else.
+          "--bg": "#f6f3ec",
+          "--surface-2": "#efeae0",
+          "--accent": "#a85a28",
+          "--accent-soft": "#f0dec9",
+          "--ink-soft": "#565b68",
+          "--ink-faint": "#8b8f99",
+        } as React.CSSProperties
+      }
     >
-      <div className="flex flex-1 flex-col items-center justify-center gap-5">
+      {/* Very subtle decorative cream/beige blobs, derived from the same
+          theme tokens the rest of the app uses (no new colors) — purely
+          background texture, kept well clear of the logo and text so it
+          never reads as busy. */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-accent-soft opacity-50 blur-3xl" />
+        <div className="absolute -right-16 -bottom-28 h-80 w-80 rounded-full bg-accent-soft opacity-40 blur-3xl" />
+        <div className="absolute bottom-16 -left-12 h-40 w-40 rounded-full bg-surface-2 opacity-60 blur-2xl" />
+      </div>
+
+      <div className="relative flex w-full max-w-sm flex-1 -translate-y-4 flex-col items-center justify-center gap-8 sm:-translate-y-6">
         {/* Logo asset used exactly as provided — no recoloring, no
-            redrawing, no cropping. Its own white background is kept
-            intact (it sits inside a white card, matching the same
-            surface-on-cream language the login page itself already
-            uses for its form card). */}
-        <div
-          className="splash-logo-in overflow-hidden rounded-2xl border border-line bg-surface shadow-sm"
-          style={{ width: 132, height: 132 }}
-        >
-          <Image src={ohtLogo} alt="OHT Solutions" placeholder="blur" priority className="h-full w-full object-contain" />
+            redrawing, no cropping, no background box behind it. The PNG
+            already has a real transparent background, so it sits
+            directly on the splash's cream backdrop, matching the
+            reference design. */}
+        <div className="splash-logo-in w-44 sm:w-52 md:w-56">
+          <Image
+            src={ohtLogo}
+            alt="OHT Solutions"
+            placeholder="blur"
+            priority
+            className="h-auto w-full object-contain"
+          />
         </div>
 
         <div className="flex flex-col items-center gap-3">
@@ -89,9 +121,9 @@ export function SplashScreen({ appVersion }: { appVersion: string }) {
         </div>
       </div>
 
-      <div className="flex w-full max-w-sm items-center justify-between pb-6 text-[11px] text-ink-faint">
+      <div className="relative flex w-full max-w-sm items-center justify-between pb-6 text-[11px] text-ink-faint">
         <span>Version {appVersion}</span>
-        <span>Powered by &quot;OHT Solutions&quot;</span>
+        <span>Powered by OHT Solutions</span>
       </div>
     </div>
   );
