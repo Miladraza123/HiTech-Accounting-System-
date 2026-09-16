@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { printStyles, AUTO_PRINT_SCRIPT } from "@/lib/printStyles";
 import { getCompanyBrandingUrls } from "@/lib/companyBranding";
 import { PrintLogoBlock } from "@/components/PrintLogoBlock";
+import { PrintWatermark } from "@/components/PrintWatermark";
 import { PrintSignoff } from "@/components/PrintSignoff";
 import { PrintBackLink } from "@/components/PrintBackLink";
 import type { Metadata } from "next";
@@ -52,10 +53,7 @@ export default async function DeliveryChallanPrintPage({
       <div className="print-dc">
         <style dangerouslySetInnerHTML={{ __html: printStyles("print-dc") }} />
 
-        <svg className="watermark" width="260" height="260" viewBox="0 0 40 40">
-          <polyline points="9,20 20,11 31,20" fill="none" stroke="#2b3a55" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          <rect x="12" y="20" width="16" height="10" rx="1.4" fill="none" stroke="#2b3a55" strokeWidth="2.2" />
-        </svg>
+        <PrintWatermark logoUrl={logoUrl} />
 
         <div className="hdr">
           <PrintLogoBlock company={company} logoUrl={logoUrl} showPhone={phone === "1"} showEmail={email === "1"} />

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+
+const VIEWPORT_MARGIN = 12;
 
 /**
  * Replaces the old plain "Print / PDF" link + "Download PDF" button
@@ -32,6 +34,13 @@ export function PrintPdfActions({
   const [includePhone, setIncludePhone] = useState(true);
   const [includeEmail, setIncludeEmail] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Default (right-aligned to the button, the old fixed `right-0`) until
+  // measured — the panel only ever needs the override on a narrow screen
+  // where the header wraps and this button lands away from the screen's
+  // right edge (real device report: the panel opened ~95px off the left
+  // edge of the viewport on a 390px-wide phone, on the quotation page).
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({ right: 0 });
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -40,6 +49,32 @@ export function PrintPdfActions({
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  // Clamp the panel to stay fully inside the viewport instead of always
+  // hanging off the button's right edge — that assumption only holds when
+  // the button itself sits near the screen's right edge (true on desktop,
+  // false once the header wraps on mobile). Computed from the actual
+  // measured button and panel widths at open time, not guessed.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const btn = ref.current;
+      const panel = panelRef.current;
+      if (!btn || !panel) return;
+      const btnRect = btn.getBoundingClientRect();
+      const panelWidth = panel.offsetWidth;
+      const idealLeft = btnRect.right - panelWidth;
+      const maxLeft = window.innerWidth - panelWidth - VIEWPORT_MARGIN;
+      const clampedLeft = Math.min(Math.max(idealLeft, VIEWPORT_MARGIN), Math.max(maxLeft, VIEWPORT_MARGIN));
+      // Express as `left` relative to the wrapper (the positioning
+      // context), not the viewport, since the panel stays position:absolute
+      // inside it — that way it still scrolls naturally with the page.
+      setPanelStyle({ left: clampedLeft - btnRect.left, right: "auto" });
+    }
+    reposition();
+    window.addEventListener("resize", reposition);
+    return () => window.removeEventListener("resize", reposition);
+  }, [open]);
 
   if (!hasSignature && !hasStamp && !hasPhone && !hasEmail) {
     return (
@@ -78,7 +113,11 @@ export function PrintPdfActions({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg space-y-3">
+        <div
+          ref={panelRef}
+          style={panelStyle}
+          className="absolute top-full z-50 mt-2 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg space-y-3"
+        >
           <div className="space-y-1.5">
             <p className="text-xs font-semibold text-ink">Include on this document</p>
             {hasSignature && (
