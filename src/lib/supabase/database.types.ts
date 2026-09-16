@@ -4780,6 +4780,18 @@ export type Database = {
         }
         Returns: string
       }
+      fn_customer_business: {
+        Args: never
+        Returns: {
+          invoiced: number
+          last_order_date: string
+          name: string
+          order_count: number
+          order_value: number
+          outstanding: number
+          party_id: string
+        }[]
+      }
       fn_days_since: { Args: { p_date: string }; Returns: number }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }

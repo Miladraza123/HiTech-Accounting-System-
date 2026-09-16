@@ -8,49 +8,22 @@ export default async function CustomerBusinessReportPage() {
   if (!(isOwner(user) || hasRole(user, "sales") || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
-  const [{ data: parties }, { data: salesOrders }, { data: invoices }, { data: outstanding }] = await Promise.all([
-    supabase.from("parties").select("id, legal_name").in("party_type", ["client", "both"]).order("legal_name"),
-    supabase.from("sales_orders").select("id, party_id, grand_total, status, created_at").not("status", "eq", "Cancelled"),
-    supabase.from("invoices").select("id, party_id, grand_total, status"),
-    supabase.from("invoice_outstanding").select("party_id, outstanding_amount"),
-  ]);
+  // Was: fetch every non-cancelled sales order, every invoice and every
+  // invoice_outstanding row, then group them per client here. The rendered
+  // result is one row per client — bounded by the customer list — but three
+  // of those four inputs grow with every transaction the business makes.
+  // fn_customer_business does the grouping in the database.
+  const { data: business } = await supabase.rpc("fn_customer_business");
 
-  const soByParty = new Map<string, { total: number; count: number; lastDate: string | null }>();
-  for (const s of salesOrders ?? []) {
-    const existing = soByParty.get(s.party_id) ?? { total: 0, count: 0, lastDate: null };
-    existing.total += s.grand_total;
-    existing.count += 1;
-    if (!existing.lastDate || s.created_at > existing.lastDate) existing.lastDate = s.created_at;
-    soByParty.set(s.party_id, existing);
-  }
-
-  const invoicedByParty = new Map<string, number>();
-  for (const inv of invoices ?? []) {
-    if (inv.status !== "Posted") continue;
-    invoicedByParty.set(inv.party_id, (invoicedByParty.get(inv.party_id) ?? 0) + inv.grand_total);
-  }
-
-  const outstandingByParty = new Map<string, number>();
-  for (const o of outstanding ?? []) {
-    if (!o.party_id) continue;
-    outstandingByParty.set(o.party_id, (outstandingByParty.get(o.party_id) ?? 0) + (o.outstanding_amount ?? 0));
-  }
-
-  const rows = (parties ?? [])
-    .map((p) => {
-      const so = soByParty.get(p.id) ?? { total: 0, count: 0, lastDate: null };
-      return {
-        id: p.id,
-        name: p.legal_name,
-        orderCount: so.count,
-        orderValue: so.total,
-        invoiced: invoicedByParty.get(p.id) ?? 0,
-        outstanding: outstandingByParty.get(p.id) ?? 0,
-        lastOrder: so.lastDate,
-      };
-    })
-    .filter((r) => r.orderCount > 0)
-    .sort((a, b) => b.orderValue - a.orderValue);
+  const rows = (business ?? []).map((r) => ({
+    id: r.party_id,
+    name: r.name,
+    orderCount: r.order_count,
+    orderValue: r.order_value,
+    invoiced: r.invoiced,
+    outstanding: r.outstanding,
+    lastOrder: r.last_order_date,
+  }));
 
   const grandTotalOrders = rows.reduce((s, r) => s + r.orderValue, 0);
   const grandTotalOutstanding = rows.reduce((s, r) => s + r.outstanding, 0);
