@@ -68,7 +68,11 @@ export const config = {
   // every check — an unrelated failure or slow response there (nothing
   // to do with the user's own device connectivity) would then show a
   // false "Offline" banner while the user is genuinely online.
+  //
+  // api/company-logo is the company's own letterhead logo, which the login
+  // page has to show before anyone has signed in. It takes no input and can
+  // only ever serve that one file — see the route for why that is safe.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|api/company-logo|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "@/components/MobileNav";
 import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
-import { Logo } from "@/components/Logo";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const owner = isOwner(user);
 
   const supabase = await createClient();
-  const [{ data: ownerExists }, { count: dueTaskCount }, notifications] = await Promise.all([
+  const [{ data: ownerExists }, { count: dueTaskCount }, notifications, { data: companyBranding }] = await Promise.all([
     // A plain count query here (`.from("user_roles")...`) is subject to
     // user_roles' own RLS select policy — `user_id = auth.uid() OR
     // is_owner() OR has_role('backup')` — which hides every OTHER user's
@@ -73,8 +73,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq("status", "Open")
       .lte("due_date", new Date().toISOString().slice(0, 10)),
     getNotifications(supabase, user),
+    // Only whether a logo exists — the bytes come from /api/company-logo.
+    supabase.from("company").select("logo_path").maybeSingle(),
   ]);
 
+  const hasCompanyLogo = !!companyBranding?.logo_path;
   const noOwnerYet = !ownerExists;
   const noRoleYet = user.roles.length === 0 && !noOwnerYet;
 
@@ -234,14 +237,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           userRoleLabel={userRoleLabel}
           signOutAction={signOutAction}
           notifications={notifications}
+          hasCompanyLogo={hasCompanyLogo}
         />
         <div className="flex">
           <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-line bg-surface min-h-screen sticky top-0">
             <div className="px-5 py-5 border-b border-line">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Logo size={32} />
-                  <span className="font-semibold text-ink text-sm">HiTech ERP</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <CompanyLogo hasLogo={hasCompanyLogo} width={150} alt="HITECH ENGINEERING" />
+                  {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">HiTech ERP</span>}
                 </div>
                 <NotificationBell notifications={notifications} align="left" />
               </div>

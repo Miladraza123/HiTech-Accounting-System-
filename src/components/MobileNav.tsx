@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Logo } from "@/components/Logo";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { NavLink, type NavCategory } from "@/components/SidebarNav";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
@@ -16,11 +16,13 @@ export function MobileNav({
   userRoleLabel,
   signOutAction,
   notifications,
+  hasCompanyLogo,
 }: {
   categories: NavCategory[];
   userFullName: string;
   userRoleLabel: string;
   signOutAction: () => Promise<void>;
+  hasCompanyLogo: boolean;
   notifications: NotificationItem[];
 }) {
   const [open, setOpen] = useState(false);
@@ -31,9 +33,9 @@ export function MobileNav({
       {/* Mobile-only top bar — the desktop <aside> sidebar is hidden below the md breakpoint,
           so this is the only way to navigate on a phone. */}
       <div className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Logo size={28} />
-          <span className="font-semibold text-ink text-sm">HiTech ERP</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <CompanyLogo hasLogo={hasCompanyLogo} width={118} fallbackSize={28} alt="HITECH ENGINEERING" />
+          {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">HiTech ERP</span>}
         </div>
         <div className="flex items-center gap-1">
           <NotificationBell notifications={notifications} />
@@ -57,9 +59,9 @@ export function MobileNav({
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 w-72 max-w-[85%] bg-surface border-r border-line flex flex-col overflow-y-auto">
             <div className="px-5 py-5 border-b border-line flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Logo size={32} />
-                <span className="font-semibold text-ink text-sm">HiTech ERP</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <CompanyLogo hasLogo={hasCompanyLogo} width={140} alt="HITECH ENGINEERING" />
+                {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">HiTech ERP</span>}
               </div>
               <button
                 type="button"

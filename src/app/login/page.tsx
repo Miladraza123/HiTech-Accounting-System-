@@ -1,22 +1,40 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signInAction, type ActionState } from "@/app/actions/auth";
 
 const initialState: ActionState = { error: null };
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(signInAction, initialState);
+  // This page is rendered for someone who is not signed in, so it cannot ask
+  // the database whether a logo exists. It just tries to load it and falls
+  // back to the original monogram if the route 404s (no logo uploaded).
+  const [logoFailed, setLogoFailed] = useState(false);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-bg px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-ledger text-ledger-soft font-mono text-lg font-semibold">
-            H
-          </div>
-          <h1 className="mt-4 text-xl font-semibold text-ink">HiTech Business System</h1>
-          <p className="mt-1 text-sm text-ink-soft">Material Supply &amp; Fabrication — Query to Cash</p>
+          {logoFailed ? (
+            <>
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-ledger text-ledger-soft font-mono text-lg font-semibold">
+                H
+              </div>
+              <h1 className="mt-4 text-xl font-semibold text-ink">HiTech Business System</h1>
+            </>
+          ) : (
+            <span className="company-logo mx-auto">
+              {/* eslint-disable-next-line @next/next/no-img-element -- served by our own /api/company-logo route as plain bytes. */}
+              <img
+                src="/api/company-logo"
+                alt="HITECH ENGINEERING"
+                style={{ height: 96, width: "auto" }}
+                onError={() => setLogoFailed(true)}
+              />
+            </span>
+          )}
+          <p className="mt-3 text-sm text-ink-soft">Material Supply &amp; Fabrication — Query to Cash</p>
         </div>
 
         <form action={formAction} className="rounded-xl border border-line bg-surface p-6 shadow-sm space-y-4">

@@ -430,3 +430,38 @@ button:focus-visible,
     display: none !important;
   }
 }
+
+/* The company's own uploaded logo (sidebar, mobile nav, login). In light
+   mode it sits directly on the surface; in dark mode it gets a light
+   backdrop. That is necessary, not decorative: this deployment's logo was
+   measured at 63% dark pixels, with a near-black "Engineering" wordmark and
+   tagline that all but vanish on the dark theme — the same problem the
+   splash screen hit. An uploaded logo can be any colours at all, so the
+   backdrop is unconditional rather than guessed at per image.
+
+   Declared here the same way every other dark token in this file is: once
+   for the system preference (guarded so an explicit light choice still
+   wins) and once for the explicit dark toggle. */
+.company-logo {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+}
+.company-logo img {
+  display: block;
+  object-fit: contain;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .company-logo {
+    background: #ffffff;
+    padding: 4px 7px;
+  }
+}
+:root[data-theme="dark"] .company-logo {
+  background: #ffffff;
+  padding: 4px 7px;
+}
