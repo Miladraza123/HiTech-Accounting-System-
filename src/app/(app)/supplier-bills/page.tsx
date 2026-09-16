@@ -22,15 +22,21 @@ export default async function SupplierBillsPage({ searchParams }: { searchParams
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const [{ data: bills, count }, { data: outstanding }] = await Promise.all([
-    supabase
-      .from("supplier_bills")
-      .select("*, parties(legal_name), grns(grn_no)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(rangeFrom, rangeTo),
-    supabase.from("supplier_bill_outstanding").select("*"),
-  ]);
+  const { data: bills, count } = await supabase
+    .from("supplier_bills")
+    .select("*, parties(legal_name), grns(grn_no)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
+
+  // Outstanding for exactly the bills on this page, not the whole
+  // supplier_bill_outstanding view -- same fix as the GST Invoices list, where
+  // the unbounded version measured 22 MB per page view at volume. Cancelled
+  // bills are absent from the view and still fall back to 0 below.
+  const pageBillIds = (bills ?? []).map((b) => b.id);
+  const { data: outstanding } = pageBillIds.length
+    ? await supabase.from("supplier_bill_outstanding").select("supplier_bill_id, outstanding_amount").in("supplier_bill_id", pageBillIds)
+    : { data: [] };
 
   const outstandingById = new Map((outstanding ?? []).map((o) => [o.supplier_bill_id, o.outstanding_amount ?? 0]));
 

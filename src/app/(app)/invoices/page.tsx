@@ -22,15 +22,22 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const [{ data: invoices, count }, { data: outstanding }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(rangeFrom, rangeTo),
-    supabase.from("invoice_outstanding").select("*"),
-  ]);
+  const { data: invoices, count } = await supabase
+    .from("invoices")
+    .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
+
+  // Outstanding for exactly the invoices on this page. It used to fetch the
+  // whole invoice_outstanding view: at 120,000 invoices that is 118,763 rows
+  // and 22 MB of JSON, downloaded on every page view to label 25 rows.
+  // invoice_outstanding only carries Posted invoices, so a cancelled one is
+  // absent from the result and still falls back to 0 below, exactly as before.
+  const pageInvoiceIds = (invoices ?? []).map((i) => i.id);
+  const { data: outstanding } = pageInvoiceIds.length
+    ? await supabase.from("invoice_outstanding").select("invoice_id, outstanding_amount").in("invoice_id", pageInvoiceIds)
+    : { data: [] };
 
   const outstandingById = new Map((outstanding ?? []).map((o) => [o.invoice_id, o.outstanding_amount ?? 0]));
 

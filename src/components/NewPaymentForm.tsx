@@ -1,14 +1,23 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { createPaymentAction, type PaymentAllocationInput } from "@/app/actions/payments";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
 
-type OutstandingInvoice = { invoice_id: string; party_id: string; outstanding_amount: number; invoice_no: string; invoice_date: string };
-type OutstandingBill = { supplier_bill_id: string; supplier_id: string; outstanding_amount: number; bill_no: string; bill_date: string };
+/** One outstanding document of the selected party, as fn_party_outstanding returns it. */
+export type OutstandingDoc = { doc_id: string; doc_no: string; doc_date: string; outstanding_amount: number };
+
+/**
+ * How many outstanding documents of one party the allocation table offers.
+ * They come back oldest-first, which is the order a payment should settle
+ * them in, so the cap only ever hides the newest — and a party with more than
+ * this many unsettled documents has a bigger problem than this screen.
+ */
+const OUTSTANDING_LIMIT = 100;
 
 // The eligible party set flips with the direction: a Receipt can only come
 // from a client, a Payment can only go to a supplier. Mirrors the old
@@ -30,8 +39,7 @@ export function NewPaymentForm({
   supplierParties,
   defaultParty,
   defaultDirection,
-  outstandingInvoices,
-  outstandingBills,
+  initialOutstanding,
   bankAccounts,
   pettyCashFunds,
 }: {
@@ -41,8 +49,14 @@ export function NewPaymentForm({
   supplierParties: Pick<Tables<"parties">, "id" | "legal_name">[];
   defaultParty: PickerOption | null;
   defaultDirection: "receipt" | "payment";
-  outstandingInvoices: OutstandingInvoice[];
-  outstandingBills: OutstandingBill[];
+  /**
+   * The outstanding documents of the pre-selected party (?party=…), fetched on
+   * the server so this screen still works from a cached page with no network.
+   * Every other party's list is fetched on demand when it is picked — the page
+   * used to ship EVERY outstanding invoice and bill in the business, 22 MB of
+   * them at 120,000 invoices, to display a handful of rows.
+   */
+  initialOutstanding: OutstandingDoc[];
   bankAccounts: Tables<"bank_accounts">[];
   pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {
@@ -68,16 +82,53 @@ export function NewPaymentForm({
     label: p.legal_name,
   }));
 
+  // Keyed by direction AND party, because the same party can be both a client
+  // and a supplier ("both"), with different documents outstanding each way.
+  const [outstandingByKey, setOutstandingByKey] = useState<Record<string, OutstandingDoc[]>>(
+    defaultParty ? { [`${defaultDirection}:${defaultParty.id}`]: initialOutstanding } : {}
+  );
+  const [outstandingError, setOutstandingError] = useState<string | null>(null);
+  const [loadingOutstanding, setLoadingOutstanding] = useState(false);
+
+  const outstandingKey = partyId ? `${direction}:${partyId}` : "";
+  // Which keys have already been fetched (or arrived from the server), held in
+  // a ref rather than derived from the cache itself so that the effect below
+  // never has to read state it also writes.
+  const fetchedKeys = useRef<Set<string>>(new Set(defaultParty ? [`${defaultDirection}:${defaultParty.id}`] : []));
+
+  useEffect(() => {
+    if (!outstandingKey || fetchedKeys.current.has(outstandingKey)) return;
+    fetchedKeys.current.add(outstandingKey);
+    const key = outstandingKey;
+    let cancelled = false;
+    setOutstandingError(null);
+    setLoadingOutstanding(true);
+    createClient()
+      .rpc("fn_party_outstanding", { p_party_id: partyId, p_direction: direction, p_limit: OUTSTANDING_LIMIT })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLoadingOutstanding(false);
+        if (error) {
+          // Offline, or the request failed. The payment itself can still be
+          // recorded — allocation is optional — so say so rather than silently
+          // showing "no outstanding documents", which would be a different and
+          // wrong statement. The key is released so picking the party again
+          // after reconnecting retries.
+          fetchedKeys.current.delete(key);
+          setOutstandingError("Could not load this party's outstanding documents. You can still record the payment and allocate it later.");
+          return;
+        }
+        setOutstandingByKey((c) => ({ ...c, [key]: (data ?? []) as OutstandingDoc[] }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [outstandingKey, direction, partyId]);
+
   const rows = useMemo(() => {
-    if (direction === "receipt") {
-      return outstandingInvoices
-        .filter((o) => o.party_id === partyId)
-        .map((o) => ({ key: o.invoice_id, label: o.invoice_no, date: o.invoice_date, outstanding: o.outstanding_amount }));
-    }
-    return outstandingBills
-      .filter((o) => o.supplier_id === partyId)
-      .map((o) => ({ key: o.supplier_bill_id, label: o.bill_no, date: o.bill_date, outstanding: o.outstanding_amount }));
-  }, [direction, partyId, outstandingInvoices, outstandingBills]);
+    const docs = outstandingKey ? outstandingByKey[outstandingKey] : undefined;
+    return (docs ?? []).map((o) => ({ key: o.doc_id, label: o.doc_no, date: o.doc_date, outstanding: o.outstanding_amount }));
+  }, [outstandingKey, outstandingByKey]);
 
   const allocTotal = rows.reduce((s, r) => s + (Number(allocAmounts[r.key]) || 0), 0);
   const amountNum = Number(amount) || 0;
@@ -329,7 +380,11 @@ export function NewPaymentForm({
                 {!rows.length && (
                   <tr>
                     <td colSpan={4} className="px-4 py-4 text-center text-ink-faint text-xs">
-                      This party has no outstanding {direction === "receipt" ? "invoice" : "bill"}.
+                      {loadingOutstanding
+                        ? "Loading outstanding documents…"
+                        : outstandingError
+                          ? outstandingError
+                          : `This party has no outstanding ${direction === "receipt" ? "invoice" : "bill"}.`}
                     </td>
                   </tr>
                 )}

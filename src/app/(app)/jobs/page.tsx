@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
-import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 import { buttonClass } from "@/components/ui/Button";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -43,27 +43,28 @@ export default async function JobsPage({
   const supabase = await createClient();
   const JOBS_SELECT = "*, sales_orders(so_no, parties(legal_name)), warehouses(name)";
 
-  // "health" is computed per-row (not a DB column), so it can't be pushed
-  // down into the query. When it's set, we fetch every matching row and
-  // filter+paginate in JS (DB-level .range() would silently drop matches
-  // that fall outside the fetched page before the health filter even
-  // runs). When it's not set, paginate at the DB level as usual.
+  // "health" is computed from the clock rather than stored, so it is not a
+  // column PostgREST can filter on. This page used to answer that by fetching
+  // EVERY job with all of its embeds and filtering here -- 69.5 MB of JSON on
+  // a 120,000-job book to render 25 rows. fn_jobs_by_health applies the same
+  // rule in the database and returns just this page's ids plus the matching
+  // total; the rows themselves are then loaded through the same select as the
+  // unfiltered path, so the table and its embeds are identical either way.
   async function loadJobs() {
     if (healthFilter) {
-      let allQuery = supabase.from("jobs").select(JOBS_SELECT).order("created_at", { ascending: false });
-      if (statusFilter) allQuery = allQuery.eq("status", statusFilter);
-      const { data: allJobs } = await allQuery;
-      const filtered = (allJobs ?? []).filter((j) => {
-        const health = computeHealth({
-          isOpen: !["Delivered", "Cancelled"].includes(j.status),
-          promisedDate: j.required_delivery_date,
-          updatedAt: j.updated_at,
-        });
-        if (healthFilter === "attention") return health?.label === "AtRisk" || health?.label === "Stalled";
-        return health?.label === healthFilter;
+      const [rangeFrom] = pageRange(page);
+      const { data: idRows } = await supabase.rpc("fn_jobs_by_health", {
+        p_status: statusFilter ?? "",
+        p_health: healthFilter,
+        p_limit: DEFAULT_PAGE_SIZE,
+        p_offset: rangeFrom,
       });
-      const [sliceFrom, sliceTo] = pageRange(page);
-      return { jobs: filtered.slice(sliceFrom, sliceTo + 1), totalPages: computeTotalPages(filtered.length), total: filtered.length };
+      const ids = (idRows ?? []).map((r) => r.id);
+      const total = idRows?.[0]?.total_rows ?? 0;
+      const { data } = ids.length
+        ? await supabase.from("jobs").select(JOBS_SELECT).in("id", ids).order("created_at", { ascending: false })
+        : { data: [] };
+      return { jobs: data ?? [], totalPages: computeTotalPages(total), total };
     }
 
     let pagedQuery = supabase

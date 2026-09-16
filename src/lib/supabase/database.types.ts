@@ -4837,6 +4837,13 @@ export type Database = {
           id: string
         }[]
       }
+      fn_deliverable_sales_orders_page: {
+        Args: { p_limit: number; p_offset: number; p_search: string }
+        Returns: {
+          id: string
+          total_rows: number
+        }[]
+      }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_health_label: {
@@ -4874,9 +4881,28 @@ export type Database = {
           id: string
         }[]
       }
+      fn_invoiceable_sales_orders_page: {
+        Args: { p_limit: number; p_offset: number; p_search: string }
+        Returns: {
+          id: string
+          total_rows: number
+        }[]
+      }
       fn_issue_job_material: {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined
+      }
+      fn_jobs_by_health: {
+        Args: {
+          p_health: string
+          p_limit: number
+          p_offset: number
+          p_status: string
+        }
+        Returns: {
+          id: string
+          total_rows: number
+        }[]
       }
       fn_issue_job_material_idempotent: {
         Args: {
@@ -4900,6 +4926,7 @@ export type Database = {
         Args: { p_quotation_id: string }
         Returns: undefined
       }
+      fn_order_health: { Args: { p_limit: number }; Returns: Json }
       fn_owner_bootstrap_already_used: { Args: never; Returns: boolean }
       fn_owner_dashboard: {
         Args: { p_from: string; p_line: string; p_to: string }
@@ -4918,6 +4945,15 @@ export type Database = {
           total_credit: number
           total_debit: number
           total_rows: number
+        }[]
+      }
+      fn_party_outstanding: {
+        Args: { p_direction: string; p_limit: number; p_party_id: string }
+        Returns: {
+          doc_date: string
+          doc_id: string
+          doc_no: string
+          outstanding_amount: number
         }[]
       }
       fn_pending_orders: {

@@ -5,19 +5,35 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewInvoiceForm } from "@/components/NewInvoiceForm";
 
-export default async function NewInvoicePage() {
+// How many eligible Sales Orders the picker offers at once. The whole eligible
+// set used to be sent back to PostgREST as an `.in("id", ids)` filter, which
+// lives in the request URL — so a backlog of a few hundred un-invoiced
+// deliveries was enough to make the request too large to send, and no invoice
+// could be created at all. This is now a fixed-size page, with search for
+// anything older.
+const PICKER_LIMIT = 50;
+
+export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "invoice.manage"))) redirect("/invoices");
+
+  const { q } = await searchParams;
+  const term = (q ?? "").trim();
 
   const supabase = await createClient();
   // Which Sales Orders still have delivered-but-not-yet-invoiced quantity is
   // a column-vs-column test, which PostgREST cannot express — so this page
   // used to fetch every open Sales Order with all of its lines and decide
-  // here. fn_invoiceable_sales_order_ids answers it in the database, and only
-  // those orders are then fetched. The eligible set shrinks as orders get
-  // invoiced; the open-order book only grows.
-  const { data: eligibleIds } = await supabase.rpc("fn_invoiceable_sales_order_ids");
+  // here. fn_invoiceable_sales_orders_page answers it in the database and
+  // returns one page of the eligible set, newest first, plus the eligible
+  // total, so the request stays the same size however long the backlog gets.
+  const { data: eligibleIds } = await supabase.rpc("fn_invoiceable_sales_orders_page", {
+    p_search: term,
+    p_limit: PICKER_LIMIT,
+    p_offset: 0,
+  });
   const ids = (eligibleIds ?? []).map((r) => r.id);
+  const eligibleTotal = Number(eligibleIds?.[0]?.total_rows ?? 0);
 
   const { data: salesOrders } = ids.length
     ? await supabase
@@ -38,9 +54,32 @@ export default async function NewInvoicePage() {
         <h1 className="text-lg font-semibold text-ink mt-1">New Invoice</h1>
       </div>
 
+      {/* The picker below is one page of the eligible set, not all of it —
+          search reaches an older Sales Order without the request having to
+          carry every eligible id. */}
+      <form className="flex items-center gap-2 flex-wrap">
+        <input
+          type="search"
+          name="q"
+          defaultValue={term}
+          placeholder="Search SO #, client PO # or client name"
+          className="input !py-1.5 text-sm max-w-xs"
+        />
+        <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
+          Search
+        </button>
+        <span className="text-xs text-ink-faint">
+          {eligibleTotal > eligible.length
+            ? `Showing ${eligible.length} of ${eligibleTotal.toLocaleString()} eligible — search to narrow`
+            : `${eligibleTotal.toLocaleString()} eligible`}
+        </span>
+      </form>
+
       {!eligible.length ? (
         <div className="rounded-xl border border-warn bg-warn-soft p-5 text-sm text-warn max-w-xl">
-          No Sales Order found with delivered but not yet invoiced quantity. Invoices are created only for delivered quantity.{" "}
+          {term
+            ? `No eligible Sales Order matches "${term}". Clear the search to see the most recent eligible orders.`
+            : "No Sales Order found with delivered but not yet invoiced quantity. Invoices are created only for delivered quantity."}{" "}
           <Link href="/delivery-challans" className="underline underline-offset-2 font-medium">
             View Delivery Challans
           </Link>

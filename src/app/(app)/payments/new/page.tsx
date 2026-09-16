@@ -22,39 +22,32 @@ export default async function NewPaymentPage({
   // renders — the rest are found by typing, which searches in the database.
   // Two lists because the eligible set flips with the direction toggle: a
   // Receipt may only be from a client, a Payment only to a supplier.
-  const [{ data: clientParties }, { data: supplierParties }, { data: invoiceOutstanding }, { data: billOutstanding }, { data: bankAccounts }, { data: pettyCashFunds }] =
+  //
+  // The allocation table is NOT pre-loaded for every party any more. This page
+  // used to fetch the entire invoice_outstanding and supplier_bill_outstanding
+  // views — 118,763 rows and 22 MB of JSON at 120,000 invoices — and filter
+  // them in the browser down to the one party being paid. Only the
+  // pre-selected party's documents are fetched here (so a ?party= link still
+  // renders complete from a cached page with no network); the form asks for
+  // any other party's when it is picked.
+  const [{ data: clientParties }, { data: supplierParties }, { data: bankAccounts }, { data: pettyCashFunds }, { data: defaultParty }] =
     await Promise.all([
       supabase.from("parties").select("id, legal_name").eq("is_active", true).in("party_type", ["client", "both"]).order("legal_name").limit(20),
       supabase.from("parties").select("id, legal_name").eq("is_active", true).in("party_type", ["supplier", "both"]).order("legal_name").limit(20),
-      supabase.from("invoice_outstanding").select("*").gt("outstanding_amount", 0),
-      supabase.from("supplier_bill_outstanding").select("*").gt("outstanding_amount", 0),
       supabase.from("bank_accounts").select("*").eq("is_active", true).order("account_name"),
       supabase.from("petty_cash_funds").select("*").eq("is_active", true).order("fund_name"),
+      // The party may be pre-chosen via ?party=<id> (e.g. arriving from a
+      // client page). The picker needs its NAME to show, not just its id —
+      // and the same eligibility rule the dropdown enforces is applied here
+      // too, so a ?party= pointing at a supplier cannot pre-fill a Receipt.
+      party
+        ? supabase.from("parties").select("id, legal_name").eq("id", party).eq("is_active", true).in("party_type", initialPartyTypes).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
-  // Look up the document numbers for exactly the outstanding rows above,
-  // instead of pulling every invoice and every supplier bill ever raised
-  // just to label a handful of allocation lines.
-  const invoiceIds = (invoiceOutstanding ?? []).map((o) => o.invoice_id!).filter(Boolean);
-  const billIds = (billOutstanding ?? []).map((o) => o.supplier_bill_id!).filter(Boolean);
-  const [{ data: invoices }, { data: bills }, { data: defaultParty }] = await Promise.all([
-    invoiceIds.length
-      ? supabase.from("invoices").select("id, invoice_no, invoice_date").in("id", invoiceIds)
-      : Promise.resolve({ data: [] as { id: string; invoice_no: string; invoice_date: string }[] }),
-    billIds.length
-      ? supabase.from("supplier_bills").select("id, bill_no, bill_date").in("id", billIds)
-      : Promise.resolve({ data: [] as { id: string; bill_no: string; bill_date: string }[] }),
-    // The party may be pre-chosen via ?party=<id> (e.g. arriving from a
-    // client page). The picker needs its NAME to show, not just its id —
-    // and the same eligibility rule the dropdown enforces is applied here
-    // too, so a ?party= pointing at a supplier cannot pre-fill a Receipt.
-    party
-      ? supabase.from("parties").select("id, legal_name").eq("id", party).eq("is_active", true).in("party_type", initialPartyTypes).maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-
-  const invoiceById = new Map((invoices ?? []).map((i) => [i.id, i]));
-  const billById = new Map((bills ?? []).map((b) => [b.id, b]));
+  const { data: initialOutstanding } = defaultParty
+    ? await supabase.rpc("fn_party_outstanding", { p_party_id: defaultParty.id, p_direction: initialDirection, p_limit: 100 })
+    : { data: [] };
 
   return (
     <div className="space-y-4">
@@ -75,20 +68,7 @@ export default async function NewPaymentPage({
         supplierParties={supplierParties ?? []}
         defaultParty={defaultParty ? { id: defaultParty.id, label: defaultParty.legal_name } : null}
         defaultDirection={initialDirection}
-        outstandingInvoices={(invoiceOutstanding ?? []).map((o) => ({
-          invoice_id: o.invoice_id!,
-          party_id: o.party_id!,
-          outstanding_amount: o.outstanding_amount ?? 0,
-          invoice_no: invoiceById.get(o.invoice_id!)?.invoice_no ?? "",
-          invoice_date: invoiceById.get(o.invoice_id!)?.invoice_date ?? "",
-        }))}
-        outstandingBills={(billOutstanding ?? []).map((o) => ({
-          supplier_bill_id: o.supplier_bill_id!,
-          supplier_id: o.supplier_id!,
-          outstanding_amount: o.outstanding_amount ?? 0,
-          bill_no: billById.get(o.supplier_bill_id!)?.bill_no ?? "",
-          bill_date: billById.get(o.supplier_bill_id!)?.bill_date ?? "",
-        }))}
+        initialOutstanding={initialOutstanding ?? []}
         bankAccounts={bankAccounts ?? []}
         pettyCashFunds={pettyCashFunds ?? []}
       />

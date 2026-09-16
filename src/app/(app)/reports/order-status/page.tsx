@@ -3,17 +3,56 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 
-export default async function OrderStatusReportPage({ searchParams }: { searchParams: Promise<{ so_id?: string }> }) {
+// How many Sales Orders the picker offers at once. This page exists to look up
+// ONE order, so the list is a search result, not the whole order book.
+const PICKER_LIMIT = 25;
+
+export default async function OrderStatusReportPage({ searchParams }: { searchParams: Promise<{ so_id?: string; q?: string }> }) {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "sales") || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
-  const { so_id } = await searchParams;
+  const { so_id, q } = await searchParams;
+  const term = (q ?? "").trim();
+  // PostgREST's .or() takes its filters as one comma-separated string, so a
+  // comma, parenthesis or quote typed into the search box would be read as
+  // filter syntax rather than as text. Dropping those characters keeps the
+  // search a search. (This is a parsing concern, not an injection one — the
+  // values still travel as PostgREST filters, never as SQL.)
+  const safeTerm = term.replace(/[,()"\\]/g, " ").trim();
 
   const supabase = await createClient();
-  const { data: salesOrders } = await supabase
-    .from("sales_orders")
-    .select("id, so_no, client_po_number, parties(legal_name)")
-    .order("created_at", { ascending: false });
+  // The picker used to be a <select> holding every Sales Order ever raised.
+  // At 120,000 orders that is 15.6 MB of JSON and 120,000 <option> elements
+  // rendered on a page whose whole purpose is to open one of them. It is now
+  // the most recent PICKER_LIMIT, or the matches for what was typed, searched
+  // in the database. Searching by client name resolves the name to party ids
+  // first, because PostgREST cannot filter a parent by an embedded column.
+  let matchedPartyIds: string[] = [];
+  if (safeTerm) {
+    const { data: parties } = await supabase
+      .from("parties")
+      .select("id")
+      .ilike("legal_name", `%${safeTerm}%`)
+      .limit(50);
+    matchedPartyIds = (parties ?? []).map((p) => p.id);
+  }
+
+  let pickerQuery = supabase.from("sales_orders").select("id, so_no, client_po_number, parties(legal_name)");
+  if (safeTerm) {
+    const clauses = [`so_no.ilike.%${safeTerm}%`, `client_po_number.ilike.%${safeTerm}%`];
+    if (matchedPartyIds.length) clauses.push(`party_id.in.(${matchedPartyIds.join(",")})`);
+    pickerQuery = pickerQuery.or(clauses.join(","));
+  }
+  const { data: pickerRows } = await pickerQuery.order("created_at", { ascending: false }).limit(PICKER_LIMIT);
+
+  // Whatever is currently being viewed must stay in the list even when it
+  // falls outside the current search, or the dropdown would read
+  // "— Select Sales Order —" while its chain is shown underneath.
+  const { data: selectedRow } =
+    so_id && !(pickerRows ?? []).some((r) => r.id === so_id)
+      ? await supabase.from("sales_orders").select("id, so_no, client_po_number, parties(legal_name)").eq("id", so_id).maybeSingle()
+      : { data: null };
+  const salesOrders = selectedRow ? [selectedRow, ...(pickerRows ?? [])] : (pickerRows ?? []);
 
   let chain: {
     query: { query_no: string; status: string } | null;
@@ -74,9 +113,16 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">
+        <input
+          type="search"
+          name="q"
+          defaultValue={term}
+          placeholder="Search SO #, client PO # or client name"
+          className="input !py-1.5 text-sm max-w-xs"
+        />
         <select name="so_id" defaultValue={so_id ?? ""} className="input !py-1.5 text-sm max-w-sm">
           <option value="">— Select Sales Order —</option>
-          {(salesOrders ?? []).map((s) => (
+          {salesOrders.map((s) => (
             <option key={s.id} value={s.id}>
               {s.so_no} — {(s.parties as unknown as { legal_name: string } | null)?.legal_name} (PO: {s.client_po_number})
             </option>
@@ -85,6 +131,11 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
         <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
           View
         </button>
+        <span className="text-xs text-ink-faint">
+          {term
+            ? `${(pickerRows ?? []).length} match${(pickerRows ?? []).length === 1 ? "" : "es"}${(pickerRows ?? []).length === PICKER_LIMIT ? " (narrow the search for more)" : ""}`
+            : `Showing the ${(pickerRows ?? []).length} most recent — search to find an older one`}
+        </span>
       </form>
 
       {chain && (
