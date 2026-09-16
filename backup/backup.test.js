@@ -5,7 +5,7 @@
 // stringifying the whole document threw "Invalid string length" — V8 caps a
 // single string at about 512 MB. These tests prove the streamed file is the
 // same document the in-app Restore feature expects.
-import { describe, expect, it, beforeAll } from "vitest";
+import { describe, expect, it, afterAll, beforeAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -32,12 +32,20 @@ const SAMPLE = {
 const MISSED = [{ table: "audit_log", reason: "permission denied" }];
 
 describe("writeRestoreJson", () => {
+  let dir;
   let filePath;
   let parsed;
   let expected;
 
+  // The written file is deleted again afterwards. A test that writes a copy of
+  // backup data into the temp directory and leaves it there is quietly making
+  // an extra, unmanaged copy of that data on every run.
+  afterAll(() => {
+    if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   beforeAll(async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "backup-test-"));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "backup-test-"));
     filePath = path.join(dir, "restore.json");
     const bytes = await writeRestoreJson(SAMPLE, MISSED, "2026-09-16", filePath);
     expect(bytes).toBe(fs.statSync(filePath).size);
