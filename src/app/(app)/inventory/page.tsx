@@ -2,29 +2,61 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
-export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ warehouse?: string }> }) {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ warehouse?: string; page?: string }>;
+}) {
   const user = await getCurrentUser();
   const canRequest = await hasPermission(user, "inventory_adjustment.request");
-  const { warehouse: warehouseFilter } = await searchParams;
+  const { warehouse: warehouseFilter, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const [{ data: stock }, { data: availability }, { data: items }, { data: warehouses }, { count: pendingCount }] = await Promise.all([
-    supabase.from("current_stock").select("*").order("item_id"),
-    supabase.from("stock_availability").select("*"),
-    supabase.from("items").select("id, item_code, description, base_unit"),
+
+  // Summary cards (combo count / total value / reserved combos) are
+  // computed by the DB via fn_inventory_summary — a single aggregate
+  // query over `current_stock`/`reserved_stock` — instead of pulling
+  // every stock row into the app and reducing in JS. `current_stock`
+  // resolves over `stock_ledger`, the transactional ledger that grows
+  // with every GRN/Delivery/Adjustment/Transfer, so shipping the whole
+  // thing to the app on every page view would get slower forever as
+  // real data accumulates; the aggregate always returns exactly 3 numbers.
+  let stockQuery = supabase.from("current_stock").select("*", { count: "exact" }).neq("qty_on_hand", 0).order("item_id").range(rangeFrom, rangeTo);
+  if (warehouseFilter) stockQuery = stockQuery.eq("warehouse_id", warehouseFilter);
+
+  const [{ data: summary }, { data: stock, count }, { data: warehouses }, { count: pendingCount }] = await Promise.all([
+    supabase.rpc("fn_inventory_summary", { p_warehouse_id: warehouseFilter || undefined }).maybeSingle(),
+    stockQuery,
     supabase.from("warehouses").select("id, name"),
     supabase.from("stock_adjustments").select("id", { count: "exact", head: true }).eq("status", "Pending"),
+  ]);
+
+  const rows = stock ?? [];
+  const totalPages = computeTotalPages(count ?? 0);
+  // Only look up names/availability for the item×warehouse combos on this
+  // page, not the whole catalog — same reasoning as the summary query.
+  const pageItemIds = [...new Set(rows.map((r) => r.item_id!))];
+  const pageWarehouseIds = [...new Set(rows.map((r) => r.warehouse_id!))];
+  const [{ data: items }, { data: availability }] = await Promise.all([
+    pageItemIds.length
+      ? supabase.from("items").select("id, item_code, description, base_unit").in("id", pageItemIds)
+      : Promise.resolve({ data: [] as { id: string; item_code: string; description: string; base_unit: string }[] }),
+    pageItemIds.length
+      ? supabase.from("stock_availability").select("*").in("item_id", pageItemIds).in("warehouse_id", pageWarehouseIds)
+      : Promise.resolve({ data: [] as { item_id: string | null; warehouse_id: string | null; reserved_qty: number | null; free_qty: number | null }[] }),
   ]);
 
   const itemById = new Map((items ?? []).map((i) => [i.id, i]));
   const whById = new Map((warehouses ?? []).map((w) => [w.id, w]));
   const availabilityByKey = new Map((availability ?? []).map((a) => [`${a.item_id}-${a.warehouse_id}`, a]));
-  const rows = (stock ?? [])
-    .filter((r) => (r.qty_on_hand ?? 0) !== 0)
-    .filter((r) => !warehouseFilter || r.warehouse_id === warehouseFilter);
-  const totalValue = rows.reduce((s, r) => s + (r.stock_value ?? 0), 0);
-  const reservedCombos = rows.filter((r) => (availabilityByKey.get(`${r.item_id}-${r.warehouse_id}`)?.reserved_qty ?? 0) > 0).length;
+  const totalValue = summary?.total_value ?? 0;
+  const reservedCombos = summary?.reserved_combos ?? 0;
+  const comboCount = summary?.combo_count ?? 0;
 
   return (
     <div className="space-y-6">
@@ -56,7 +88,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="text-2xl font-semibold text-ink tabular">{rows.length}</p>
+          <p className="text-2xl font-semibold text-ink tabular">{comboCount}</p>
           <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Item × Warehouse combos in stock</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
@@ -117,6 +149,14 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        basePath="/inventory"
+        searchParams={{ warehouse: warehouseFilter }}
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={count ?? 0}
+      />
     </div>
   );
 }

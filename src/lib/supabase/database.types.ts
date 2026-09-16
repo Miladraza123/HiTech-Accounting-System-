@@ -4747,6 +4747,14 @@ export type Database = {
         }
         Returns: string
       }
+      fn_inventory_summary: {
+        Args: { p_warehouse_id?: string }
+        Returns: {
+          combo_count: number
+          reserved_combos: number
+          total_value: number
+        }[]
+      }
       fn_invite_user: {
         Args: { p_email: string; p_full_name: string; p_role_ids: string[] }
         Returns: string
