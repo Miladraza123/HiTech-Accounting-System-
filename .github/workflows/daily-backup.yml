@@ -13,6 +13,12 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # GitHub's default is 6 hours. A backup of this size takes under a minute,
+    # so anything past this is something stuck -- most likely the Gmail SMTP
+    # send, which nodemailer will wait on indefinitely rather than erroring.
+    # Without this cap a single hang burns hours of Actions minutes AND delays
+    # the failure alert by the same amount.
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backup
@@ -21,7 +27,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 22, not 20: @supabase/supabase-js now warns that Node 20 and below
+          # are deprecated, and GitHub is retiring Node 20 on its runners. 22 is
+          # the current LTS, so this stops being a warning that turns into a
+          # broken backup later.
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: backup/package-lock.json
 
@@ -37,3 +47,15 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           BACKUP_TO_EMAIL: ${{ secrets.BACKUP_TO_EMAIL }}
         run: node backup.js
+
+      # A failed backup used to be completely silent — the only sign was the
+      # success email not arriving, which is easy to miss. It was missed: four
+      # runs failed between 12 and 15 September 2026 and went unnoticed.
+      - name: Email an alert if the backup failed
+        if: failure()
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          BACKUP_TO_EMAIL: ${{ secrets.BACKUP_TO_EMAIL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node notify-failure.js
