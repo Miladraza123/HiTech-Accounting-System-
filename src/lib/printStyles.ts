@@ -29,7 +29,7 @@ export function printStyles(scopeClass: string): string {
     .${scopeClass} .terms dd { margin: 2px 0 0; }
     .${scopeClass} .signoff { display: flex; justify-content: space-between; margin-top: 56px; font-size: 12px; }
     .${scopeClass} .signoff .box { width: 45%; }
-    .${scopeClass} .signoff .line { border-top: 1px solid #20242E; margin-top: 36px; padding-top: 4px; }
+    .${scopeClass} .signoff .line { border-top: 1px solid #20242E; margin-top: 14px; padding-top: 4px; }
     @media print { .${scopeClass} { padding: 0; max-width: none; } }
   `;
 }

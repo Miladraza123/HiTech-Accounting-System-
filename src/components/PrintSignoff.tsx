@@ -20,17 +20,17 @@ export function PrintSignoff({
     <div className="signoff">
       <div className="box">
         {(signatureUrl || stampUrl) && (
-          <div style={{ position: "relative", height: 56, marginBottom: 4 }}>
+          <div style={{ position: "relative", height: 78, marginBottom: 6 }}>
             {signatureUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- see PrintLogoBlock.tsx
-              <img src={signatureUrl} alt="Authorized signature" style={{ height: 48, objectFit: "contain" }} />
+              <img src={signatureUrl} alt="Authorized signature" style={{ height: 56, objectFit: "contain" }} />
             )}
             {stampUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- see PrintLogoBlock.tsx
               <img
                 src={stampUrl}
                 alt="Company stamp"
-                style={{ height: 56, objectFit: "contain", position: "absolute", left: 70, top: -4, opacity: 0.92 }}
+                style={{ height: 66, objectFit: "contain", position: "absolute", left: 118, top: -2, opacity: 0.92 }}
               />
             )}
           </div>
