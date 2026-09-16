@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createDeliveryChallanAction, type DeliveryChallanLineInput } from "@/app/actions/deliveryChallans";
+import { type LineItem } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
@@ -32,7 +33,10 @@ export function NewDeliveryChallanForm({
 }: {
   salesOrders: SoOption[];
   warehouses: Tables<"warehouses">[];
-  items: Tables<"items">[];
+  // Only the items this screen's own delivered lines reference — there is
+  // no item dropdown here, so the whole catalogue was never needed. See
+  // fetchItemsByIds.
+  items: LineItem[];
   altUnits: AltUnit[];
 }) {
   const router = useRouter();

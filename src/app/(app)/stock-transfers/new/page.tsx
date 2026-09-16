@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewStockTransferForm } from "@/components/NewStockTransferForm";
@@ -9,9 +10,9 @@ export default async function NewStockTransferPage() {
   if (!(await hasPermission(user, "stock_transfer.create"))) redirect("/stock-transfers");
 
   const supabase = await createClient();
-  const [{ data: warehouses }, { data: items }] = await Promise.all([
+  const [{ data: warehouses }, items] = await Promise.all([
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
-    supabase.from("items").select("*").eq("is_active", true).order("item_code"),
+    fetchLineItems(supabase),
   ]);
 
   return (
@@ -20,7 +21,7 @@ export default async function NewStockTransferPage() {
         <h1 className="text-lg font-semibold text-ink">New Stock Transfer</h1>
         <p className="mt-1 text-sm text-ink-soft">Move stock from one warehouse to another.</p>
       </div>
-      <NewStockTransferForm warehouses={warehouses ?? []} items={items ?? []} />
+      <NewStockTransferForm warehouses={warehouses ?? []} items={items} />
     </div>
   );
 }

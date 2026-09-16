@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPurchaseOrderAction, type PurchaseOrderLineInput } from "@/app/actions/purchaseOrders";
-import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
+import { QuotationLineEditor, blankLine, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
@@ -42,7 +43,7 @@ export function NewPurchaseOrderForm({
   suppliers,
   salesOrders,
   warehouses,
-  items,
+  items: itemsProp,
   units,
 }: {
   // Only a first page of suppliers — the rest are found by typing, searched
@@ -50,9 +51,15 @@ export function NewPurchaseOrderForm({
   suppliers: Pick<Tables<"parties">, "id" | "legal_name">[];
   salesOrders: SalesOrderOption[];
   warehouses: Tables<"warehouses">[];
-  items: Tables<"items">[];
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
   units: Tables<"units">[];
 }) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
   const [supplierId, setSupplierId] = useState("");
   const supplierOptions: PickerOption[] = suppliers.map((s) => ({ id: s.id, label: s.legal_name }));
@@ -201,7 +208,7 @@ export function NewPurchaseOrderForm({
         </label>
       </div>
 
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} />
 
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">

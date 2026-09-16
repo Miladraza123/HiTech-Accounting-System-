@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createProductTemplateAction, type TemplateLineInput } from "@/app/actions/jobs";
-import { MaterialLineEditor, blankMaterialLine, type EditableMaterialLine } from "@/components/MaterialLineEditor";
+import { MaterialLineEditor, blankMaterialLine, type EditableMaterialLine , type LineItem} from "@/components/MaterialLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
@@ -12,10 +13,22 @@ type AltUnit = { item_id: string; unit: string; factor: number; is_active: boole
 // qty_per_unit must be base_unit-denominated — fn_create_job multiplies it directly
 // by job_qty to produce job_material_requirements.required_qty (which itself must be
 // base_unit, since it's compared against stock_availability). Convert at entry here.
-function serialize(lines: EditableMaterialLine[], items: Tables<"items">[], altUnits: AltUnit[]): { result: TemplateLineInput[] | null; error: string | null } {
+function serialize(lines: EditableMaterialLine[], items: LineItem[], altUnits: AltUnit[]): { result: TemplateLineInput[] | null; error: string | null } {
   const result: TemplateLineInput[] = [];
+  const anyFilled = lines.some((l) => l.item_id);
   for (const l of lines) {
-    if (!l.item_id) continue;
+    if (!l.item_id) {
+      // The item is picked through a hidden input now, which native form
+      // validation does not cover (the <select> it replaced was `required`).
+      // Once any line is filled in, a line left without an item is a
+      // mistake — report it rather than silently dropping a material the
+      // user believes they entered. Before that, fall through so the
+      // caller's own "nothing entered yet" message is the one shown.
+      if (anyFilled) {
+        return { result: null, error: "Every material line needs an item — pick one, or remove the line." };
+      }
+      continue;
+    }
     const item = items.find((i) => i.id === l.item_id);
     const qtyEntered = Number(l.qty) || 0;
     let baseQty = qtyEntered;
@@ -34,7 +47,21 @@ function serialize(lines: EditableMaterialLine[], items: Tables<"items">[], altU
   return { result, error: null };
 }
 
-export function NewProductTemplateForm({ items, units, altUnits }: { items: Tables<"items">[]; units: Tables<"units">[]; altUnits: AltUnit[] }) {
+export function NewProductTemplateForm({
+  items: itemsProp,
+  units,
+  altUnits,
+}: {
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
+  units: Tables<"units">[];
+  altUnits: AltUnit[];
+}) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
   const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
   for (const a of altUnits) {
@@ -161,7 +188,7 @@ export function NewProductTemplateForm({ items, units, altUnits }: { items: Tabl
 
       <div>
         <p className="text-xs font-medium text-ink-soft mb-2">Raw Material Requirement — per 1 output unit</p>
-        <MaterialLineEditor items={items} units={units} lines={lines} onChange={setLines} qtyLabel="Qty / Unit" altUnitsByItem={altUnitsByItem} />
+        <MaterialLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} qtyLabel="Qty / Unit" altUnitsByItem={altUnitsByItem} />
       </div>
 
       {!isOnline && (

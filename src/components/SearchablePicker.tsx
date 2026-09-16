@@ -5,7 +5,19 @@ import { createClient } from "@/lib/supabase/client";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { getCachedMasterData } from "@/lib/offlineQueue";
 
-export type PickerOption = { id: string; label: string; hint?: string; pendingQueuedId?: string };
+export type PickerOption = {
+  id: string;
+  label: string;
+  hint?: string;
+  pendingQueuedId?: string;
+  /**
+   * The underlying row, for callers that need more than the label when a
+   * pick happens — a line editor copies an item's description, base unit
+   * and standard cost onto the line. Carried on the option because the
+   * picked row may not be in the page's first page of options at all.
+   */
+  row?: Record<string, unknown>;
+};
 
 /**
  * A row filter, mirroring the PostgREST call the page it replaces used to
@@ -42,9 +54,16 @@ export const PARTY_SOURCE: PickerSource = {
 
 export const ITEM_SOURCE: PickerSource = {
   table: "items",
-  columns: "id, item_code, description",
+  // base_unit and standard_cost are here because picking an item copies
+  // them onto the line — see QuotationLineEditor/MaterialLineEditor.
+  columns: "id, item_code, description, base_unit, standard_cost",
   searchColumns: ["item_code", "description"],
-  toOption: (r) => ({ id: String(r.id), label: String(r.item_code ?? ""), hint: String(r.description ?? "") }),
+  toOption: (r) => ({
+    id: String(r.id),
+    label: String(r.item_code ?? ""),
+    hint: String(r.description ?? ""),
+    row: r,
+  }),
 };
 
 /** The usual "only rows still in use" filter, shared by most call sites. */

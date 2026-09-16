@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { createQuotationAction, type ActionResult } from "@/app/actions/quotations";
-import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
+import { QuotationLineEditor, blankLine, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
@@ -34,15 +35,21 @@ function serializeLines(lines: EditableLine[]) {
 // entry in offlineQueue.ts for why.
 export function NewQuotationForm({
   queryId,
-  items,
+  items: itemsProp,
   units,
   defaultTaxPct,
 }: {
   queryId: string;
-  items: Tables<"items">[];
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
   units: Tables<"units">[];
   defaultTaxPct: number;
 }) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const [state, formAction, pending] = useActionState(createQuotationAction, initialState);
   const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct)]);
   const { isOnline, enqueue } = useOfflineQueue();
@@ -107,7 +114,7 @@ export function NewQuotationForm({
         readOnly
       />
 
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} defaultTaxPct={defaultTaxPct} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} defaultTaxPct={defaultTaxPct} />
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
         <div className="grid grid-cols-2 gap-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type EditableLine = {
@@ -12,6 +13,9 @@ export type EditableLine = {
   rate: string;
   tax_pct: string;
 };
+
+/** Exactly the item fields this editor reads. */
+export type LineItem = Pick<Tables<"items">, "id" | "item_code" | "description" | "base_unit" | "standard_cost">;
 
 let keySeq = 0;
 function newKey() {
@@ -28,13 +32,23 @@ export function QuotationLineEditor({
   units,
   lines,
   onChange,
+  onItemPicked,
   defaultTaxPct = 18,
   altUnitsByItem,
 }: {
-  items: Tables<"items">[];
+  /**
+   * A first page of items PLUS every item already referenced by `lines`.
+   * Anything else is found by typing, which searches in the database — so
+   * this list no longer grows with the catalogue, while an existing line
+   * still resolves its own item's code and base unit locally.
+   */
+  items: LineItem[];
   units: Tables<"units">[];
   lines: EditableLine[];
   onChange: (lines: EditableLine[]) => void;
+  /** Called with a row picked by searching, so the form can remember it —
+   *  see useItemCatalog. */
+  onItemPicked: (item: LineItem) => void;
   defaultTaxPct?: number;
   /**
    * When provided (Sales Order usage), the Unit dropdown for a line with an item
@@ -49,6 +63,13 @@ export function QuotationLineEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const itemOptions: PickerOption[] = items.map((i) => ({
+    id: i.id,
+    label: i.item_code,
+    hint: i.description,
+    row: i as unknown as Record<string, unknown>,
+  }));
+
   function update(key: string, patch: Partial<EditableLine>) {
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
@@ -62,14 +83,18 @@ export function QuotationLineEditor({
     onChange([...lines, blankLine(defaultTaxPct)]);
   }
 
-  function pickItem(key: string, itemId: string) {
-    const item = items.find((i) => i.id === itemId);
-    if (!item) {
+  function pickItem(key: string, option: PickerOption | null) {
+    if (!option?.row) {
       update(key, { item_id: "" });
       return;
     }
+    const item = option.row as unknown as LineItem;
+    // Report the pick upward so the form's own `items` list — which its
+    // unit conversion and label lookups read — learns about a row that was
+    // never in the page's first page. See useItemCatalog.
+    onItemPicked(item);
     update(key, {
-      item_id: itemId,
+      item_id: item.id,
       description: item.description,
       unit: item.base_unit,
       rate: String(item.standard_cost || ""),
@@ -109,14 +134,17 @@ export function QuotationLineEditor({
               return (
                 <tr key={l.key} className="border-t border-line">
                   <td className="px-2 py-1.5">
-                    <select value={l.item_id} onChange={(e) => pickItem(l.key, e.target.value)} className="input !py-1 text-xs">
-                      <option value="">— Custom —</option>
-                      {items.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.item_code} — {i.description}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchablePicker
+                      name={`line_item_${l.key}`}
+                      source={ITEM_SOURCE}
+                      filters={ACTIVE_ONLY}
+                      initialOptions={itemOptions}
+                      initialSelected={
+                        item ? { id: item.id, label: item.item_code, hint: item.description } : null
+                      }
+                      placeholder="— Custom — or type a code…"
+                      onChange={(o) => pickItem(l.key, o)}
+                    />
                   </td>
                   <td className="px-2 py-1.5">
                     <input

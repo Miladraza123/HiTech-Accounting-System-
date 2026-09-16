@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { fetchItemsByIds } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewDeliveryChallanForm } from "@/components/NewDeliveryChallanForm";
@@ -18,7 +19,7 @@ export default async function NewDeliveryChallanPage() {
   const { data: eligibleIds } = await supabase.rpc("fn_deliverable_sales_order_ids");
   const ids = (eligibleIds ?? []).map((r) => r.id);
 
-  const [{ data: salesOrders }, { data: warehouses }, { data: items }, { data: altUnits }] = await Promise.all([
+  const [{ data: salesOrders }, { data: warehouses }, { data: altUnits }] = await Promise.all([
     ids.length
       ? supabase
           .from("sales_orders")
@@ -27,11 +28,19 @@ export default async function NewDeliveryChallanPage() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
-    supabase.from("items").select("*"),
     supabase.from("item_alt_units").select("*").eq("is_active", true),
   ]);
 
   const eligible = salesOrders ?? [];
+
+  // This screen has no item dropdown — it only needs each delivered line's
+  // own item, to read its base unit. So look up exactly those, instead of
+  // pulling the entire catalogue (every column of every item) to resolve a
+  // handful of lines.
+  const items = await fetchItemsByIds(
+    supabase,
+    eligible.flatMap((so) => (so.sales_order_lines ?? []).map((l: { item_id: string | null }) => l.item_id))
+  );
 
   return (
     <div className="space-y-4">
@@ -75,7 +84,7 @@ export default async function NewDeliveryChallanPage() {
             }[]).filter((l) => l.delivered_qty < l.ordered_qty),
           }))}
           warehouses={warehouses}
-          items={items ?? []}
+          items={items}
           altUnits={altUnits ?? []}
         />
       )}

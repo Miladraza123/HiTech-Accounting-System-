@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { SearchablePicker, PARTY_SOURCE } from "@/components/SearchablePicker";
 
 export default async function PartyLedgerPage({ searchParams }: { searchParams: Promise<{ party_id?: string; page?: string }> }) {
   const user = await getCurrentUser();
@@ -14,7 +15,16 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
   const [rangeFrom] = pageRange(page);
 
   const supabase = await createClient();
-  const { data: parties } = await supabase.from("parties").select("id, legal_name, party_type").order("legal_name");
+  // A first page of parties for the selector, plus the one already chosen —
+  // the rest are found by typing, searched in the database. No is_active
+  // filter, deliberately: a ledger must still be viewable for a party that
+  // has since been deactivated, exactly as before.
+  const [{ data: parties }, { data: selectedParty }] = await Promise.all([
+    supabase.from("parties").select("id, legal_name, party_type").order("legal_name").limit(20),
+    party_id
+      ? supabase.from("parties").select("id, legal_name, party_type").eq("id", party_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   // Same change as the General Ledger: a long-standing client accumulates a
   // journal line per transaction forever, so the running balance is computed
@@ -36,7 +46,6 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
   }
   const totalPages = computeTotalPages(totalRows);
 
-  const selectedParty = parties?.find((p) => p.id === party_id);
 
   return (
     <div className="space-y-6">
@@ -48,14 +57,19 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">
-        <select name="party_id" defaultValue={party_id ?? ""} className="input !py-1.5 text-sm max-w-sm">
-          <option value="">— Select Party —</option>
-          {(parties ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.legal_name} ({p.party_type})
-            </option>
-          ))}
-        </select>
+        <div className="w-full max-w-sm">
+          <SearchablePicker
+            name="party_id"
+            source={PARTY_SOURCE}
+            initialOptions={(parties ?? []).map((p) => ({ id: p.id, label: p.legal_name, hint: p.party_type }))}
+            initialSelected={
+              selectedParty
+                ? { id: selectedParty.id, label: selectedParty.legal_name, hint: selectedParty.party_type }
+                : null
+            }
+            placeholder="Type a customer or supplier name…"
+          />
+        </div>
         <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
           View
         </button>

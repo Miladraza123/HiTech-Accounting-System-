@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { DraftQuotationEditor } from "@/components/DraftQuotationEditor";
@@ -31,11 +32,10 @@ export default async function QuotationDetailPage({
   const canEdit = await hasPermission(user, "quotation.manage");
 
   const supabase = await createClient();
-  const [{ data: quotation }, { data: revisions }, { data: items }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }] =
+  const [{ data: quotation }, { data: revisions }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }] =
     await Promise.all([
       supabase.from("quotations").select("*, parties(legal_name), queries(query_no)").eq("id", id).maybeSingle(),
       supabase.from("quotation_revisions").select("*").eq("quotation_id", id).order("rev_no", { ascending: false }),
-      supabase.from("items").select("*").eq("is_active", true).order("item_code"),
       supabase.from("units").select("*").order("code"),
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("sales_orders").select("id, so_no, status").eq("quotation_id", id).order("created_at", { ascending: false }),
@@ -53,6 +53,11 @@ export default async function QuotationDetailPage({
     .select("*")
     .eq("revision_id", selectedRevision.id)
     .order("sort_order");
+
+  // A first page of items, plus every item this revision's lines already
+  // name — so an existing line keeps showing its item even when that item
+  // sits far outside the first page.
+  const items = await fetchLineItems(supabase, (lines ?? []).map((l) => l.item_id));
 
   const party = quotation.parties as unknown as { legal_name: string } | null;
   const query = quotation.queries as unknown as { query_no: string } | null;
@@ -96,7 +101,7 @@ export default async function QuotationDetailPage({
           {showDraftEditor ? (
             <DraftQuotationEditor
               quotationId={id}
-              items={items ?? []}
+              items={items}
               units={units ?? []}
               initialLines={lines ?? []}
               initialTerms={selectedRevision.terms}
@@ -110,7 +115,7 @@ export default async function QuotationDetailPage({
               {canEdit && isViewingCurrent && quotation.status !== "Draft" && (
                 <CreateRevisionPanel
                   quotationId={id}
-                  items={items ?? []}
+                  items={items}
                   units={units ?? []}
                   currentLines={lines ?? []}
                   currentTerms={selectedRevision.terms}

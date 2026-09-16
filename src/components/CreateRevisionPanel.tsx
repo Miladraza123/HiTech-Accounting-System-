@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createQuotationRevisionAction, type QuotationLineInput } from "@/app/actions/quotations";
-import { QuotationLineEditor, type EditableLine } from "@/components/QuotationLineEditor";
+import { QuotationLineEditor, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
 
@@ -34,7 +35,7 @@ function serialize(lines: EditableLine[]): QuotationLineInput[] {
 
 export function CreateRevisionPanel({
   quotationId,
-  items,
+  items: itemsProp,
   units,
   currentLines,
   currentTerms,
@@ -43,7 +44,9 @@ export function CreateRevisionPanel({
   currentPaymentTerms,
 }: {
   quotationId: string;
-  items: Tables<"items">[];
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
   units: Tables<"units">[];
   currentLines: Tables<"quotation_lines">[];
   currentTerms: string | null;
@@ -51,6 +54,10 @@ export function CreateRevisionPanel({
   currentDeliveryTerms: string | null;
   currentPaymentTerms: string | null;
 }) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<EditableLine[]>(toEditable(currentLines));
@@ -102,7 +109,7 @@ export function CreateRevisionPanel({
         <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Client increased the quantity" />
       </label>
 
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} />
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block space-y-1.5">

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSalesOrderAction, type SalesOrderLineInput } from "@/app/actions/salesOrders";
-import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
+import { QuotationLineEditor, blankLine, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
@@ -36,7 +37,7 @@ function serialize(lines: EditableLine[]): SalesOrderLineInput[] {
 export function NewSalesOrderForm({
   quotationId,
   quotationLines,
-  items,
+  items: itemsProp,
   units,
   altUnits,
   defaultPaymentTerms,
@@ -45,13 +46,19 @@ export function NewSalesOrderForm({
 }: {
   quotationId: string;
   quotationLines: Tables<"quotation_lines">[];
-  items: Tables<"items">[];
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
   units: Tables<"units">[];
   altUnits: Tables<"item_alt_units">[];
   defaultPaymentTerms: string | null;
   defaultTaxPct: number;
   creditWarning?: string | null;
 }) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
   const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
   for (const a of altUnits) {
@@ -199,6 +206,7 @@ export function NewSalesOrderForm({
 
       <QuotationLineEditor
         items={items}
+        onItemPicked={addItem}
         units={units}
         lines={lines}
         onChange={setLines}

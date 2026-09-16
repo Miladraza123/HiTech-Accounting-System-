@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { StockAdjustmentRequestForm } from "@/components/StockAdjustmentRequestForm";
@@ -27,9 +28,9 @@ export default async function StockAdjustmentsPage({ searchParams }: { searchPar
   // The adjustment history is paginated; the items/warehouses lists stay full
   // because StockAdjustmentRequestForm's dropdowns need every option. Those
   // dropdowns are handled separately (searchable server-side pickers).
-  const [{ data: adjustments, count }, { data: items }, { data: warehouses }, { data: profiles }] = await Promise.all([
+  const [{ data: adjustments, count }, items, { data: warehouses }, { data: profiles }] = await Promise.all([
     supabase.from("stock_adjustments").select("*", { count: "exact" }).order("requested_at", { ascending: false }).range(rangeFrom, rangeTo),
-    supabase.from("items").select("*").eq("is_active", true).order("item_code"),
+    fetchLineItems(supabase),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("profiles").select("id, full_name"),
   ]);
@@ -49,7 +50,7 @@ export default async function StockAdjustmentsPage({ searchParams }: { searchPar
         <p className="mt-1 text-sm text-ink-soft">Physical count discrepancies — stock and books don&apos;t change without Owner approval.</p>
       </div>
 
-      <StockAdjustmentRequestForm items={items ?? []} warehouses={warehouses ?? []} />
+      <StockAdjustmentRequestForm items={items} warehouses={warehouses ?? []} />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         <div className="overflow-x-auto">

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { amendSalesOrderAction, type SalesOrderLineInput } from "@/app/actions/salesOrders";
-import { QuotationLineEditor, type EditableLine } from "@/components/QuotationLineEditor";
+import { QuotationLineEditor, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 
 function toEditable(lines: Tables<"sales_order_lines">[]): EditableLine[] {
@@ -34,7 +35,7 @@ function serialize(lines: EditableLine[]): SalesOrderLineInput[] {
 
 export function SalesOrderAmendPanel({
   salesOrderId,
-  items,
+  items: itemsProp,
   units,
   altUnits,
   currentLines,
@@ -44,7 +45,9 @@ export function SalesOrderAmendPanel({
   currentPaymentTerms,
 }: {
   salesOrderId: string;
-  items: Tables<"items">[];
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
   units: Tables<"units">[];
   altUnits: Tables<"item_alt_units">[];
   currentLines: Tables<"sales_order_lines">[];
@@ -53,6 +56,10 @@ export function SalesOrderAmendPanel({
   currentDeliverySchedule: string | null;
   currentPaymentTerms: string | null;
 }) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
   const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
   for (const a of altUnits) {
@@ -134,7 +141,7 @@ export function SalesOrderAmendPanel({
         </label>
       </div>
 
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} altUnitsByItem={altUnitsByItem} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} altUnitsByItem={altUnitsByItem} />
       <p className="text-xs text-ink-faint">
         A line that has already been delivered cannot be removed — only its qty/rate can be changed.
       </p>

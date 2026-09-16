@@ -7,7 +7,8 @@ import {
   markQuotationSentAction,
   type QuotationLineInput,
 } from "@/app/actions/quotations";
-import { QuotationLineEditor, type EditableLine } from "@/components/QuotationLineEditor";
+import { QuotationLineEditor, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 
 function toEditable(lines: Tables<"quotation_lines">[]): EditableLine[] {
@@ -37,7 +38,7 @@ function serialize(lines: EditableLine[]): QuotationLineInput[] {
 
 export function DraftQuotationEditor({
   quotationId,
-  items,
+  items: itemsProp,
   units,
   initialLines,
   initialTerms,
@@ -46,7 +47,9 @@ export function DraftQuotationEditor({
   initialPaymentTerms,
 }: {
   quotationId: string;
-  items: Tables<"items">[];
+  // A first page of items plus those already referenced here — the rest
+  // are found by typing, searched in the database. See SearchablePicker.
+  items: LineItem[];
   units: Tables<"units">[];
   initialLines: Tables<"quotation_lines">[];
   initialTerms: string | null;
@@ -54,6 +57,10 @@ export function DraftQuotationEditor({
   initialDeliveryTerms: string | null;
   initialPaymentTerms: string | null;
 }) {
+  // The form works from this list, not the raw prop: every item picked by
+  // searching is merged in, so the lookups below keep resolving. See
+  // useItemCatalog.
+  const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
   const [lines, setLines] = useState<EditableLine[]>(toEditable(initialLines));
   const [terms, setTerms] = useState(initialTerms ?? "");
@@ -102,7 +109,7 @@ export function DraftQuotationEditor({
 
   return (
     <div className="space-y-4">
-      <QuotationLineEditor items={items} units={units} lines={lines} onChange={setLines} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} />
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
         <div className="grid grid-cols-2 gap-4">

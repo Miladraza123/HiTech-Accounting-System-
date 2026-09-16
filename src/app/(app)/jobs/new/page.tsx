@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewJobForm } from "@/components/NewJobForm";
@@ -10,7 +11,7 @@ export default async function NewJobPage() {
   if (!(await hasPermission(user, "job.manage"))) redirect("/jobs");
 
   const supabase = await createClient();
-  const [{ data: soLines }, { data: warehouses }, { data: templates }, { data: items }, { data: units }, { data: altUnits }, { data: profiles }] = await Promise.all([
+  const [{ data: soLines }, { data: warehouses }, { data: templates }, items, { data: units }, { data: altUnits }, { data: profiles }] = await Promise.all([
     supabase
       .from("sales_order_lines")
       .select("*, sales_orders!inner(so_no, client_po_number, business_line, status, parties(legal_name))")
@@ -19,7 +20,7 @@ export default async function NewJobPage() {
       .order("sales_order_id"),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("product_templates").select("*").eq("is_active", true).order("name"),
-    supabase.from("items").select("*").eq("is_active", true).order("item_code"),
+    fetchLineItems(supabase),
     supabase.from("units").select("*").order("code"),
     supabase.from("item_alt_units").select("*").eq("is_active", true),
     supabase.from("profiles").select("*").eq("is_active", true).order("full_name"),
@@ -65,7 +66,7 @@ export default async function NewJobPage() {
           }))}
           warehouses={warehouses}
           templates={templates ?? []}
-          items={items ?? []}
+          items={items}
           units={units ?? []}
           altUnits={altUnits ?? []}
           profiles={profiles ?? []}

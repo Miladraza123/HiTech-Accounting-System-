@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { SalesOrderAmendPanel } from "@/components/SalesOrderAmendPanel";
@@ -29,7 +30,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
   const canEdit = await hasPermission(user, "sales_order.manage");
 
   const supabase = await createClient();
-  const [{ data: so }, { data: lines }, { data: revisions }, { data: items }, { data: units }, { data: altUnits }, { data: attachments }, { data: tasks }, { data: profiles }] =
+  const [{ data: so }, { data: lines }, { data: revisions }, { data: units }, { data: altUnits }, { data: attachments }, { data: tasks }, { data: profiles }] =
     await Promise.all([
       supabase
         .from("sales_orders")
@@ -38,13 +39,17 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
         .maybeSingle(),
       supabase.from("sales_order_lines").select("*").eq("sales_order_id", id).order("sort_order"),
       supabase.from("sales_order_revisions").select("*").eq("sales_order_id", id).order("rev_no", { ascending: false }),
-      supabase.from("items").select("*").eq("is_active", true).order("item_code"),
       supabase.from("units").select("*").order("code"),
       supabase.from("item_alt_units").select("*").eq("is_active", true),
       supabase.from("attachments").select("*").eq("owner_table", "sales_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "sales_orders").eq("related_id", id).order("created_at", { ascending: false }),
       supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
     ]);
+
+  // A first page of items, plus every item this Sales Order's own lines
+  // already name — so an existing line keeps showing its item even when
+  // that item sits far outside the first page.
+  const items = await fetchLineItems(supabase, (lines ?? []).map((l) => l.item_id));
 
   if (!so) notFound();
 
@@ -128,7 +133,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
           {canAmend && (
             <SalesOrderAmendPanel
               salesOrderId={id}
-              items={items ?? []}
+              items={items}
               units={units ?? []}
               altUnits={altUnits ?? []}
               currentLines={lines ?? []}

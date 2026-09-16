@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewSalesOrderForm } from "@/components/NewSalesOrderForm";
@@ -17,9 +18,8 @@ export default async function NewSalesOrderPage({
   if (!quotation_id) redirect("/quotations");
 
   const supabase = await createClient();
-  const [{ data: quotation }, { data: items }, { data: units }, { data: altUnits }, { data: company }] = await Promise.all([
+  const [{ data: quotation }, { data: units }, { data: altUnits }, { data: company }] = await Promise.all([
     supabase.from("quotations").select("*, parties(legal_name, credit_limit)").eq("id", quotation_id).maybeSingle(),
-    supabase.from("items").select("*").eq("is_active", true).order("item_code"),
     supabase.from("units").select("*").order("code"),
     supabase.from("item_alt_units").select("*").eq("is_active", true),
     supabase.from("company").select("default_sales_tax_pct").maybeSingle(),
@@ -48,6 +48,11 @@ export default async function NewSalesOrderPage({
     ? await supabase.from("quotation_lines").select("*").eq("revision_id", revision.id).order("sort_order")
     : { data: [] };
 
+  // A first page of items, plus every item the quotation's own lines
+  // already name — so a pre-filled line keeps showing its item even when
+  // that item sits far outside the first page.
+  const items = await fetchLineItems(supabase, (quotationLines ?? []).map((l) => l.item_id));
+
   return (
     <div className="space-y-4">
       <div>
@@ -61,7 +66,7 @@ export default async function NewSalesOrderPage({
       <NewSalesOrderForm
         quotationId={quotation_id}
         quotationLines={quotationLines ?? []}
-        items={items ?? []}
+        items={items}
         units={units ?? []}
         altUnits={altUnits ?? []}
         defaultPaymentTerms={revision?.payment_terms ?? null}

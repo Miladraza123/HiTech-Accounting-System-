@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
+// Re-exported so this editor's own consumers can name the shape too.
+export { type LineItem } from "@/components/QuotationLineEditor";
+import { type LineItem } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type EditableMaterialLine = {
@@ -30,13 +34,22 @@ export function MaterialLineEditor({
   units,
   lines,
   onChange,
+  onItemPicked,
   qtyLabel = "Qty",
   altUnitsByItem,
 }: {
-  items: Tables<"items">[];
+  /**
+   * A first page of items PLUS every item already referenced by `lines` —
+   * anything else is found by typing, which searches in the database. See
+   * SearchablePicker.
+   */
+  items: LineItem[];
   units: Tables<"units">[];
   lines: EditableMaterialLine[];
   onChange: (lines: EditableMaterialLine[]) => void;
+  /** Called with a row picked by searching, so the form can remember it —
+   *  see useItemCatalog. */
+  onItemPicked: (item: LineItem) => void;
   qtyLabel?: string;
   /**
    * When provided, the Unit dropdown for a line with an item selected is restricted
@@ -51,6 +64,13 @@ export function MaterialLineEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const itemOptions: PickerOption[] = items.map((i) => ({
+    id: i.id,
+    label: i.item_code,
+    hint: i.description,
+    row: i as unknown as Record<string, unknown>,
+  }));
+
   function update(key: string, patch: Partial<EditableMaterialLine>) {
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
@@ -64,13 +84,17 @@ export function MaterialLineEditor({
     onChange([...lines, blankMaterialLine()]);
   }
 
-  function pickItem(key: string, itemId: string) {
-    const item = items.find((i) => i.id === itemId);
-    if (!item) {
+  function pickItem(key: string, option: PickerOption | null) {
+    if (!option?.row) {
       update(key, { item_id: "" });
       return;
     }
-    update(key, { item_id: itemId, unit: item.base_unit });
+    const item = option.row as unknown as LineItem;
+    // Report the pick upward so the form's own `items` list — which its
+    // unit conversion reads — learns about a row that was never in the
+    // page's first page. See useItemCatalog.
+    onItemPicked(item);
+    update(key, { item_id: item.id, unit: item.base_unit });
   }
 
   return (
@@ -96,14 +120,17 @@ export function MaterialLineEditor({
               return (
                 <tr key={l.key} className="border-t border-line">
                   <td className="px-2 py-1.5">
-                    <select value={l.item_id} onChange={(e) => pickItem(l.key, e.target.value)} required className="input !py-1 text-xs">
-                      <option value="">— Select item —</option>
-                      {items.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.item_code} — {i.description}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchablePicker
+                      name={`material_item_${l.key}`}
+                      source={ITEM_SOURCE}
+                      filters={ACTIVE_ONLY}
+                      initialOptions={itemOptions}
+                      initialSelected={
+                        item ? { id: item.id, label: item.item_code, hint: item.description } : null
+                      }
+                      placeholder="Type an item code…"
+                      onChange={(o) => pickItem(l.key, o)}
+                    />
                   </td>
                   <td className="px-2 py-1.5">
                     <input

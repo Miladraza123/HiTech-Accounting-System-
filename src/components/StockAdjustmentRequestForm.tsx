@@ -6,12 +6,16 @@ import { requestStockAdjustmentAction } from "@/app/actions/inventory";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
+import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
+import { type LineItem } from "@/components/QuotationLineEditor";
 
 export function StockAdjustmentRequestForm({
   items,
   warehouses,
 }: {
-  items: Tables<"items">[];
+  // A first page of items only — the rest are found by typing, searched in
+  // the database rather than shipped to the browser. See SearchablePicker.
+  items: LineItem[];
   warehouses: Tables<"warehouses">[];
 }) {
   const router = useRouter();
@@ -36,6 +40,12 @@ export function StockAdjustmentRequestForm({
     getPendingCreateOptions("items").then(setPendingItems);
     getPendingCreateOptions("warehouses").then(setPendingWarehouses);
   }, []);
+
+  const itemOptions: PickerOption[] = items.map((i) => ({ id: i.id, label: i.item_code, hint: i.description }));
+  const pendingItemOptions: PickerOption[] = pendingItems.map((i) => ({
+    id: i.id,
+    label: String(i.payload.item_code ?? i.label),
+  }));
 
   // Phase 6 (Master Offline-First Roadmap): offline-enables only the
   // REQUEST step — a plain pending-row insert with no stock/accounting
@@ -96,19 +106,15 @@ export function StockAdjustmentRequestForm({
         This does not change stock directly — both stock and accounts will only be updated once the Owner approves it.
       </p>
       <div className="grid grid-cols-2 gap-3">
-        <select value={itemId} onChange={(e) => setItemId(e.target.value)} className="input">
-          <option value="">— Item —</option>
-          {items.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.item_code} — {i.description}
-            </option>
-          ))}
-          {pendingItems.map((i) => (
-            <option key={i.id} value={i.id}>
-              {String(i.payload.item_code ?? i.label)} (offline — pending sync)
-            </option>
-          ))}
-        </select>
+        <SearchablePicker
+          name="adjustment_item_id"
+          source={ITEM_SOURCE}
+          filters={ACTIVE_ONLY}
+          initialOptions={itemOptions}
+          pendingOptions={pendingItemOptions}
+          placeholder="Type an item code…"
+          onChange={(o) => setItemId(o?.id ?? "")}
+        />
         <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="input">
           <option value="">— Warehouse —</option>
           {warehouses.map((w) => (

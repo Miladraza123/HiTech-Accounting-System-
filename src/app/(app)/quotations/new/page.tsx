@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewQuotationForm } from "@/components/NewQuotationForm";
@@ -17,9 +18,9 @@ export default async function NewQuotationPage({
   if (!query_id) redirect("/queries");
 
   const supabase = await createClient();
-  const [{ data: query }, { data: items }, { data: units }, { data: company }] = await Promise.all([
+  const [{ data: query }, items, { data: units }, { data: company }] = await Promise.all([
     supabase.from("queries").select("id, query_no, requirement, parties(legal_name)").eq("id", query_id).maybeSingle(),
-    supabase.from("items").select("*").eq("is_active", true).order("item_code"),
+    fetchLineItems(supabase),
     supabase.from("units").select("*").order("code"),
     supabase.from("company").select("default_sales_tax_pct").maybeSingle(),
   ]);
@@ -41,7 +42,7 @@ export default async function NewQuotationPage({
 
       <NewQuotationForm
         queryId={query_id}
-        items={items ?? []}
+        items={items}
         units={units ?? []}
         defaultTaxPct={company?.default_sales_tax_pct ?? 18}
       />

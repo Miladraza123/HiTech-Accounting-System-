@@ -6,10 +6,21 @@ import { createStockTransferAction } from "@/app/actions/stockTransfers";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
+import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
+import { type LineItem } from "@/components/QuotationLineEditor";
 
 type Line = { item_id: string; qty: string };
 
-export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables<"warehouses">[]; items: Tables<"items">[] }) {
+export function NewStockTransferForm({
+  warehouses,
+  items,
+}: {
+  warehouses: Tables<"warehouses">[];
+  // A first page of items only — the rest are found by typing, searched in
+  // the database rather than shipped to the browser. See SearchablePicker.
+  items: LineItem[];
+}) {
+  const itemOptions: PickerOption[] = items.map((i) => ({ id: i.id, label: i.item_code, hint: i.description }));
   const router = useRouter();
   const [fromWarehouseId, setFromWarehouseId] = useState("");
   const [toWarehouseId, setToWarehouseId] = useState("");
@@ -169,14 +180,14 @@ export function NewStockTransferForm({ warehouses, items }: { warehouses: Tables
               {lines.map((l, i) => (
                 <tr key={i} className="border-t border-line">
                   <td className="px-2 py-1.5">
-                    <select value={l.item_id} onChange={(e) => updateLine(i, { item_id: e.target.value })} className="input !py-1 text-xs">
-                      <option value="">— Select Item —</option>
-                      {items.map((it) => (
-                        <option key={it.id} value={it.id}>
-                          {it.item_code} — {it.description}
-                        </option>
-                      ))}
-                    </select>
+                    <SearchablePicker
+                      name={`transfer_item_${i}`}
+                      source={ITEM_SOURCE}
+                      filters={ACTIVE_ONLY}
+                      initialOptions={itemOptions}
+                      placeholder="Type an item code…"
+                      onChange={(o) => updateLine(i, { item_id: o?.id ?? "" })}
+                    />
                   </td>
                   <td className="px-2 py-1.5">
                     <input

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewPurchaseOrderForm } from "@/components/NewPurchaseOrderForm";
@@ -10,7 +11,7 @@ export default async function NewPurchaseOrderPage() {
   if (!(await hasPermission(user, "purchase_order.manage"))) redirect("/purchase-orders");
 
   const supabase = await createClient();
-  const [{ data: suppliers }, { data: salesOrders }, { data: warehouses }, { data: items }, { data: units }] = await Promise.all([
+  const [{ data: suppliers }, { data: salesOrders }, { data: warehouses }, items, { data: units }] = await Promise.all([
     // A first page only, and only the columns the picker renders — the rest
     // are found by typing, searched in the database. See SearchablePicker.
     supabase.from("parties").select("id, legal_name").eq("is_active", true).in("party_type", ["supplier", "both"]).order("legal_name").limit(20),
@@ -21,7 +22,7 @@ export default async function NewPurchaseOrderPage() {
       .not("status", "in", "(Cancelled,Closed)")
       .order("created_at", { ascending: false }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
-    supabase.from("items").select("*").eq("is_active", true).order("item_code"),
+    fetchLineItems(supabase),
     supabase.from("units").select("*").order("code"),
   ]);
 
@@ -52,7 +53,7 @@ export default async function NewPurchaseOrderPage() {
             parties: so.parties as unknown as { legal_name: string } | null,
           }))}
           warehouses={warehouses ?? []}
-          items={items ?? []}
+          items={items}
           units={units ?? []}
         />
       )}
