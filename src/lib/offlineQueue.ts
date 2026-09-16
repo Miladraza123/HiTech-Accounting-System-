@@ -576,7 +576,12 @@ export async function findPendingEdit(table: QueuedEdit["table"], rowId: string)
 /** Master-data tables cached locally — the ones named by the roadmap
  * (dropdown data "used by offline-create forms") and, not coincidentally,
  * the exact three tables Phase 1 first made offline-creatable. */
-export const CACHED_MASTER_DATA_TABLES = ["parties", "items", "warehouses"] as const;
+// item_alt_units is cached alongside items because an item picked offline
+// still has to convert a qty entered in a non-base unit. Online those
+// conversions ride along embedded in the item row; offline the cached
+// rows are plain, so the picker joins them locally. It is a small,
+// hand-curated config table, so caching all of it is cheap.
+export const CACHED_MASTER_DATA_TABLES = ["parties", "items", "warehouses", "item_alt_units"] as const;
 export type CachedMasterDataTable = (typeof CACHED_MASTER_DATA_TABLES)[number];
 
 type MasterDataCacheEntry = { table: CachedMasterDataTable; rows: Record<string, unknown>[]; cachedAt: string };

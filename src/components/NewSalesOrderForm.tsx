@@ -39,7 +39,6 @@ export function NewSalesOrderForm({
   quotationLines,
   items: itemsProp,
   units,
-  altUnits,
   defaultPaymentTerms,
   defaultTaxPct,
   creditWarning,
@@ -50,7 +49,6 @@ export function NewSalesOrderForm({
   // are found by typing, searched in the database. See SearchablePicker.
   items: LineItem[];
   units: Tables<"units">[];
-  altUnits: Tables<"item_alt_units">[];
   defaultPaymentTerms: string | null;
   defaultTaxPct: number;
   creditWarning?: string | null;
@@ -58,13 +56,8 @@ export function NewSalesOrderForm({
   // The form works from this list, not the raw prop: every item picked by
   // searching is merged in, so the lookups below keep resolving. See
   // useItemCatalog.
-  const { items, addItem } = useItemCatalog(itemsProp);
+  const { items, addItem, altUnitsByItem } = useItemCatalog(itemsProp);
   const router = useRouter();
-  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
-  for (const a of altUnits) {
-    if (!a.is_active) continue;
-    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
-  }
   const [lines, setLines] = useState<EditableLine[]>(fromQuotationLines(quotationLines, defaultTaxPct));
   const [clientPoNumber, setClientPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));

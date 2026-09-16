@@ -14,8 +14,21 @@ export type EditableLine = {
   tax_pct: string;
 };
 
-/** Exactly the item fields this editor reads. */
-export type LineItem = Pick<Tables<"items">, "id" | "item_code" | "description" | "base_unit" | "standard_cost">;
+/** One alternate-unit conversion for an item: 1 <unit> = <factor> base units. */
+export type LineItemAltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
+
+/**
+ * Exactly the item fields this editor reads — including the item's own
+ * alternate units.
+ *
+ * Carrying the conversions on the item itself is what lets a page stop
+ * loading the whole `item_alt_units` table. An item found by typing brings
+ * its own factors with it, so a qty entered in a non-base unit still
+ * converts correctly for an item that was never in the page's first page.
+ */
+export type LineItem = Pick<Tables<"items">, "id" | "item_code" | "description" | "base_unit" | "standard_cost"> & {
+  item_alt_units?: LineItemAltUnit[];
+};
 
 let keySeq = 0;
 function newKey() {

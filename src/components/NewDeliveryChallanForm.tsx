@@ -23,13 +23,11 @@ type SoOption = {
   lines: SoLine[];
 };
 
-type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
 
 export function NewDeliveryChallanForm({
   salesOrders,
   warehouses,
   items,
-  altUnits,
 }: {
   salesOrders: SoOption[];
   warehouses: Tables<"warehouses">[];
@@ -37,7 +35,6 @@ export function NewDeliveryChallanForm({
   // no item dropdown here, so the whole catalogue was never needed. See
   // fetchItemsByIds.
   items: LineItem[];
-  altUnits: AltUnit[];
 }) {
   const router = useRouter();
   const [soId, setSoId] = useState("");
@@ -85,7 +82,8 @@ export function NewDeliveryChallanForm({
         if (!l.unit || l.unit === item.base_unit) {
           stockQty = deliveredQty;
         } else {
-          const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
+          // Conversions ride on the item itself — see LineItem.
+              const alt = (item.item_alt_units ?? []).find((a) => a.unit === l.unit && a.is_active);
           if (!alt) {
             setError(
               `No conversion factor is set from "${l.description}"'s unit (${l.unit}) to this item's base unit (${item.base_unit}) — add "Alternate Units" in the Item Master, or uncheck "Issue from Stock".`
@@ -226,7 +224,7 @@ export function NewDeliveryChallanForm({
                   const item = items.find((i) => i.id === l.item_id);
                   const deliveredQty = Number(qtys[l.id] ?? 0);
                   const needsConversion = !!item && !!l.unit && l.unit !== item.base_unit;
-                  const alt = needsConversion ? altUnits.find((a) => a.item_id === item!.id && a.unit === l.unit && a.is_active) : undefined;
+                  const alt = needsConversion ? (item!.item_alt_units ?? []).find((a) => a.unit === l.unit && a.is_active) : undefined;
                   const conversionMissing = needsConversion && !alt;
                   return (
                     <tr key={l.id} className="border-t border-line">

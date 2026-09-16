@@ -37,7 +37,6 @@ export function SalesOrderAmendPanel({
   salesOrderId,
   items: itemsProp,
   units,
-  altUnits,
   currentLines,
   currentClientPo,
   currentPoDate,
@@ -49,7 +48,6 @@ export function SalesOrderAmendPanel({
   // are found by typing, searched in the database. See SearchablePicker.
   items: LineItem[];
   units: Tables<"units">[];
-  altUnits: Tables<"item_alt_units">[];
   currentLines: Tables<"sales_order_lines">[];
   currentClientPo: string;
   currentPoDate: string;
@@ -59,13 +57,8 @@ export function SalesOrderAmendPanel({
   // The form works from this list, not the raw prop: every item picked by
   // searching is merged in, so the lookups below keep resolving. See
   // useItemCatalog.
-  const { items, addItem } = useItemCatalog(itemsProp);
+  const { items, addItem, altUnitsByItem } = useItemCatalog(itemsProp);
   const router = useRouter();
-  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
-  for (const a of altUnits) {
-    if (!a.is_active) continue;
-    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
-  }
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<EditableLine[]>(toEditable(currentLines));
   const [clientPo, setClientPo] = useState(currentClientPo);

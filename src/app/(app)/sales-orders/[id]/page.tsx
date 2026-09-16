@@ -30,7 +30,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
   const canEdit = await hasPermission(user, "sales_order.manage");
 
   const supabase = await createClient();
-  const [{ data: so }, { data: lines }, { data: revisions }, { data: units }, { data: altUnits }, { data: attachments }, { data: tasks }, { data: profiles }] =
+  const [{ data: so }, { data: lines }, { data: revisions }, { data: units }, { data: attachments }, { data: tasks }, { data: profiles }] =
     await Promise.all([
       supabase
         .from("sales_orders")
@@ -40,7 +40,6 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
       supabase.from("sales_order_lines").select("*").eq("sales_order_id", id).order("sort_order"),
       supabase.from("sales_order_revisions").select("*").eq("sales_order_id", id).order("rev_no", { ascending: false }),
       supabase.from("units").select("*").order("code"),
-      supabase.from("item_alt_units").select("*").eq("is_active", true),
       supabase.from("attachments").select("*").eq("owner_table", "sales_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "sales_orders").eq("related_id", id).order("created_at", { ascending: false }),
       supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
@@ -135,7 +134,6 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
               salesOrderId={id}
               items={items}
               units={units ?? []}
-              altUnits={altUnits ?? []}
               currentLines={lines ?? []}
               currentClientPo={so.client_po_number}
               currentPoDate={so.po_date}

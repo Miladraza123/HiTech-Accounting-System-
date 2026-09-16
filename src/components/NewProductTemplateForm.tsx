@@ -8,12 +8,11 @@ import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
-type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
 
 // qty_per_unit must be base_unit-denominated — fn_create_job multiplies it directly
 // by job_qty to produce job_material_requirements.required_qty (which itself must be
 // base_unit, since it's compared against stock_availability). Convert at entry here.
-function serialize(lines: EditableMaterialLine[], items: LineItem[], altUnits: AltUnit[]): { result: TemplateLineInput[] | null; error: string | null } {
+function serialize(lines: EditableMaterialLine[], items: LineItem[]): { result: TemplateLineInput[] | null; error: string | null } {
   const result: TemplateLineInput[] = [];
   const anyFilled = lines.some((l) => l.item_id);
   for (const l of lines) {
@@ -33,7 +32,10 @@ function serialize(lines: EditableMaterialLine[], items: LineItem[], altUnits: A
     const qtyEntered = Number(l.qty) || 0;
     let baseQty = qtyEntered;
     if (item && l.unit && l.unit !== item.base_unit) {
-      const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
+      // The item carries its own conversions (see LineItem), so this
+      // resolves for an item found by typing just as it does for one from
+      // the page's first page.
+      const alt = (item.item_alt_units ?? []).find((a) => a.unit === l.unit && a.is_active);
       if (!alt) {
         return {
           result: null,
@@ -50,24 +52,17 @@ function serialize(lines: EditableMaterialLine[], items: LineItem[], altUnits: A
 export function NewProductTemplateForm({
   items: itemsProp,
   units,
-  altUnits,
 }: {
   // A first page of items plus those already referenced here — the rest
   // are found by typing, searched in the database. See SearchablePicker.
   items: LineItem[];
   units: Tables<"units">[];
-  altUnits: AltUnit[];
 }) {
   // The form works from this list, not the raw prop: every item picked by
   // searching is merged in, so the lookups below keep resolving. See
   // useItemCatalog.
-  const { items, addItem } = useItemCatalog(itemsProp);
+  const { items, addItem, altUnitsByItem } = useItemCatalog(itemsProp);
   const router = useRouter();
-  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
-  for (const a of altUnits) {
-    if (!a.is_active) continue;
-    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
-  }
   const [templateCode, setTemplateCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -95,7 +90,7 @@ export function NewProductTemplateForm({
       setError("Template code and name are required.");
       return;
     }
-    const { result, error: convErr } = serialize(lines, items, altUnits);
+    const { result, error: convErr } = serialize(lines, items);
     if (convErr) {
       setError(convErr);
       return;

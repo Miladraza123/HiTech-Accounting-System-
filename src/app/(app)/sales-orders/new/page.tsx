@@ -18,10 +18,9 @@ export default async function NewSalesOrderPage({
   if (!quotation_id) redirect("/quotations");
 
   const supabase = await createClient();
-  const [{ data: quotation }, { data: units }, { data: altUnits }, { data: company }] = await Promise.all([
+  const [{ data: quotation }, { data: units }, { data: company }] = await Promise.all([
     supabase.from("quotations").select("*, parties(legal_name, credit_limit)").eq("id", quotation_id).maybeSingle(),
     supabase.from("units").select("*").order("code"),
-    supabase.from("item_alt_units").select("*").eq("is_active", true),
     supabase.from("company").select("default_sales_tax_pct").maybeSingle(),
   ]);
 
@@ -68,7 +67,6 @@ export default async function NewSalesOrderPage({
         quotationLines={quotationLines ?? []}
         items={items}
         units={units ?? []}
-        altUnits={altUnits ?? []}
         defaultPaymentTerms={revision?.payment_terms ?? null}
         defaultTaxPct={company?.default_sales_tax_pct ?? 18}
         creditWarning={creditWarning}

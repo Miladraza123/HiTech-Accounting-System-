@@ -11,7 +11,7 @@ export default async function NewJobPage() {
   if (!(await hasPermission(user, "job.manage"))) redirect("/jobs");
 
   const supabase = await createClient();
-  const [{ data: soLines }, { data: warehouses }, { data: templates }, items, { data: units }, { data: altUnits }, { data: profiles }] = await Promise.all([
+  const [{ data: soLines }, { data: warehouses }, { data: templates }, items, { data: units }, { data: profiles }] = await Promise.all([
     supabase
       .from("sales_order_lines")
       .select("*, sales_orders!inner(so_no, client_po_number, business_line, status, parties(legal_name))")
@@ -22,7 +22,6 @@ export default async function NewJobPage() {
     supabase.from("product_templates").select("*").eq("is_active", true).order("name"),
     fetchLineItems(supabase),
     supabase.from("units").select("*").order("code"),
-    supabase.from("item_alt_units").select("*").eq("is_active", true),
     supabase.from("profiles").select("*").eq("is_active", true).order("full_name"),
   ]);
 
@@ -68,7 +67,6 @@ export default async function NewJobPage() {
           templates={templates ?? []}
           items={items}
           units={units ?? []}
-          altUnits={altUnits ?? []}
           profiles={profiles ?? []}
         />
       )}

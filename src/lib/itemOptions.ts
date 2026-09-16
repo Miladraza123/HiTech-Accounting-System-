@@ -3,8 +3,14 @@ import type { LineItem } from "@/components/QuotationLineEditor";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
-/** Exactly the item columns a line editor reads — see LineItem. */
-export const ITEM_PICKER_COLUMNS = "id, item_code, description, base_unit, standard_cost";
+/**
+ * Exactly the item columns a line editor reads — see LineItem. The embedded
+ * item_alt_units ride along, so every item a page hands down already carries
+ * its own unit conversions and the page never has to load the whole
+ * item_alt_units table to find them.
+ */
+export const ITEM_PICKER_COLUMNS =
+  "id, item_code, description, base_unit, standard_cost, item_alt_units(item_id, unit, factor, is_active)";
 
 /** How many items a page ships up front before the user has typed anything. */
 export const ITEM_PAGE_SIZE = 20;

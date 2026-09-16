@@ -19,7 +19,7 @@ export default async function NewDeliveryChallanPage() {
   const { data: eligibleIds } = await supabase.rpc("fn_deliverable_sales_order_ids");
   const ids = (eligibleIds ?? []).map((r) => r.id);
 
-  const [{ data: salesOrders }, { data: warehouses }, { data: altUnits }] = await Promise.all([
+  const [{ data: salesOrders }, { data: warehouses }] = await Promise.all([
     ids.length
       ? supabase
           .from("sales_orders")
@@ -28,7 +28,6 @@ export default async function NewDeliveryChallanPage() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
-    supabase.from("item_alt_units").select("*").eq("is_active", true),
   ]);
 
   const eligible = salesOrders ?? [];
@@ -85,7 +84,6 @@ export default async function NewDeliveryChallanPage() {
           }))}
           warehouses={warehouses}
           items={items}
-          altUnits={altUnits ?? []}
         />
       )}
     </div>

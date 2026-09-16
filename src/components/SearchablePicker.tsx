@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
-import { getCachedMasterData } from "@/lib/offlineQueue";
+import { getCachedMasterData, type CachedMasterDataTable } from "@/lib/offlineQueue";
 
 export type PickerOption = {
   id: string;
@@ -43,6 +43,14 @@ export type PickerSource = {
    *  column does not require selecting it. */
   searchColumns: string[];
   toOption: (row: Record<string, unknown>) => PickerOption;
+  /**
+   * How to rebuild an embedded relation when the rows come from the offline
+   * cache instead of PostgREST. Online, `columns` embeds the relation and it
+   * arrives on the row already; offline the cached rows are flat, so the
+   * matching cached table is joined locally under the same key. Without this
+   * an item picked offline would lose its unit conversions.
+   */
+  offlineEmbed?: { table: CachedMasterDataTable; foreignKey: string; as: string };
 };
 
 export const PARTY_SOURCE: PickerSource = {
@@ -55,9 +63,12 @@ export const PARTY_SOURCE: PickerSource = {
 export const ITEM_SOURCE: PickerSource = {
   table: "items",
   // base_unit and standard_cost are here because picking an item copies
-  // them onto the line — see QuotationLineEditor/MaterialLineEditor.
-  columns: "id, item_code, description, base_unit, standard_cost",
+  // them onto the line. The embedded item_alt_units come along in the SAME
+  // round trip so a searched item carries its own unit conversions — that
+  // is what lets the pages stop loading the entire item_alt_units table.
+  columns: "id, item_code, description, base_unit, standard_cost, item_alt_units(item_id, unit, factor, is_active)",
   searchColumns: ["item_code", "description"],
+  offlineEmbed: { table: "item_alt_units", foreignKey: "item_id", as: "item_alt_units" },
   toOption: (r) => ({
     id: String(r.id),
     label: String(r.item_code ?? ""),
@@ -180,11 +191,19 @@ export function SearchablePicker({
         // Offline: the same rows the app already caches for this purpose.
         const rows = await getCachedMasterData<Record<string, unknown>>(source.table);
         const lower = term.toLowerCase();
-        found = rows
+        let matched = rows
           .filter((r) => rowMatches(r, activeFilters))
           .filter((r) => source.searchColumns.some((c) => String(r[c] ?? "").toLowerCase().includes(lower)))
-          .slice(0, RESULT_LIMIT)
-          .map((r) => source.toOption(r));
+          .slice(0, RESULT_LIMIT);
+
+        // Rebuild what PostgREST would have embedded online.
+        if (source.offlineEmbed) {
+          const { table, foreignKey, as } = source.offlineEmbed;
+          const related = await getCachedMasterData<Record<string, unknown>>(table);
+          matched = matched.map((r) => ({ ...r, [as]: related.filter((x) => x[foreignKey] === r.id) }));
+        }
+
+        found = matched.map((r) => source.toOption(r));
       }
 
       if (!cancelled) setResults({ term, options: found });

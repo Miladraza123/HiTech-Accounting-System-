@@ -11,10 +11,9 @@ export default async function NewProductTemplatePage() {
   if (!(await hasPermission(user, "product_template.manage"))) redirect("/product-templates");
 
   const supabase = await createClient();
-  const [items, { data: units }, { data: altUnits }] = await Promise.all([
+  const [items, { data: units }] = await Promise.all([
     fetchLineItems(supabase),
     supabase.from("units").select("*").order("code"),
-    supabase.from("item_alt_units").select("*").eq("is_active", true),
   ]);
 
   return (
@@ -35,7 +34,7 @@ export default async function NewProductTemplatePage() {
           .
         </div>
       ) : (
-        <NewProductTemplateForm items={items} units={units ?? []} altUnits={altUnits ?? []} />
+        <NewProductTemplateForm items={items} units={units ?? []} />
       )}
     </div>
   );

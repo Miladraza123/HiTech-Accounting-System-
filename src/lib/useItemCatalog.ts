@@ -31,5 +31,27 @@ export function useItemCatalog(initial: LineItem[]) {
     setExtra((prev) => (prev.some((i) => i.id === item.id) ? prev : [...prev, item]));
   }, []);
 
-  return { items, addItem };
+  /**
+   * The active unit conversions for every item this form knows about,
+   * keyed by item id — the shape the line editors' Unit dropdown and the
+   * forms' qty-to-base-unit conversion already expect.
+   *
+   * Derived from `items` rather than from a separate whole-table fetch,
+   * because each item carries its own `item_alt_units` (see LineItem). An
+   * item found by typing therefore arrives with its factors already
+   * attached, which is the whole reason these pages no longer need to load
+   * every row of item_alt_units to convert one line.
+   */
+  const altUnitsByItem = useMemo(() => {
+    const map: Record<string, { unit: string; factor: number }[]> = {};
+    for (const item of items) {
+      for (const a of item.item_alt_units ?? []) {
+        if (!a.is_active) continue;
+        (map[item.id] ??= []).push({ unit: a.unit, factor: a.factor });
+      }
+    }
+    return map;
+  }, [items]);
+
+  return { items, addItem, altUnitsByItem };
 }

@@ -16,12 +16,11 @@ type SoLineOption = {
   sales_orders: { so_no: string; client_po_number: string; parties: { legal_name: string } | null };
 };
 
-type AltUnit = { item_id: string; unit: string; factor: number; is_active: boolean };
 
 // Material requirement qty must always end up base_unit-denominated — stock reservation
 // pooling (fn_reserve_job_material etc.) compares required_qty against stock_availability,
 // which is tracked in base_unit. Converts here at entry, not at the SQL layer.
-function serialize(lines: EditableMaterialLine[], items: LineItem[], altUnits: AltUnit[]): { result: MaterialLineInput[] | null; error: string | null } {
+function serialize(lines: EditableMaterialLine[], items: LineItem[]): { result: MaterialLineInput[] | null; error: string | null } {
   const result: MaterialLineInput[] = [];
   const anyFilled = lines.some((l) => l.item_id);
   for (const l of lines) {
@@ -41,7 +40,10 @@ function serialize(lines: EditableMaterialLine[], items: LineItem[], altUnits: A
     const qtyEntered = Number(l.qty) || 0;
     let baseQty = qtyEntered;
     if (item && l.unit && l.unit !== item.base_unit) {
-      const alt = altUnits.find((a) => a.item_id === item.id && a.unit === l.unit && a.is_active);
+      // The item carries its own conversions (see LineItem), so this
+      // resolves for an item found by typing just as it does for one from
+      // the page's first page.
+      const alt = (item.item_alt_units ?? []).find((a) => a.unit === l.unit && a.is_active);
       if (!alt) {
         return {
           result: null,
@@ -61,7 +63,6 @@ export function NewJobForm({
   templates,
   items: itemsProp,
   units,
-  altUnits,
   profiles,
 }: {
   soLines: SoLineOption[];
@@ -71,19 +72,13 @@ export function NewJobForm({
   // are found by typing, searched in the database. See SearchablePicker.
   items: LineItem[];
   units: Tables<"units">[];
-  altUnits: AltUnit[];
   profiles: Tables<"profiles">[];
 }) {
   // The form works from this list, not the raw prop: every item picked by
   // searching is merged in, so the lookups below keep resolving. See
   // useItemCatalog.
-  const { items, addItem } = useItemCatalog(itemsProp);
+  const { items, addItem, altUnitsByItem } = useItemCatalog(itemsProp);
   const router = useRouter();
-  const altUnitsByItem: Record<string, { unit: string; factor: number }[]> = {};
-  for (const a of altUnits) {
-    if (!a.is_active) continue;
-    (altUnitsByItem[a.item_id] ??= []).push({ unit: a.unit, factor: a.factor });
-  }
   const [soLineId, setSoLineId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [templateId, setTemplateId] = useState("");
@@ -128,7 +123,7 @@ export function NewJobForm({
     }
     let materialLines: MaterialLineInput[] = [];
     if (!templateId) {
-      const { result, error: convErr } = serialize(lines, items, altUnits);
+      const { result, error: convErr } = serialize(lines, items);
       if (convErr) {
         setError(convErr);
         return;
