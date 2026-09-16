@@ -1,5 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { computeHealth, daysSince, daysUntil } from "./orderHealth";
+
+// Every fixture below is built relative to "now", and the assertions then
+// read the clock again. Without freezing it, a future fixture is n days
+// ahead of the moment it was BUILT but slightly less than n days ahead of
+// the moment it is CHECKED — so `daysUntil` floors to n-1 whenever the
+// millisecond ticks between the two statements. Measured at ~0.115% of
+// runs (roughly 1 in 870), which is exactly the intermittent failure this
+// file used to produce. Freezing the clock removes the ambiguity without
+// weakening a single assertion; `daysSince` was never affected, since
+// elapsed time only ever adds to a past interval.
+beforeAll(() => {
+  vi.useFakeTimers({ now: new Date("2026-06-15T12:00:00.000Z") });
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 function daysAgoIso(n: number): string {
   const d = new Date();
