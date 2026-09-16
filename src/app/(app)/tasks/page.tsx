@@ -5,6 +5,8 @@ import { getCurrentUser, isOwner } from "@/lib/auth";
 import { TaskActionButtons } from "@/components/TaskActionButtons";
 import { relatedEntityLink } from "@/lib/taskLinks";
 import { buttonClass } from "@/components/ui/Button";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 type Filter = "mine" | "all" | "overdue" | "today" | "upcoming" | "done";
 
@@ -29,25 +31,59 @@ const PRIORITY_STYLE: Record<string, string> = {
   High: "text-bad font-medium",
 };
 
-export default async function TasksPage({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
+export default async function TasksPage({ searchParams }: { searchParams: Promise<{ filter?: string; page?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const { filter } = await searchParams;
+  const { filter, page: pageParam } = await searchParams;
   const activeFilter: Filter = (["mine", "all", "overdue", "today", "upcoming", "done"] as const).includes(filter as Filter)
     ? (filter as Filter)
     : "mine";
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const [{ data: tasks }, { data: profiles }] = await Promise.all([
-    supabase.from("tasks").select("*, profiles(full_name)").order("due_date", { ascending: true, nullsFirst: false }),
-    supabase.from("profiles").select("id, full_name"),
-  ]);
-
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
   const today = new Date().toISOString().slice(0, 10);
 
-  const rows = (tasks ?? []).map((t) => ({
+  // The filter used to run in JS over every task in the table. It has to run
+  // in SQL now — with pagination, filtering a single fetched page would
+  // silently drop matches that live on other pages. `.lt`/`.gt` on due_date
+  // also exclude NULLs by themselves, matching the old `!!r.due_date` guards.
+  let query = supabase.from("tasks").select("*, profiles(full_name)", { count: "exact" });
+  switch (activeFilter) {
+    case "mine":
+      query = query.eq("status", "Open").eq("assigned_to", user.id);
+      break;
+    case "all":
+      query = query.eq("status", "Open");
+      break;
+    case "overdue":
+      query = query.eq("status", "Open").lt("due_date", today);
+      break;
+    case "today":
+      query = query.eq("status", "Open").eq("due_date", today);
+      break;
+    case "upcoming":
+      query = query.eq("status", "Open").gt("due_date", today);
+      break;
+    case "done":
+      query = query.neq("status", "Open");
+      break;
+  }
+
+  // The two summary counts are whole-table figures, so they stay whole-table —
+  // but as count-only queries (`head: true`), which return a number and no rows.
+  const [{ data: tasks, count }, { data: profiles }, { count: myOpenCount }, { count: overdueCount }] = await Promise.all([
+    query.order("due_date", { ascending: true, nullsFirst: false }).range(rangeFrom, rangeTo),
+    supabase.from("profiles").select("id, full_name"),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "Open").eq("assigned_to", user.id),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "Open").lt("due_date", today),
+  ]);
+  const totalPages = computeTotalPages(count ?? 0);
+
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+
+  const filtered = (tasks ?? []).map((t) => ({
     id: t.id,
     title: t.title,
     status: t.status,
@@ -61,26 +97,6 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
     isOverdue: t.status === "Open" && !!t.due_date && t.due_date < today,
     isDueToday: t.status === "Open" && t.due_date === today,
   }));
-
-  const filtered = rows.filter((r) => {
-    switch (activeFilter) {
-      case "mine":
-        return r.status === "Open" && r.assigned_to === user.id;
-      case "all":
-        return r.status === "Open";
-      case "overdue":
-        return r.isOverdue;
-      case "today":
-        return r.isDueToday;
-      case "upcoming":
-        return r.status === "Open" && !!r.due_date && r.due_date > today;
-      case "done":
-        return r.status !== "Open";
-    }
-  });
-
-  const overdueCount = rows.filter((r) => r.isOverdue).length;
-  const myOpenCount = rows.filter((r) => r.status === "Open" && r.assigned_to === user.id).length;
 
   return (
     <div className="space-y-6">
@@ -96,11 +112,11 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="text-2xl font-semibold text-ink tabular">{myOpenCount}</p>
+          <p className="text-2xl font-semibold text-ink tabular">{myOpenCount ?? 0}</p>
           <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">My Open Tasks</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className={`text-2xl font-semibold tabular ${overdueCount > 0 ? "text-bad" : "text-ink"}`}>{overdueCount}</p>
+          <p className={`text-2xl font-semibold tabular ${(overdueCount ?? 0) > 0 ? "text-bad" : "text-ink"}`}>{overdueCount ?? 0}</p>
           <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Overdue (All Users)</p>
         </div>
       </div>
@@ -178,6 +194,14 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        basePath="/tasks"
+        searchParams={{ filter: activeFilter }}
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={count ?? 0}
+      />
     </div>
   );
 }

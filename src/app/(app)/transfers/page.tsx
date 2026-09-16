@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { buttonClass } from "@/components/ui/Button";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -11,15 +13,24 @@ const STATUS_STYLE: Record<string, string> = {
 
 const TYPE_LABEL: Record<string, string> = { cash: "Cash in Hand", bank: "Bank", petty_cash: "Petty Cash" };
 
-export default async function TransfersPage() {
+export default async function TransfersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "fund_transfer.manage");
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
+
   const supabase = await createClient();
-  const { data: transfers } = await supabase
+  const { data: transfers, count } = await supabase
     .from("contra_transfers")
-    .select("*, from_bank:bank_accounts!contra_transfers_from_bank_account_id_fkey(account_name), to_bank:bank_accounts!contra_transfers_to_bank_account_id_fkey(account_name), from_fund:petty_cash_funds!contra_transfers_from_petty_cash_fund_id_fkey(fund_name), to_fund:petty_cash_funds!contra_transfers_to_petty_cash_fund_id_fkey(fund_name)")
-    .order("transfer_date", { ascending: false });
+    .select(
+      "*, from_bank:bank_accounts!contra_transfers_from_bank_account_id_fkey(account_name), to_bank:bank_accounts!contra_transfers_to_bank_account_id_fkey(account_name), from_fund:petty_cash_funds!contra_transfers_from_petty_cash_fund_id_fkey(fund_name), to_fund:petty_cash_funds!contra_transfers_to_petty_cash_fund_id_fkey(fund_name)",
+      { count: "exact" }
+    )
+    .order("transfer_date", { ascending: false })
+    .range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -82,6 +93,8 @@ export default async function TransfersPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/transfers" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

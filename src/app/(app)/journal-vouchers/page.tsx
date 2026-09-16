@@ -4,20 +4,30 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { buttonClass } from "@/components/ui/Button";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
-export default async function JournalVouchersPage() {
+export default async function JournalVouchersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   const canView = isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor");
   if (!canView) redirect("/");
   const canCreate = await hasPermission(user, "journal_voucher.manage");
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
+
   const supabase = await createClient();
-  const { data: entries } = await supabase
+  // Was `.limit(100)` with no paging — that capped the screen at the 100 most
+  // recent vouchers, so older ones were unreachable entirely. Real pagination
+  // both bounds each request and makes the full history reachable.
+  const { data: entries, count } = await supabase
     .from("journal_entries")
-    .select("*, journal_lines(*, chart_of_accounts(code, name))")
+    .select("*, journal_lines(*, chart_of_accounts(code, name))", { count: "exact" })
     .eq("source_table", "manual")
     .order("entry_date", { ascending: false })
-    .limit(100);
+    .range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -68,6 +78,8 @@ export default async function JournalVouchersPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/journal-vouchers" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
 
       <p className="text-xs text-ink-faint">
         All transactions (manual + automatic) for a day can be viewed in the{" "}

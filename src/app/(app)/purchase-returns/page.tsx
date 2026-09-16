@@ -2,21 +2,29 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
   Cancelled: "bg-bad-soft text-bad",
 };
 
-export default async function PurchaseReturnsPage() {
+export default async function PurchaseReturnsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "store") || hasRole(user, "auditor"))) redirect("/");
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
+
   const supabase = await createClient();
-  const { data: returns } = await supabase
+  const { data: returns, count } = await supabase
     .from("purchase_returns")
-    .select("*, parties(legal_name), supplier_bills(bill_no)")
-    .order("created_at", { ascending: false });
+    .select("*, parties(legal_name), supplier_bills(bill_no)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(rangeFrom, rangeTo);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -74,6 +82,8 @@ export default async function PurchaseReturnsPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/purchase-returns" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

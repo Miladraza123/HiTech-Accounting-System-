@@ -5,6 +5,8 @@ import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { StockAdjustmentRequestForm } from "@/components/StockAdjustmentRequestForm";
 import { AdjustmentDecisionButtons } from "@/components/AdjustmentDecisionButtons";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Pending: "bg-warn-soft text-warn",
@@ -12,18 +14,26 @@ const STATUS_STYLE: Record<string, string> = {
   Rejected: "bg-bad-soft text-bad",
 };
 
-export default async function StockAdjustmentsPage() {
+export default async function StockAdjustmentsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   const canRequest = await hasPermission(user, "inventory_adjustment.request");
   if (!canRequest) redirect("/inventory");
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
+
   const supabase = await createClient();
-  const [{ data: adjustments }, { data: items }, { data: warehouses }, { data: profiles }] = await Promise.all([
-    supabase.from("stock_adjustments").select("*").order("requested_at", { ascending: false }),
+  // The adjustment history is paginated; the items/warehouses lists stay full
+  // because StockAdjustmentRequestForm's dropdowns need every option. Those
+  // dropdowns are handled separately (searchable server-side pickers).
+  const [{ data: adjustments, count }, { data: items }, { data: warehouses }, { data: profiles }] = await Promise.all([
+    supabase.from("stock_adjustments").select("*", { count: "exact" }).order("requested_at", { ascending: false }).range(rangeFrom, rangeTo),
     supabase.from("items").select("*").eq("is_active", true).order("item_code"),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("profiles").select("id, full_name"),
   ]);
+  const totalPages = computeTotalPages(count ?? 0);
 
   const itemById = new Map((items ?? []).map((i) => [i.id, i]));
   const whById = new Map((warehouses ?? []).map((w) => [w.id, w]));
@@ -84,6 +94,14 @@ export default async function StockAdjustmentsPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        basePath="/inventory/adjustments"
+        searchParams={{}}
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={count ?? 0}
+      />
     </div>
   );
 }
