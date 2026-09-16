@@ -5,21 +5,41 @@ import { useRouter } from "next/navigation";
 import { createPaymentAction, type PaymentAllocationInput } from "@/app/actions/payments";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
 
 type OutstandingInvoice = { invoice_id: string; party_id: string; outstanding_amount: number; invoice_no: string; invoice_date: string };
 type OutstandingBill = { supplier_bill_id: string; supplier_id: string; outstanding_amount: number; bill_no: string; bill_date: string };
 
+// The eligible party set flips with the direction: a Receipt can only come
+// from a client, a Payment can only go to a supplier. Mirrors the old
+// `party_type !== "supplier"` / `!== "client"` client-side filter exactly,
+// expressed so the database can apply it.
+const PARTY_FILTERS: Record<"receipt" | "payment", PickerFilter[]> = {
+  receipt: [
+    { column: "is_active", op: "eq", value: true },
+    { column: "party_type", op: "in", value: ["client", "both"] },
+  ],
+  payment: [
+    { column: "is_active", op: "eq", value: true },
+    { column: "party_type", op: "in", value: ["supplier", "both"] },
+  ],
+};
+
 export function NewPaymentForm({
-  parties,
-  defaultPartyId,
+  clientParties,
+  supplierParties,
+  defaultParty,
   defaultDirection,
   outstandingInvoices,
   outstandingBills,
   bankAccounts,
   pettyCashFunds,
 }: {
-  parties: Tables<"parties">[];
-  defaultPartyId: string;
+  // Only a first page of each list — the rest are found by typing, searched
+  // in the database rather than shipped to the browser. See SearchablePicker.
+  clientParties: Pick<Tables<"parties">, "id" | "legal_name">[];
+  supplierParties: Pick<Tables<"parties">, "id" | "legal_name">[];
+  defaultParty: PickerOption | null;
   defaultDirection: "receipt" | "payment";
   outstandingInvoices: OutstandingInvoice[];
   outstandingBills: OutstandingBill[];
@@ -28,7 +48,7 @@ export function NewPaymentForm({
 }) {
   const router = useRouter();
   const [direction, setDirection] = useState<"receipt" | "payment">(defaultDirection);
-  const [partyId, setPartyId] = useState(defaultPartyId);
+  const [partyId, setPartyId] = useState(defaultParty?.id ?? "");
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState("");
@@ -43,7 +63,10 @@ export function NewPaymentForm({
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
 
-  const eligibleParties = parties.filter((p) => (direction === "receipt" ? p.party_type !== "supplier" : p.party_type !== "client"));
+  const partyOptions: PickerOption[] = (direction === "receipt" ? clientParties : supplierParties).map((p) => ({
+    id: p.id,
+    label: p.legal_name,
+  }));
 
   const rows = useMemo(() => {
     if (direction === "receipt") {
@@ -181,14 +204,22 @@ export function NewPaymentForm({
 
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">{direction === "receipt" ? "Client" : "Supplier"} *</span>
-          <select value={partyId} onChange={(e) => { setPartyId(e.target.value); setAllocAmounts({}); }} className="input">
-            <option value="">— Select —</option>
-            {eligibleParties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.legal_name}
-              </option>
-            ))}
-          </select>
+          {/* Keyed on direction so switching Receipt/Payment clears the
+              picker's own selection along with `partyId` below — a client
+              must never stay selected on a supplier payment. */}
+          <SearchablePicker
+            key={direction}
+            name="party_id"
+            source={PARTY_SOURCE}
+            filters={PARTY_FILTERS[direction]}
+            initialOptions={partyOptions}
+            initialSelected={direction === defaultDirection ? defaultParty : null}
+            placeholder={direction === "receipt" ? "Type a client name…" : "Type a supplier name…"}
+            onChange={(o) => {
+              setPartyId(o?.id ?? "");
+              setAllocAmounts({});
+            }}
+          />
         </label>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -6,6 +6,7 @@ import { createPurchaseOrderAction, type PurchaseOrderLineInput } from "@/app/ac
 import { QuotationLineEditor, blankLine, type EditableLine } from "@/components/QuotationLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
 
 function serialize(lines: EditableLine[]): PurchaseOrderLineInput[] {
   return lines
@@ -30,6 +31,13 @@ type SalesOrderOption = Pick<Tables<"sales_orders">, "id" | "so_no" | "client_po
   parties: { legal_name: string } | null;
 };
 
+// Mirrors this page's own `.eq("is_active", true).in("party_type", [...])`
+// exactly, expressed so the database keeps applying it as the user types.
+const SUPPLIER_FILTERS: PickerFilter[] = [
+  { column: "is_active", op: "eq", value: true },
+  { column: "party_type", op: "in", value: ["supplier", "both"] },
+];
+
 export function NewPurchaseOrderForm({
   suppliers,
   salesOrders,
@@ -37,7 +45,9 @@ export function NewPurchaseOrderForm({
   items,
   units,
 }: {
-  suppliers: Tables<"parties">[];
+  // Only a first page of suppliers — the rest are found by typing, searched
+  // in the database rather than shipped to the browser. See SearchablePicker.
+  suppliers: Pick<Tables<"parties">, "id" | "legal_name">[];
   salesOrders: SalesOrderOption[];
   warehouses: Tables<"warehouses">[];
   items: Tables<"items">[];
@@ -45,6 +55,7 @@ export function NewPurchaseOrderForm({
 }) {
   const router = useRouter();
   const [supplierId, setSupplierId] = useState("");
+  const supplierOptions: PickerOption[] = suppliers.map((s) => ({ id: s.id, label: s.legal_name }));
   const [purchaseType, setPurchaseType] = useState<"direct" | "stock" | "general">("stock");
   const [linkedSoId, setLinkedSoId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
@@ -127,14 +138,14 @@ export function NewPurchaseOrderForm({
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Supplier *</span>
-          <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className="input">
-            <option value="">— Select —</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.legal_name}
-              </option>
-            ))}
-          </select>
+          <SearchablePicker
+            name="supplier_id"
+            source={PARTY_SOURCE}
+            filters={SUPPLIER_FILTERS}
+            initialOptions={supplierOptions}
+            placeholder="Type a supplier name…"
+            onChange={(o) => setSupplierId(o?.id ?? "")}
+          />
         </label>
 
         <div className="space-y-1.5">

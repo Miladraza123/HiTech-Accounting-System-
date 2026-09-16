@@ -11,7 +11,9 @@ export default async function NewPurchaseOrderPage() {
 
   const supabase = await createClient();
   const [{ data: suppliers }, { data: salesOrders }, { data: warehouses }, { data: items }, { data: units }] = await Promise.all([
-    supabase.from("parties").select("*").eq("is_active", true).in("party_type", ["supplier", "both"]).order("legal_name"),
+    // A first page only, and only the columns the picker renders — the rest
+    // are found by typing, searched in the database. See SearchablePicker.
+    supabase.from("parties").select("id, legal_name").eq("is_active", true).in("party_type", ["supplier", "both"]).order("legal_name").limit(20),
     supabase
       .from("sales_orders")
       .select("*, parties(legal_name)")

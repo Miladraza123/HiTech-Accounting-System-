@@ -5,7 +5,7 @@ import { createQueryAction, type ActionResult } from "@/app/actions/queries";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { buttonClass } from "@/components/ui/Button";
 import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
-import { SearchablePicker, PARTY_SOURCE, type PickerOption } from "@/components/SearchablePicker";
+import { SearchablePicker, PARTY_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
 import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -117,6 +117,7 @@ export function QueryForm({
           <SearchablePicker
             name="party_id"
             source={PARTY_SOURCE}
+            filters={ACTIVE_ONLY}
             initialOptions={partyOptions}
             pendingOptions={pendingPartyOptions}
             placeholder="Type a client name…"

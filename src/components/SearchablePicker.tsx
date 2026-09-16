@@ -7,6 +7,16 @@ import { getCachedMasterData } from "@/lib/offlineQueue";
 
 export type PickerOption = { id: string; label: string; hint?: string; pendingQueuedId?: string };
 
+/**
+ * A row filter, mirroring the PostgREST call the page it replaces used to
+ * make. Each caller passes its own, because the right filter differs per
+ * screen — a Receipt may only pick a client, a Purchase Order only a
+ * supplier, and a Journal Voucher deliberately allows any party at all.
+ */
+export type PickerFilter =
+  | { column: string; op: "eq"; value: string | boolean }
+  | { column: string; op: "in"; value: string[] };
+
 /** Which master-data table this picker searches, and how a row becomes an option. */
 export type PickerSource = {
   table: "parties" | "items";
@@ -21,15 +31,12 @@ export type PickerSource = {
    *  column does not require selecting it. */
   searchColumns: string[];
   toOption: (row: Record<string, unknown>) => PickerOption;
-  /** Extra equality filters, e.g. only active rows. */
-  match?: Record<string, string | boolean>;
 };
 
 export const PARTY_SOURCE: PickerSource = {
   table: "parties",
   columns: "id, legal_name",
   searchColumns: ["legal_name", "ntn"],
-  match: { is_active: true },
   toOption: (r) => ({ id: String(r.id), label: String(r.legal_name ?? "") }),
 };
 
@@ -37,9 +44,15 @@ export const ITEM_SOURCE: PickerSource = {
   table: "items",
   columns: "id, item_code, description",
   searchColumns: ["item_code", "description"],
-  match: { is_active: true },
   toOption: (r) => ({ id: String(r.id), label: String(r.item_code ?? ""), hint: String(r.description ?? "") }),
 };
+
+/** The usual "only rows still in use" filter, shared by most call sites. */
+export const ACTIVE_ONLY: PickerFilter[] = [{ column: "is_active", op: "eq", value: true }];
+
+function rowMatches(row: Record<string, unknown>, filters: PickerFilter[]) {
+  return filters.every((f) => (f.op === "in" ? f.value.includes(String(row[f.column])) : row[f.column] === f.value));
+}
 
 const RESULT_LIMIT = 20;
 const DEBOUNCE_MS = 250;
@@ -68,22 +81,31 @@ const DEBOUNCE_MS = 250;
 export function SearchablePicker({
   name,
   source,
+  filters = [],
   initialOptions,
+  initialSelected = null,
   pendingOptions = [],
   placeholder = "Type to search…",
+  disabled = false,
   onChange,
 }: {
   name: string;
   source: PickerSource;
+  /** Row filters for this screen — see PickerFilter. */
+  filters?: PickerFilter[];
   initialOptions: PickerOption[];
+  /** Pre-selected option, for a screen opened with the row already chosen
+   *  (e.g. /payments/new?party=<id>). */
+  initialSelected?: PickerOption | null;
   pendingOptions?: PickerOption[];
   placeholder?: string;
+  disabled?: boolean;
   onChange?: (option: PickerOption | null) => void;
 }) {
   const { isOnline } = useOfflineQueue();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<PickerOption | null>(null);
+  const [selected, setSelected] = useState<PickerOption | null>(initialSelected);
   // Holds SEARCH results together with the term they were fetched for.
   // Keeping the term here means "am I still searching?" is derived
   // (`results.term !== term`) rather than a second state flag that an
@@ -99,6 +121,12 @@ export function SearchablePicker({
     () => pendingOptions.map((p) => ({ ...p, hint: "offline — pending sync" })),
     [pendingOptions]
   );
+
+  // Call sites pass `filters` as an inline array, whose identity changes on
+  // every render. Keying off its serialized form keeps the search effect
+  // from re-firing on renders where the filters did not actually change.
+  const filterKey = JSON.stringify(filters);
+  const activeFilters = useMemo<PickerFilter[]>(() => JSON.parse(filterKey), [filterKey]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -120,7 +148,7 @@ export function SearchablePicker({
       if (isOnline) {
         const supabase = createClient();
         let q = supabase.from(source.table).select(source.columns);
-        for (const [col, val] of Object.entries(source.match ?? {})) q = q.eq(col, val);
+        for (const f of activeFilters) q = f.op === "in" ? q.in(f.column, f.value) : q.eq(f.column, f.value);
         // `or` with ilike gives one round trip across every searchable column.
         const escaped = term.replace(/[%,()]/g, " ");
         q = q.or(source.searchColumns.map((c) => `${c}.ilike.%${escaped}%`).join(","));
@@ -134,7 +162,7 @@ export function SearchablePicker({
         const rows = await getCachedMasterData<Record<string, unknown>>(source.table);
         const lower = term.toLowerCase();
         found = rows
-          .filter((r) => (source.match ? Object.entries(source.match).every(([c, v]) => r[c] === v) : true))
+          .filter((r) => rowMatches(r, activeFilters))
           .filter((r) => source.searchColumns.some((c) => String(r[c] ?? "").toLowerCase().includes(lower)))
           .slice(0, RESULT_LIMIT)
           .map((r) => source.toOption(r));
@@ -147,7 +175,7 @@ export function SearchablePicker({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [term, isOnline, source]);
+  }, [term, isOnline, source, activeFilters]);
 
   function pick(option: PickerOption) {
     setSelected(option);
@@ -182,19 +210,22 @@ export function SearchablePicker({
       {selected ? (
         <div className="input flex items-center justify-between gap-2">
           <span className="truncate text-ink">{selected.label}</span>
-          <button
-            type="button"
-            onClick={clear}
-            className="shrink-0 rounded px-1.5 text-xs text-ink-faint hover:text-ink"
-            aria-label="Change selection"
-          >
-            Change
-          </button>
+          {!disabled && (
+            <button
+              type="button"
+              onClick={clear}
+              className="shrink-0 rounded px-1.5 text-xs text-ink-faint hover:text-ink"
+              aria-label="Change selection"
+            >
+              Change
+            </button>
+          )}
         </div>
       ) : (
         <input
           type="text"
           value={query}
+          disabled={disabled}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -206,7 +237,7 @@ export function SearchablePicker({
         />
       )}
 
-      {open && !selected && (
+      {open && !selected && !disabled && (
         <div className="absolute z-40 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-line bg-surface shadow-lg">
           {shown.map((o) => (
             <button

@@ -7,6 +7,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
 import { Plus, Trash2 } from "lucide-react";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
 
 type Row = {
   key: string;
@@ -43,12 +44,29 @@ function newRow(direction: "receipt" | "payment"): Row {
  * single payment left unallocated; allocate it afterward from that
  * payment's own page.
  */
+// Same eligibility rule as the single-payment form: a Receipt row may only
+// name a client, a Payment row only a supplier.
+const PARTY_FILTERS: Record<"receipt" | "payment", PickerFilter[]> = {
+  receipt: [
+    { column: "is_active", op: "eq", value: true },
+    { column: "party_type", op: "in", value: ["client", "both"] },
+  ],
+  payment: [
+    { column: "is_active", op: "eq", value: true },
+    { column: "party_type", op: "in", value: ["supplier", "both"] },
+  ],
+};
+
 export function MultiPaymentForm({
-  parties,
+  clientParties,
+  supplierParties,
   bankAccounts,
   pettyCashFunds,
 }: {
-  parties: Tables<"parties">[];
+  // Only a first page of each list — the rest are found by typing, searched
+  // in the database rather than shipped to the browser. See SearchablePicker.
+  clientParties: Pick<Tables<"parties">, "id" | "legal_name">[];
+  supplierParties: Pick<Tables<"parties">, "id" | "legal_name">[];
   bankAccounts: Tables<"bank_accounts">[];
   pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {
@@ -72,8 +90,8 @@ export function MultiPaymentForm({
     setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.key !== key) : rs));
   }
 
-  function eligibleParties(direction: "receipt" | "payment") {
-    return parties.filter((p) => (direction === "receipt" ? p.party_type !== "supplier" : p.party_type !== "client"));
+  function partyOptions(direction: "receipt" | "payment"): PickerOption[] {
+    return (direction === "receipt" ? clientParties : supplierParties).map((p) => ({ id: p.id, label: p.legal_name }));
   }
 
   const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
@@ -225,14 +243,18 @@ export function MultiPaymentForm({
                     </select>
                   </td>
                   <td className="px-2 py-1.5">
-                    <select value={r.partyId} onChange={(e) => updateRow(r.key, { partyId: e.target.value })} className="input !py-1 text-xs">
-                      <option value="">— Select —</option>
-                      {eligibleParties(r.direction).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.legal_name}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Keyed on this row's direction so flipping
+                        Receipt/Payment clears its picked party too, matching
+                        the `partyId: ""` reset on the toggle beside it. */}
+                    <SearchablePicker
+                      key={`${r.key}-${r.direction}`}
+                      name={`party_id_${r.key}`}
+                      source={PARTY_SOURCE}
+                      filters={PARTY_FILTERS[r.direction]}
+                      initialOptions={partyOptions(r.direction)}
+                      placeholder={r.direction === "receipt" ? "Type a client…" : "Type a supplier…"}
+                      onChange={(o) => updateRow(r.key, { partyId: o?.id ?? "" })}
+                    />
                   </td>
                   <td className="px-2 py-1.5">
                     <input

@@ -26,7 +26,8 @@ export function NewJournalVoucherForm({
   pettyCashFunds,
 }: {
   accounts: Tables<"chart_of_accounts">[];
-  parties: Tables<"parties">[];
+  // A first page only — see JournalVoucherLineEditor.
+  parties: Pick<Tables<"parties">, "id" | "legal_name">[];
   bankAccounts: Tables<"bank_accounts">[];
   pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {

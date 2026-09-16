@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { SearchablePicker, PARTY_SOURCE, type PickerOption } from "@/components/SearchablePicker";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type EditableJvLine = {
@@ -25,10 +26,20 @@ export function blankJvLine(): EditableJvLine {
 export function decodeDimension(dimension: string): { party_id?: string; bank_account_id?: string; petty_cash_fund_id?: string } {
   if (!dimension) return {};
   const [type, id] = dimension.split(":");
+  // A kind chosen but no row picked yet (e.g. "party:") carries no
+  // dimension at all — the same as "—". Guards the RPC against ever being
+  // handed an empty string where it expects a uuid.
+  if (!id) return {};
   if (type === "party") return { party_id: id };
   if (type === "bank") return { bank_account_id: id };
   if (type === "petty_cash") return { petty_cash_fund_id: id };
   return {};
+}
+
+type DimensionKind = "" | "party" | "bank" | "petty_cash";
+
+function dimensionKind(dimension: string): DimensionKind {
+  return (dimension.split(":")[0] as DimensionKind) || "";
 }
 
 export function JournalVoucherLineEditor({
@@ -40,7 +51,11 @@ export function JournalVoucherLineEditor({
   onChange,
 }: {
   accounts: Tables<"chart_of_accounts">[];
-  parties: Tables<"parties">[];
+  // Only a first page of parties — the rest are found by typing, searched
+  // in the database rather than shipped to the browser. Bank accounts and
+  // petty cash funds stay plain <select>s: both are small, hand-curated
+  // admin lists that do not grow with trading volume.
+  parties: Pick<Tables<"parties">, "id" | "legal_name">[];
   bankAccounts: Tables<"bank_accounts">[];
   pettyCashFunds: Tables<"petty_cash_funds">[];
   lines: EditableJvLine[];
@@ -50,6 +65,8 @@ export function JournalVoucherLineEditor({
     if (lines.length === 0) onChange([blankJvLine(), blankJvLine()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const partyOptions: PickerOption[] = parties.map((p) => ({ id: p.id, label: p.legal_name }));
 
   function update(key: string, patch: Partial<EditableJvLine>) {
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -95,31 +112,65 @@ export function JournalVoucherLineEditor({
                     ))}
                   </select>
                 </td>
-                <td className="px-2 py-1.5">
-                  <select value={l.dimension} onChange={(e) => update(l.key, { dimension: e.target.value })} className="input !py-1 text-xs">
+                <td className="px-2 py-1.5 space-y-1">
+                  {/* The dimension used to be one <select> listing every
+                      party in the database alongside the two small admin
+                      lists. Split into "which kind" + "which one", so the
+                      party side can search the database by typing while
+                      bank/petty-cash keep their short fixed lists. */}
+                  <select
+                    value={dimensionKind(l.dimension)}
+                    onChange={(e) => update(l.key, { dimension: e.target.value ? `${e.target.value}:` : "" })}
+                    className="input !py-1 text-xs"
+                    aria-label="Dimension type"
+                  >
                     <option value="">—</option>
-                    <optgroup label="Party (AR/AP)">
-                      {parties.map((p) => (
-                        <option key={p.id} value={`party:${p.id}`}>
-                          {p.legal_name}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Bank Account">
+                    <option value="party">Party (AR/AP)</option>
+                    <option value="bank">Bank Account</option>
+                    <option value="petty_cash">Petty Cash Fund</option>
+                  </select>
+
+                  {dimensionKind(l.dimension) === "party" && (
+                    <SearchablePicker
+                      name={`jv_party_${l.key}`}
+                      source={PARTY_SOURCE}
+                      initialOptions={partyOptions}
+                      placeholder="Type a party name…"
+                      onChange={(o) => update(l.key, { dimension: `party:${o?.id ?? ""}` })}
+                    />
+                  )}
+
+                  {dimensionKind(l.dimension) === "bank" && (
+                    <select
+                      value={l.dimension}
+                      onChange={(e) => update(l.key, { dimension: e.target.value })}
+                      className="input !py-1 text-xs"
+                      aria-label="Bank account"
+                    >
+                      <option value="bank:">— Select —</option>
                       {bankAccounts.map((b) => (
                         <option key={b.id} value={`bank:${b.id}`}>
                           {b.account_name}
                         </option>
                       ))}
-                    </optgroup>
-                    <optgroup label="Petty Cash Fund">
+                    </select>
+                  )}
+
+                  {dimensionKind(l.dimension) === "petty_cash" && (
+                    <select
+                      value={l.dimension}
+                      onChange={(e) => update(l.key, { dimension: e.target.value })}
+                      className="input !py-1 text-xs"
+                      aria-label="Petty cash fund"
+                    >
+                      <option value="petty_cash:">— Select —</option>
                       {pettyCashFunds.map((f) => (
                         <option key={f.id} value={`petty_cash:${f.id}`}>
                           {f.fund_name}
                         </option>
                       ))}
-                    </optgroup>
-                  </select>
+                    </select>
+                  )}
                 </td>
                 <td className="px-2 py-1.5">
                   <input value={l.memo} onChange={(e) => update(l.key, { memo: e.target.value })} className="input !py-1 text-xs" placeholder="Memo" />
