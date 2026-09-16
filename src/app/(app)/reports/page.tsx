@@ -2,9 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
-import { computeHealth, daysSince, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE, type HealthLabel } from "@/lib/orderHealth";
-import { agingBucket, dueDateFrom } from "@/lib/aging";
-import { resolveRange, toExclusiveUpperBound, buildTimeBuckets, countInBuckets, RANGE_LABEL } from "@/lib/dashboardHelpers";
+import { HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE, type HealthLabel } from "@/lib/orderHealth";
+import { resolveRange, buildTimeBuckets, RANGE_LABEL } from "@/lib/dashboardHelpers";
 import { TrendLineChart, type TrendSeries } from "@/components/TrendLineChart";
 import { CompareBarChart, type CompareBar } from "@/components/CompareBarChart";
 import { Badge } from "@/components/ui/Badge";
@@ -39,15 +38,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const selectedLine = line === "material_supply" || line === "fabrication" ? line : "combined";
   const resolved = resolveRange(range, fromParam, toParam);
   const { from, to } = resolved;
-  const toExclusive = toExclusiveUpperBound(to);
-  const today = new Date().toISOString().slice(0, 10);
-
-  function matchesLine(businessLine: string | null | undefined) {
-    return selectedLine === "combined" || businessLine === selectedLine;
-  }
-  function inRange(dateStr: string) {
-    return dateStr >= from && dateStr < toExclusive;
-  }
   function buildHref(overrides: Partial<{ range: string; line: string; from: string; to: string }>) {
     const merged = { range: resolved.range as string, line: selectedLine as string, from, to, ...overrides };
     const params = new URLSearchParams();
@@ -65,164 +55,70 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   const supabase = await createClient();
 
+  // Every figure on this dashboard used to come from fetching whole tables —
+  // every query, quotation, sales order, payment, invoice, job, PO and
+  // delivery challan ever created — and reducing them in JavaScript. On the
+  // owner's home screen, that grew with the business forever.
+  //
+  // fn_owner_dashboard returns the scalars as one row; the three short tables
+  // return exactly the six rows they display; the trend chart gets per-day
+  // counts instead of raw rows. What each function computes is documented in
+  // its migration, and every figure was checked against the old JS result
+  // before this page was switched over.
   const [
-    { data: queriesAll },
-    { data: quotationsAll },
-    { data: salesOrdersAll },
-    { data: soLinesAll },
-    { data: paymentsAll },
-    { data: invoiceOutstandingRows },
-    { data: invoicesAll },
-    { data: partiesAll },
-    { data: arSummary },
-    { data: supplierBillOutstandingRows },
-    { data: cashRow },
-    { data: bankBalances },
-    { data: pettyBalances },
-    { data: currentStock },
-    { data: purchaseOrdersAll },
-    { data: jobsAll },
-    { data: deliveryChallansAll },
-    { data: jobMaterialReqShort },
+    { data: dash },
+    { data: trendRows },
+    { data: jobStatusList },
+    { data: pendingDeliveryList },
+    { data: paymentFollowupList },
+    { data: recentQueries },
+    { data: recentQuotations },
     { data: dailySnapshots },
   ] = await Promise.all([
-    supabase.from("queries").select("id, query_no, query_date, status, created_at, parties(legal_name)").order("created_at", { ascending: false }),
-    supabase
-      .from("quotations")
-      .select("id, quotation_no, status, created_at, party_id, parties(legal_name), queries(next_followup_at)")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("sales_orders")
-      .select("id, so_no, business_line, status, grand_total, delivery_schedule, updated_at, created_at, quotation_id, party_id, parties(legal_name)")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("sales_order_lines")
-      .select("id, ordered_qty, delivered_qty, invoiced_qty, item_id, sales_orders!inner(so_no, business_line, status, po_date, parties(legal_name))")
-      .not("sales_orders.status", "in", "(Cancelled,Closed)"),
-    supabase.from("payments").select("id, direction, amount, status, created_at"),
-    supabase.from("invoice_outstanding").select("invoice_id, party_id, outstanding_amount").gt("outstanding_amount", 0),
-    supabase.from("invoices").select("id, invoice_date, party_id, sales_order_id"),
-    supabase.from("parties").select("id, legal_name, credit_limit, credit_days, party_type"),
-    supabase.from("party_ar_summary").select("*"),
-    supabase.from("supplier_bill_outstanding").select("outstanding_amount"),
-    supabase.from("cash_in_hand_balance").select("*").maybeSingle(),
-    supabase.from("bank_account_balances").select("balance").eq("is_active", true),
-    supabase.from("petty_cash_fund_balances").select("balance").eq("is_active", true),
-    supabase.from("current_stock").select("stock_value"),
-    supabase.from("purchase_orders").select("id, po_no, status, expected_delivery, updated_at"),
-    supabase
-      .from("jobs")
-      .select("id, job_no, status, required_delivery_date, updated_at, progress_pct, sales_orders(so_no, parties(legal_name))")
-      .order("updated_at", { ascending: false }),
-    supabase.from("delivery_challans").select("id, status, acceptance_status"),
-    supabase
-      .from("job_material_requirements")
-      .select("item_id, required_qty, reserved_qty, issued_qty, source, jobs!inner(status)")
-      .eq("source", "stock")
-      .eq("jobs.status", "MaterialPending"),
+    supabase.rpc("fn_owner_dashboard", { p_line: selectedLine, p_from: from, p_to: to }),
+    supabase.rpc("fn_dashboard_trend", { p_line: selectedLine, p_from: from, p_to: to }),
+    supabase.rpc("fn_dashboard_job_status", { p_line: selectedLine }),
+    supabase.rpc("fn_dashboard_pending_delivery", { p_line: selectedLine }),
+    supabase.rpc("fn_dashboard_payment_followups"),
+    supabase.from("queries").select("id, query_no, status, parties(legal_name)").order("created_at", { ascending: false }).limit(6),
+    supabase.from("quotations").select("id, quotation_no, status, parties(legal_name)").order("created_at", { ascending: false }).limit(6),
     supabase.from("daily_snapshots").select("*").order("snapshot_date", { ascending: false }).limit(30),
   ]);
 
-  // ---------- Shared lookups ----------
-  type PartyRef = { legal_name: string } | null;
-  const soById = new Map((salesOrdersAll ?? []).map((s) => [s.id, s]));
+  const d = (dash ?? {}) as Record<string, number>;
+  const num = (key: string) => Number(d[key] ?? 0);
 
   // ---------- Flow KPIs (period-filtered) ----------
-  const queriesInRangeCount = (queriesAll ?? []).filter((q) => inRange(q.created_at)).length;
-  const quotationsSentInRange = (quotationsAll ?? []).filter((q) => q.status !== "Draft" && inRange(q.created_at));
-  const salesOrdersInRange = (salesOrdersAll ?? []).filter((s) => matchesLine(s.business_line) && inRange(s.created_at));
-  const quotationIdsInRange = new Set(quotationsSentInRange.map((q) => q.id));
-  const convertedInRange = (salesOrdersAll ?? []).filter((s) => s.status !== "Cancelled" && quotationIdsInRange.has(s.quotation_id)).length;
-  const conversionPct = quotationsSentInRange.length ? Math.round((convertedInRange / quotationsSentInRange.length) * 100) : 0;
-  const paymentsReceivedTotal = (paymentsAll ?? [])
-    .filter((p) => p.direction === "receipt" && p.status === "Posted" && inRange(p.created_at))
-    .reduce((sum, p) => sum + p.amount, 0);
+  const queriesInRangeCount = num("queries_in_range");
+  const quotationsSentCount = num("quotations_sent_in_range");
+  const salesOrdersInRangeCount = num("sales_orders_in_range");
+  const convertedInRange = num("converted_in_range");
+  const conversionPct = quotationsSentCount ? Math.round((convertedInRange / quotationsSentCount) * 100) : 0;
+  const paymentsReceivedTotal = num("payments_received_total");
 
   // ---------- Point-in-time KPIs ----------
-  const pendingLines = (soLinesAll ?? []).map((l) => {
-    const so = l.sales_orders as unknown as { so_no: string; business_line: string; status: string; po_date: string; parties: PartyRef };
-    return {
-      so_no: so.so_no,
-      business_line: so.business_line,
-      client: so.parties?.legal_name ?? "—",
-      po_date: so.po_date,
-      pendingDeliver: l.ordered_qty - l.delivered_qty,
-      pendingInvoice: l.delivered_qty - l.invoiced_qty,
-    };
-  });
-  const pendingDeliverLines = pendingLines.filter((l) => matchesLine(l.business_line) && l.pendingDeliver > 0.001);
-  const pendingInvoiceLines = pendingLines.filter((l) => matchesLine(l.business_line) && l.pendingInvoice > 0.001);
-
-  const invoiceById = new Map((invoicesAll ?? []).map((i) => [i.id, i]));
-  const partyById = new Map((partiesAll ?? []).map((p) => [p.id, p]));
-  const receivablesTotal = (invoiceOutstandingRows ?? [])
-    .filter((o) => matchesLine(soById.get(invoiceById.get(o.invoice_id!)?.sales_order_id ?? "")?.business_line))
-    .reduce((sum, o) => sum + (o.outstanding_amount ?? 0), 0);
-  const payablesTotal = (supplierBillOutstandingRows ?? []).reduce((sum, r) => sum + (r.outstanding_amount ?? 0), 0);
-
-  const cashBalance = cashRow?.balance ?? 0;
-  const bankTotal = (bankBalances ?? []).reduce((s, b) => s + (b.balance ?? 0), 0);
-  const pettyTotal = (pettyBalances ?? []).reduce((s, p) => s + (p.balance ?? 0), 0);
-  const cashBankTotal = cashBalance + bankTotal + pettyTotal;
-  const stockValueTotal = (currentStock ?? []).reduce((s, r) => s + (r.stock_value ?? 0), 0);
-
-  // ---------- Overdue AR (Payment Overdue action item + Payment Follow-ups table + Accounts bucket) ----------
-  const overdueInvoiceRows = (invoiceOutstandingRows ?? [])
-    .map((o) => {
-      const inv = invoiceById.get(o.invoice_id!);
-      const party = inv ? partyById.get(inv.party_id) : null;
-      if (!inv || !party) return null;
-      const dueDate = dueDateFrom(inv.invoice_date, party.credit_days ?? 0);
-      const bucket = agingBucket(dueDate);
-      return { invoiceId: o.invoice_id!, partyId: party.id, client: party.legal_name, amount: o.outstanding_amount ?? 0, dueDate, overdueDays: daysSince(dueDate), bucket };
-    })
-    .filter((r): r is NonNullable<typeof r> => !!r && r.bucket !== "current")
-    .sort((a, b) => b.overdueDays - a.overdueDays);
-
-  // ---------- Credit Limit Warning ----------
-  const outstandingByParty = new Map((arSummary ?? []).map((s) => [s.party_id, s.total_outstanding ?? 0]));
-  const creditWarningCount = (partiesAll ?? []).filter((p) => {
-    if (!["client", "both"].includes(p.party_type) || p.credit_limit <= 0) return false;
-    const outstanding = outstandingByParty.get(p.id) ?? 0;
-    return outstanding / p.credit_limit >= 0.9;
-  }).length;
-
-  // ---------- Quotation Follow-up Due ----------
-  const quotationFollowupCount = (quotationsAll ?? []).filter((q) => {
-    if (q.status !== "Sent") return false;
-    const qInfo = q.queries as unknown as { next_followup_at: string | null } | null;
-    return !!qInfo?.next_followup_at && qInfo.next_followup_at <= today;
-  }).length;
-
-  // ---------- Raw Material Shortage ----------
-  const shortageItemIds = new Set<string>();
-  for (const r of jobMaterialReqShort ?? []) {
-    if (r.required_qty - r.reserved_qty - r.issued_qty > 0.001) shortageItemIds.add(r.item_id);
-  }
-
-  // ---------- Order Health (On Track / Attention Required / Delayed) ----------
-  const soForHealth = (salesOrdersAll ?? []).filter((s) => matchesLine(s.business_line) && !["Delivered", "Invoiced", "Closed", "Cancelled"].includes(s.status));
-  const jobForHealth = selectedLine === "material_supply" ? [] : (jobsAll ?? []).filter((j) => !["Delivered", "Cancelled"].includes(j.status));
-  const poForHealth = (purchaseOrdersAll ?? []).filter((p) => !["Received", "Closed", "Cancelled"].includes(p.status));
-  const healthLabels: HealthLabel[] = [
-    ...soForHealth.map((s) => computeHealth({ isOpen: true, promisedDate: s.delivery_schedule, updatedAt: s.updated_at })?.label ?? "OnTrack"),
-    ...jobForHealth.map((j) => computeHealth({ isOpen: true, promisedDate: j.required_delivery_date, updatedAt: j.updated_at })?.label ?? "OnTrack"),
-    ...poForHealth.map((p) => computeHealth({ isOpen: true, promisedDate: p.expected_delivery, updatedAt: p.updated_at })?.label ?? "OnTrack"),
-  ];
-  const onTrackCount = healthLabels.filter((l) => l === "OnTrack").length;
-  const attentionCount = healthLabels.filter((l) => l === "AtRisk" || l === "Stalled").length;
-  const delayedCount = healthLabels.filter((l) => l === "Delayed").length;
-
-  const jobDelayedCount = jobForHealth.filter(
-    (j) => computeHealth({ isOpen: true, promisedDate: j.required_delivery_date, updatedAt: j.updated_at })?.label === "Delayed"
-  ).length;
-  const deliveryOverdueCount = soForHealth.filter(
-    (s) => computeHealth({ isOpen: true, promisedDate: s.delivery_schedule, updatedAt: s.updated_at })?.label === "Delayed"
-  ).length;
-  const materialPendingJobCount = selectedLine === "material_supply" ? 0 : (jobsAll ?? []).filter((j) => j.status === "MaterialPending").length;
-  const clientAcceptancePendingCount = (deliveryChallansAll ?? []).filter((d) => d.status === "Issued" && d.acceptance_status === "Pending").length;
+  const pendingDeliverCount = num("pending_deliver_count");
+  const pendingInvoiceCount = num("pending_invoice_count");
+  const receivablesTotal = num("receivables_total");
+  const payablesTotal = num("payables_total");
+  const cashBankTotal = num("cash_balance") + num("bank_total") + num("petty_total");
+  const stockValueTotal = num("stock_value_total");
 
   // ---------- Action Required ----------
+  const creditWarningCount = num("credit_warning_count");
+  const quotationFollowupCount = num("quotation_followup_count");
+  const shortageItemCount = num("shortage_item_count");
+  const materialPendingJobCount = num("material_pending_job_count");
+  const jobDelayedCount = num("job_delayed_count");
+  const deliveryOverdueCount = num("delivery_overdue_count");
+  const clientAcceptancePendingCount = num("client_acceptance_pending_count");
+  const overdueInvoiceCount = num("overdue_invoice_count");
+
+  // ---------- Order Health ----------
+  const onTrackCount = num("on_track_count");
+  const attentionCount = num("attention_count");
+  const delayedCount = num("delayed_count");
+
   type ActionItem = { key: string; label: string; count: number; href: string };
   const actionItems: ActionItem[] = [
     { key: "credit", label: "Credit Limit Warning", count: creditWarningCount, href: "/reports/credit-limit-warning" },
@@ -230,64 +126,48 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     ...(selectedLine === "material_supply"
       ? []
       : [{ key: "matpurchase", label: "Material Purchase Pending", count: materialPendingJobCount, href: "/jobs?status=MaterialPending" }]),
-    ...(selectedLine === "material_supply" ? [] : [{ key: "shortage", label: "Raw Material Shortage", count: shortageItemIds.size, href: "/reports/raw-material-shortage" }]),
+    ...(selectedLine === "material_supply" ? [] : [{ key: "shortage", label: "Raw Material Shortage", count: shortageItemCount, href: "/reports/raw-material-shortage" }]),
     ...(selectedLine === "material_supply" ? [] : [{ key: "jobdelay", label: "Job Delayed", count: jobDelayedCount, href: "/reports/order-health" }]),
     { key: "deliveryoverdue", label: "Delivery Overdue", count: deliveryOverdueCount, href: "/reports/order-health" },
     { key: "acceptance", label: "Client Acceptance Pending", count: clientAcceptancePendingCount, href: "/delivery-challans?acceptance=Pending" },
-    { key: "invoicepending", label: "Invoice Pending", count: pendingInvoiceLines.length, href: "/reports/pending-orders" },
-    { key: "paymentoverdue", label: "Payment Overdue", count: overdueInvoiceRows.length, href: "/reports/ar-aging" },
+    { key: "invoicepending", label: "Invoice Pending", count: pendingInvoiceCount, href: "/reports/pending-orders" },
+    { key: "paymentoverdue", label: "Payment Overdue", count: overdueInvoiceCount, href: "/reports/ar-aging" },
   ];
 
   // ---------- Pending From Whom ----------
-  const openPoCount = (purchaseOrdersAll ?? []).filter((p) => !["Received", "Closed", "Cancelled"].includes(p.status)).length;
-  const fabricationPendingCount =
-    selectedLine === "material_supply"
-      ? 0
-      : (jobsAll ?? []).filter((j) => {
-          if (["Delivered", "Cancelled"].includes(j.status)) return false;
-          const label = computeHealth({ isOpen: true, promisedDate: j.required_delivery_date, updatedAt: j.updated_at })?.label ?? "OnTrack";
-          return label === "AtRisk" || label === "Stalled" || label === "Delayed";
-        }).length;
-  const clientPendingCount = (quotationsAll ?? []).filter((q) => q.status === "Sent").length;
-  const accountsPendingCount = new Set(overdueInvoiceRows.map((r) => r.partyId)).size;
-
   type PendingBucket = { key: string; label: string; count: number; href: string };
   const pendingFromWhom: PendingBucket[] = [
-    { key: "client", label: "Client", count: clientPendingCount, href: "/quotations?status=Sent" },
-    { key: "supplier", label: "Supplier", count: openPoCount, href: "/purchase-orders?open=1" },
+    { key: "client", label: "Client", count: num("client_pending_count"), href: "/quotations?status=Sent" },
+    { key: "supplier", label: "Supplier", count: num("open_po_count"), href: "/purchase-orders?open=1" },
     ...(selectedLine === "material_supply"
       ? []
       : [{ key: "purchase", label: "Purchase", count: materialPendingJobCount, href: "/jobs?status=MaterialPending" }]),
-    ...(selectedLine === "material_supply" ? [] : [{ key: "fabrication", label: "Fabrication", count: fabricationPendingCount, href: "/jobs?health=attention" }]),
-    { key: "accounts", label: "Accounts", count: accountsPendingCount, href: "/reports/ar-aging" },
+    ...(selectedLine === "material_supply"
+      ? []
+      : [{ key: "fabrication", label: "Fabrication", count: num("fabrication_pending_count"), href: "/jobs?health=attention" }]),
+    { key: "accounts", label: "Accounts", count: num("accounts_pending_count"), href: "/reports/ar-aging" },
   ];
 
   // ---------- Management Charts ----------
+  // The buckets themselves are still built here (daily up to 31 days, weekly
+  // beyond), but they are filled from per-day counts rather than from every
+  // row's created_at.
   const buckets = buildTimeBuckets(from, to);
   const bucketLabels = buckets.map((b) => b.label);
+  function sumPerBucket(pick: (r: { day: string; queries: number; quotations: number; sales_orders: number }) => number): number[] {
+    return buckets.map((b) =>
+      (trendRows ?? []).reduce((total, r) => (r.day >= b.start && r.day <= b.end ? total + pick(r) : total), 0)
+    );
+  }
   const trendSeries: TrendSeries[] = [
-    { key: "queries", label: "Queries", color: "var(--ledger)", values: countInBuckets((queriesAll ?? []).map((q) => q.created_at), buckets) },
-    {
-      key: "quotations",
-      label: "Quotations",
-      color: "var(--accent)",
-      values: countInBuckets((quotationsAll ?? []).filter((q) => q.status !== "Draft").map((q) => q.created_at), buckets),
-    },
-    {
-      key: "po",
-      label: "PO Received (Sales Order)",
-      color: "var(--good)",
-      values: countInBuckets((salesOrdersAll ?? []).filter((s) => matchesLine(s.business_line)).map((s) => s.created_at), buckets),
-    },
+    { key: "queries", label: "Queries", color: "var(--ledger)", values: sumPerBucket((r) => Number(r.queries)) },
+    { key: "quotations", label: "Quotations", color: "var(--accent)", values: sumPerBucket((r) => Number(r.quotations)) },
+    { key: "po", label: "PO Received (Sales Order)", color: "var(--good)", values: sumPerBucket((r) => Number(r.sales_orders)) },
   ];
 
-  const activeMaterialSupplySoCount = (salesOrdersAll ?? []).filter(
-    (s) => s.business_line === "material_supply" && !["Delivered", "Invoiced", "Closed", "Cancelled"].includes(s.status)
-  ).length;
-  const activeFabricationJobCount = (jobsAll ?? []).filter((j) => !["Delivered", "Cancelled"].includes(j.status)).length;
   const materialVsFabricationBars: CompareBar[] = [
-    { key: "ms", label: "Material Supply Orders (Active)", value: activeMaterialSupplySoCount, color: "var(--ledger)" },
-    { key: "fab", label: "Fabrication Jobs (In Progress)", value: activeFabricationJobCount, color: "var(--accent)" },
+    { key: "ms", label: "Material Supply Orders (Active)", value: num("active_material_supply_so_count"), color: "var(--ledger)" },
+    { key: "fab", label: "Fabrication Jobs (In Progress)", value: num("active_fabrication_job_count"), color: "var(--accent)" },
   ];
 
   const receivablesVsPayablesBars: CompareBar[] = [
@@ -304,21 +184,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const financialTrendLabels = snapshotsAsc.map((s) => s.snapshot_date.slice(5));
 
   // ---------- Operational sections ----------
-  const recentQueries = (queriesAll ?? []).slice(0, 6);
-  const recentQuotations = (quotationsAll ?? []).slice(0, 6);
-  const HEALTH_RANK: Record<HealthLabel, number> = { Delayed: 0, Stalled: 1, AtRisk: 2, OnTrack: 3 };
-  const jobStatusRows = (jobsAll ?? [])
-    .filter((j) => !["Delivered", "Cancelled"].includes(j.status))
-    .map((j) => ({ ...j, health: computeHealth({ isOpen: true, promisedDate: j.required_delivery_date, updatedAt: j.updated_at }) }))
-    .sort((a, b) => HEALTH_RANK[a.health?.label ?? "OnTrack"] - HEALTH_RANK[b.health?.label ?? "OnTrack"])
-    .slice(0, 6);
-  const pendingDeliveryRows = pendingDeliverLines
-    .map((l) => ({ ...l, days: daysSince(l.po_date) }))
-    .sort((a, b) => b.days - a.days)
-    .slice(0, 6);
-  const paymentFollowupRows = overdueInvoiceRows.slice(0, 6);
+  const jobStatusRows = jobStatusList ?? [];
+  const pendingDeliveryRows = pendingDeliveryList ?? [];
+  const paymentFollowupRows = paymentFollowupList ?? [];
 
   const latestSnapshot = dailySnapshots?.[0];
+
+  type PartyRef = { legal_name: string } | null;
 
   return (
     <div className="space-y-6">
@@ -381,14 +253,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       {/* ---------- TOP KPI CARDS ---------- */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard realHref={`/queries?from=${from}&to=${to}`} value={queriesInRangeCount.toLocaleString()} label="Queries Received" icon={<HelpCircle size={17} />} />
-        <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={quotationsSentInRange.length.toLocaleString()} label="Quotations Sent" icon={<FileText size={17} />} />
-        <KpiCard realHref={`/sales-orders?from=${from}&to=${to}`} value={salesOrdersInRange.length.toLocaleString()} label="PO Received" icon={<ShoppingCart size={17} />} />
+        <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={quotationsSentCount.toLocaleString()} label="Quotations Sent" icon={<FileText size={17} />} />
+        <KpiCard realHref={`/sales-orders?from=${from}&to=${to}`} value={salesOrdersInRangeCount.toLocaleString()} label="PO Received" icon={<ShoppingCart size={17} />} />
         <KpiCard realHref={`/quotations?from=${from}&to=${to}`} value={`${conversionPct}%`} label="Quotation → PO Conversion" icon={<TrendingUp size={17} />} />
         <KpiCard
           realHref="/reports/pending-orders"
-          value={pendingDeliverLines.length.toLocaleString()}
+          value={pendingDeliverCount.toLocaleString()}
           label="Pending Deliveries"
-          tone={pendingDeliverLines.length > 0 ? "warn" : undefined}
+          tone={pendingDeliverCount > 0 ? "warn" : undefined}
           icon={<Truck size={17} />}
         />
         <KpiCard
@@ -440,7 +312,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SectionCard title="Recent Queries" seeAllHref="/queries">
           <div className="divide-y divide-line">
-            {recentQueries.map((q) => (
+            {(recentQueries ?? []).map((q) => (
               <Link key={q.id} href={`/queries/${q.id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                 <span className="text-ink-soft text-xs">
                   <span className="font-mono text-ink">{q.query_no}</span> — {(q.parties as unknown as PartyRef)?.legal_name ?? "—"}
@@ -448,13 +320,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <span className="text-ink-faint text-xs whitespace-nowrap">{q.status}</span>
               </Link>
             ))}
-            {!recentQueries.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No queries found.</p>}
+            {!recentQueries?.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No queries found.</p>}
           </div>
         </SectionCard>
 
         <SectionCard title="Recent Quotations" seeAllHref="/quotations">
           <div className="divide-y divide-line">
-            {recentQuotations.map((q) => (
+            {(recentQuotations ?? []).map((q) => (
               <Link key={q.id} href={`/quotations/${q.id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                 <span className="text-ink-soft text-xs">
                   <span className="font-mono text-ink">{q.quotation_no}</span> — {(q.parties as unknown as PartyRef)?.legal_name ?? "—"}
@@ -462,7 +334,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <span className="text-ink-faint text-xs whitespace-nowrap">{q.status}</span>
               </Link>
             ))}
-            {!recentQuotations.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No quotations found.</p>}
+            {!recentQuotations?.length && <p className="px-4 py-4 text-center text-xs text-ink-faint">No quotations found.</p>}
           </div>
         </SectionCard>
 
@@ -470,15 +342,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <SectionCard title="Fabrication Jobs Status" seeAllHref="/jobs">
             <div className="divide-y divide-line">
               {jobStatusRows.map((j) => {
-                const so = j.sales_orders as unknown as { so_no: string; parties: PartyRef } | null;
                 return (
                   <Link key={j.id} href={`/jobs/${j.id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                     <span className="text-ink-soft text-xs">
-                      <span className="font-mono text-ink">{j.job_no}</span> — {so?.parties?.legal_name ?? "—"} ({j.progress_pct}%)
+                      <span className="font-mono text-ink">{j.job_no}</span> — {j.client} ({j.progress_pct}%)
                     </span>
-                    {j.health && (
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${HEALTH_BADGE_STYLE[j.health.label]}`}>{HEALTH_LABEL_TEXT[j.health.label]}</span>
-                    )}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${HEALTH_BADGE_STYLE[j.health_label as HealthLabel]}`}>
+                      {HEALTH_LABEL_TEXT[j.health_label as HealthLabel]}
+                    </span>
                   </Link>
                 );
               })}
@@ -504,10 +375,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <SectionCard title="Payment Follow-ups" seeAllHref="/reports/ar-aging">
           <div className="divide-y divide-line">
             {paymentFollowupRows.map((r) => (
-              <Link key={r.invoiceId} href={`/clients/${r.partyId}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
+              <Link key={r.invoice_id} href={`/clients/${r.party_id}`} className="flex items-center justify-between px-4 py-2 text-sm even:bg-bg hover:bg-surface-2 transition">
                 <span className="text-ink-soft text-xs">{r.client}</span>
                 <span className="text-xs tabular text-bad font-medium">
-                  {r.amount.toLocaleString()} ({r.overdueDays}d)
+                  {r.amount.toLocaleString()} ({r.overdue_days}d)
                 </span>
               </Link>
             ))}

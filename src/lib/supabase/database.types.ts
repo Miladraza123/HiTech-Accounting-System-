@@ -4792,9 +4792,51 @@ export type Database = {
           party_id: string
         }[]
       }
+      fn_dashboard_job_status: {
+        Args: { p_line: string }
+        Returns: {
+          client: string
+          health_label: string
+          id: string
+          job_no: string
+          progress_pct: number
+          so_no: string
+        }[]
+      }
+      fn_dashboard_payment_followups: {
+        Args: never
+        Returns: {
+          amount: number
+          client: string
+          invoice_id: string
+          overdue_days: number
+          party_id: string
+        }[]
+      }
+      fn_dashboard_pending_delivery: {
+        Args: { p_line: string }
+        Returns: {
+          client: string
+          days: number
+          so_no: string
+        }[]
+      }
+      fn_dashboard_trend: {
+        Args: { p_from: string; p_line: string; p_to: string }
+        Returns: {
+          day: string
+          queries: number
+          quotations: number
+          sales_orders: number
+        }[]
+      }
       fn_days_since: { Args: { p_date: string }; Returns: number }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
+      fn_health_label: {
+        Args: { p_promised: string; p_updated: string }
+        Returns: string
+      }
       fn_import_opening_stock: {
         Args: {
           p_as_of_date: string
@@ -4847,6 +4889,10 @@ export type Database = {
         Returns: undefined
       }
       fn_owner_bootstrap_already_used: { Args: never; Returns: boolean }
+      fn_owner_dashboard: {
+        Args: { p_from: string; p_line: string; p_to: string }
+        Returns: Json
+      }
       fn_owner_exists: { Args: never; Returns: boolean }
       fn_party_ledger: {
         Args: { p_limit: number; p_offset: number; p_party_id: string }
