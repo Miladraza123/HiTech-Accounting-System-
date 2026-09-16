@@ -119,7 +119,29 @@ const RECHECK_INTERVAL_MS = 15000;
 // parent record id in the URL; a flat URL list can't warm those
 // (documented, not solved, same as every phase since Phase 2 already noted
 // for this exact constraint).
+/**
+ * sw.js's persisted record of the last navigation its fetch handler saw.
+ * It is read back out of Cache Storage, so the shape is what sw.js writes
+ * rather than anything the type system can guarantee — every field is read
+ * defensively below.
+ */
+type NavDebugRecord = {
+  url: string;
+  outcome: string;
+  extra?: {
+    fetchError?: string;
+    timedOut?: boolean;
+    timeoutMs?: number;
+    believedOnline?: boolean;
+  } | null;
+  cacheVersion: string;
+  at: string;
+};
+
 const WARM_CACHE_URLS = [
+  // The sign-in page — the first page anyone actually sees, and until now
+  // the one page with no cached copy at all. See networkFirst() in sw.js.
+  "/login",
   "/queries",
   "/queries/new",
   "/tasks",
@@ -215,13 +237,7 @@ export function OfflineQueueProvider({
   // repro instead of inferring it from symptoms two or three layers
   // removed. Read directly from Cache Storage (available to the page
   // itself, not just the service worker) — see the polling effect below.
-  const [lastNavDebug, setLastNavDebug] = useState<{
-    url: string;
-    outcome: string;
-    extra: unknown;
-    cacheVersion: string;
-    at: string;
-  } | null>(null);
+  const [lastNavDebug, setLastNavDebug] = useState<NavDebugRecord | null>(null);
   // Read inside the retry interval below without needing it in that
   // effect's dependency array (which must stay `[]` — it sets up
   // listeners/intervals once for the component's lifetime).
@@ -548,7 +564,7 @@ function OfflineStatusBanner({
   offlineReason: string | null;
   buildVersion?: string;
   warmCacheStatus: { cachedCount: number; total: number; failed: string[] } | null;
-  lastNavDebug: { url: string; outcome: string; extra: unknown; cacheVersion: string; at: string } | null;
+  lastNavDebug: NavDebugRecord | null;
 }) {
   if (isOnline && pendingCount === 0) return null;
   return (
@@ -594,6 +610,14 @@ function OfflineStatusBanner({
       {lastNavDebug && (
         <div className="mt-0.5 break-all text-[10px] text-ink-faint">
           Last nav [{lastNavDebug.cacheVersion}]: {lastNavDebug.url} → {lastNavDebug.outcome}
+          {/* The reason, not just the outcome: "our own deadline fired" and
+              "the network really failed" look identical without it, and that
+              is exactly the difference the start_url bug turned on. */}
+          {lastNavDebug.extra?.fetchError && (
+            <span className="ml-1">
+              ({lastNavDebug.extra.timedOut ? `timed out after ${lastNavDebug.extra.timeoutMs}ms` : lastNavDebug.extra.fetchError})
+            </span>
+          )}
         </div>
       )}
     </div>

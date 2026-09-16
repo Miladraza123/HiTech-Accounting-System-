@@ -123,7 +123,7 @@
 // in. The client-triggered WARM_CACHE (OfflineQueueProvider.tsx) stays
 // in place too, as a second layer — refreshing dropdown data on every
 // reconnect and retrying whatever this pass didn't catch.
-const CACHE_VERSION = "v13";
+const CACHE_VERSION = "v14";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -144,6 +144,13 @@ const PRECACHE_URLS = [
 // warm pass without waiting for any page's JS to load, hydrate, or post
 // a message first — see this file's v10 -> v11 comment above for why.
 const WARM_CACHE_URLS = [
+  // The sign-in page. It is the first page anyone actually sees, and until
+  // now it was the one page with no cached copy at all — see
+  // networkFirst()'s own comment about the start_url. warmCache() already
+  // refuses to cache a redirected response, so a warm pass that runs while
+  // someone IS signed in (proxy.ts bounces /login -> /) just records it as
+  // failed instead of caching the wrong page here.
+  "/login",
   "/queries",
   "/queries/new",
   "/tasks",
@@ -366,15 +373,57 @@ async function recordNavOutcome(url, outcome, extra) {
 // same AbortController pattern warmCache() already uses) guarantees this
 // function always resolves quickly, well within the fallback path, so
 // the browser never has a chance to give up on its own first.
-const NAVIGATION_FETCH_TIMEOUT_MS = 5000;
+// v13 -> v14: the deadline above was being applied to every navigation
+// equally, and that turned out to be wrong in the one case that matters
+// most — opening the app.
+//
+// The PWA's start_url is "/", and "/" can NEVER be served from this cache,
+// in any state. A navigation request carries redirect: "manual", so fetch()
+// answers a redirect with an opaqueredirect response (status 0, ok false),
+// which the success branch below deliberately does not cache. And "/" is
+// always a redirect: proxy.ts sends a signed-out visitor to
+// /login?redirectedFrom=%2F, and (app)/page.tsx sends a signed-in one to
+// /reports or /tasks. It is in neither PRECACHE_URLS nor WARM_CACHE_URLS
+// either. So caches.match("/") is a guaranteed miss, which makes the app's
+// own launch URL the single URL in the whole app with no fallback: the
+// instant that one fetch fails for ANY reason, this function goes straight
+// to offline.html.
+//
+// That is what a real device was hitting on every cold open, with a working
+// connection: the app showed offline.html, and "Try Again" then loaded the
+// login page immediately. Every request to "/" runs proxy.ts, which calls
+// supabase.auth.getUser() — a round trip to Supabase Auth, and a token
+// REFRESH whenever the access token has expired, which it has after the app
+// has been closed a while. A cold serverless function plus that refresh plus
+// mobile latency can comfortably exceed five seconds; the retry is fast
+// because by then the function is warm and the token is fresh. Note the
+// symptom of the imbalance right in this file: the background warm-up got
+// 8s per URL while the actual navigation got 5s.
+//
+// The short deadline exists (v9 -> v10) to beat Chrome's own native "page
+// couldn't load" screen when the device is genuinely offline and the request
+// hangs instead of failing cleanly. That reason only applies when we are
+// actually offline — so the deadline now depends on that. navigator.onLine
+// is used only in the direction it is reliable: false means the OS knows
+// there is no route, so fail fast and serve the fallback. true is not a
+// promise that anything is reachable, and nothing here treats it as one; it
+// only buys the request more patience before being called offline.
+const NAVIGATION_FETCH_TIMEOUT_OFFLINE_MS = 5000;
+const NAVIGATION_FETCH_TIMEOUT_ONLINE_MS = 20000;
 
 async function networkFirst(request, event) {
   // The debug write is always handed to event.waitUntil() rather than
   // awaited inline — it must never add latency to the actual navigation
   // response, only be guaranteed to finish before the browser can
   // terminate this service worker event.
+  const believedOnline = self.navigator?.onLine !== false;
+  const timeoutMs = believedOnline ? NAVIGATION_FETCH_TIMEOUT_ONLINE_MS : NAVIGATION_FETCH_TIMEOUT_OFFLINE_MS;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), NAVIGATION_FETCH_TIMEOUT_MS);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     const response = await fetch(request, { signal: controller.signal });
     if (response && response.ok) {
@@ -384,16 +433,29 @@ async function networkFirst(request, event) {
     event.waitUntil(recordNavOutcome(request.url, "network", { status: response?.status, ok: response?.ok }));
     return response;
   } catch (err) {
+    // `extra` carries the reason, not just the outcome: a screenshot of the
+    // Offline banner now distinguishes "our own deadline fired" from "the
+    // network really failed", which is exactly the difference this bug
+    // turned on and which the previous record could not show.
+    const why = { fetchError: String(err), timedOut, timeoutMs, believedOnline };
+
     const cached = await caches.match(request);
     if (cached) {
-      event.waitUntil(recordNavOutcome(request.url, "cache-hit", { fetchError: String(err) }));
+      event.waitUntil(recordNavOutcome(request.url, "cache-hit", why));
       return cached;
+    }
+    // Same page, different query string is still that page — proxy.ts's own
+    // redirect appends ?redirectedFrom=..., so a cached /login would never
+    // match /login?redirectedFrom=%2F on the exact-URL lookup above. A page
+    // without its query string beats "You're offline".
+    const looseMatch = await caches.match(request, { ignoreSearch: true });
+    if (looseMatch) {
+      event.waitUntil(recordNavOutcome(request.url, "cache-hit-ignore-search", why));
+      return looseMatch;
     }
     const offline = await caches.match(OFFLINE_URL);
     event.waitUntil(
-      recordNavOutcome(request.url, offline ? "offline-fallback" : "response-error-no-offline-cached", {
-        fetchError: String(err),
-      })
+      recordNavOutcome(request.url, offline ? "offline-fallback" : "response-error-no-offline-cached", why)
     );
     return offline ?? Response.error();
   } finally {
