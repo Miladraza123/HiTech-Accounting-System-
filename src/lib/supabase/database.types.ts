@@ -4163,6 +4163,7 @@ export type Database = {
         Args: { p_mode: string; p_rows: Json; p_table_name: string }
         Returns: Json
       }
+      fn_aging_bucket: { Args: { p_due: string }; Returns: string }
       fn_allocate_payment: {
         Args: { p_allocations: Json; p_payment_id: string }
         Returns: undefined
@@ -4179,9 +4180,35 @@ export type Database = {
         }
         Returns: string
       }
+      fn_ap_aging: {
+        Args: never
+        Returns: {
+          bucket_1_30: number
+          bucket_31_60: number
+          bucket_61_90: number
+          bucket_90_plus: number
+          bucket_current: number
+          name: string
+          party_id: string
+          total: number
+        }[]
+      }
       fn_approve_stock_adjustment: {
         Args: { p_adjustment_id: string }
         Returns: undefined
+      }
+      fn_ar_aging: {
+        Args: never
+        Returns: {
+          bucket_1_30: number
+          bucket_31_60: number
+          bucket_61_90: number
+          bucket_90_plus: number
+          bucket_current: number
+          name: string
+          party_id: string
+          total: number
+        }[]
       }
       fn_bootstrap_owner: { Args: never; Returns: undefined }
       fn_cancel_contra_entry: {

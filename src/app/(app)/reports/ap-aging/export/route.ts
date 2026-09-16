@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
-import { agingBucket, dueDateFrom, emptyBuckets, type Buckets } from "@/lib/aging";
 import { buildExcelResponse } from "@/lib/excelExport";
 
 export async function GET() {
@@ -10,37 +9,18 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const [{ data: outstanding }, { data: bills }, { data: parties }] = await Promise.all([
-    supabase.from("supplier_bill_outstanding").select("*").gt("outstanding_amount", 0),
-    supabase.from("supplier_bills").select("id, bill_date, supplier_id"),
-    supabase.from("parties").select("id, legal_name, credit_days"),
-  ]);
+  // Shares fn_ap_aging with the AP Aging screen — see the AR export.
+  const { data: aged } = await supabase.rpc("fn_ap_aging");
 
-  const billById = new Map((bills ?? []).map((b) => [b.id, b]));
-  const partyById = new Map((parties ?? []).map((p) => [p.id, p]));
-
-  const perParty = new Map<string, Buckets>();
-  for (const o of outstanding ?? []) {
-    const bill = billById.get(o.supplier_bill_id!);
-    const party = partyById.get(o.supplier_id!);
-    if (!bill || !party) continue;
-    const bucket = agingBucket(dueDateFrom(bill.bill_date, party.credit_days ?? 0));
-    const rec = perParty.get(party.id) ?? emptyBuckets();
-    rec[bucket] += o.outstanding_amount ?? 0;
-    perParty.set(party.id, rec);
-  }
-
-  const rows = Array.from(perParty.entries())
-    .map(([partyId, b]) => ({
-      supplier: partyById.get(partyId)?.legal_name ?? "—",
-      current: b.current,
-      d1_30: b.d1_30,
-      d31_60: b.d31_60,
-      d61_90: b.d61_90,
-      d90_plus: b.d90_plus,
-      total: b.current + b.d1_30 + b.d31_60 + b.d61_90 + b.d90_plus,
-    }))
-    .sort((a, b) => b.total - a.total);
+  const rows = (aged ?? []).map((r) => ({
+    supplier: r.name ?? "—",
+    current: r.bucket_current,
+    d1_30: r.bucket_1_30,
+    d31_60: r.bucket_31_60,
+    d61_90: r.bucket_61_90,
+    d90_plus: r.bucket_90_plus,
+    total: r.total,
+  }));
 
   return buildExcelResponse(
     "AP Aging",
