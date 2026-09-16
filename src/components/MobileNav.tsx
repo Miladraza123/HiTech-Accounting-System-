@@ -35,7 +35,7 @@ export function MobileNav({
       <div className="md:hidden sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
           <CompanyLogo hasLogo={hasCompanyLogo} width={118} fallbackSize={28} alt="HITECH ENGINEERING" />
-          {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">HiTech ERP</span>}
+          {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">Hi-Tech Business</span>}
         </div>
         <div className="flex items-center gap-1">
           <NotificationBell notifications={notifications} />
@@ -61,7 +61,7 @@ export function MobileNav({
             <div className="px-5 py-5 border-b border-line flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <CompanyLogo hasLogo={hasCompanyLogo} width={140} alt="HITECH ENGINEERING" />
-                {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">HiTech ERP</span>}
+                {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">Hi-Tech Business</span>}
               </div>
               <button
                 type="button"

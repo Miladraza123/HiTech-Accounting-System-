@@ -245,7 +245,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <CompanyLogo hasLogo={hasCompanyLogo} width={150} alt="HITECH ENGINEERING" />
-                  {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">HiTech ERP</span>}
+                  {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">Hi-Tech Business</span>}
                 </div>
                 <NotificationBell notifications={notifications} align="left" />
               </div>

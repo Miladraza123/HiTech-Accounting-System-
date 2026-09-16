@@ -9,7 +9,11 @@
 export function printStyles(scopeClass: string): string {
   return `
     @page { size: A4; margin: 15mm; }
-    .${scopeClass} { all: initial; position: relative; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px; max-width: 210mm; margin: 0 auto; overflow: hidden; }
+    /* box-sizing and min-height together make the sheet exactly one A4 page
+       tall even when the content is short, so the footer below can sit at
+       the true bottom of the page instead of just under the last line.
+       padding-bottom reserves its strip so content can never run into it. */
+    .${scopeClass} { all: initial; box-sizing: border-box; position: relative; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px 32px 64px; max-width: 210mm; min-height: 297mm; margin: 0 auto; overflow: hidden; }
     .${scopeClass} * { box-sizing: border-box; }
     .${scopeClass} .watermark { position: absolute; right: -40px; bottom: -40px; opacity: 0.04; pointer-events: none; z-index: 0; }
     .${scopeClass} .hdr { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #A85A28; padding-bottom: 16px; margin-bottom: 20px; }
@@ -30,7 +34,11 @@ export function printStyles(scopeClass: string): string {
     .${scopeClass} .signoff { display: flex; justify-content: space-between; margin-top: 56px; font-size: 12px; }
     .${scopeClass} .signoff .box { width: 45%; }
     .${scopeClass} .signoff .line { border-top: 1px solid #20242E; margin-top: 14px; padding-top: 4px; }
-    @media print { .${scopeClass} { padding: 0; max-width: none; } }
+    .${scopeClass} .print-foot { position: absolute; left: 32px; right: 32px; bottom: 20px; padding-top: 8px; border-top: 1px solid #DDD6C7; text-align: left; font-size: 10px; letter-spacing: .04em; color: #8B8F99; }
+    @media print {
+      .${scopeClass} { padding: 0 0 56px; max-width: none; min-height: 267mm; }
+      .${scopeClass} .print-foot { left: 0; right: 0; bottom: 0; break-inside: avoid; page-break-inside: avoid; }
+    }
   `;
 }
 

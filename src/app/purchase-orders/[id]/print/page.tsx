@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { printStyles, AUTO_PRINT_SCRIPT } from "@/lib/printStyles";
 import { getCompanyBrandingUrls } from "@/lib/companyBranding";
 import { PrintLogoBlock } from "@/components/PrintLogoBlock";
+import { PrintFooter } from "@/components/PrintFooter";
 import { PrintWatermark } from "@/components/PrintWatermark";
 import { PrintSignoff } from "@/components/PrintSignoff";
 import { PrintBackLink } from "@/components/PrintBackLink";
@@ -114,6 +115,8 @@ export default async function PurchaseOrderPrintPage({
         </div>
 
         <PrintSignoff ourLabel="Authorized By" theirLabel="Supplier Acknowledgement" signatureUrl={signatureUrl} stampUrl={stampUrl} />
+
+        <PrintFooter />
 
         <script dangerouslySetInnerHTML={{ __html: AUTO_PRINT_SCRIPT }} />
       </div>

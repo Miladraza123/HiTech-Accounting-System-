@@ -147,7 +147,7 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
         </label>
         <p className="text-xs text-ink-faint">
           Quantities aren&apos;t set here — they move on their own as GRNs, deliveries, and other stock documents are
-          posted. If this item already has stock on hand from before HiTech (e.g. migrating from another system), add
+          posted. If this item already has stock on hand from before Hi-Tech (e.g. migrating from another system), add
           that as an <span className="font-medium text-ink-soft">Opening Stock</span> from Setup → Import once it&apos;s
           created here.
         </p>

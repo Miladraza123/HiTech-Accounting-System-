@@ -123,11 +123,18 @@
 // in. The client-triggered WARM_CACHE (OfflineQueueProvider.tsx) stays
 // in place too, as a second layer — refreshing dropdown data on every
 // reconnect and retrying whatever this pass didn't catch.
-const CACHE_VERSION = "v11";
+const CACHE_VERSION = "v12";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
-const PRECACHE_URLS = [OFFLINE_URL, "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+const PRECACHE_URLS = [
+  OFFLINE_URL,
+  "/manifest.webmanifest",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
+];
 
 // The offline-capable "create" pages — kept in sync by hand with
 // OfflineQueueProvider.tsx's own WARM_CACHE_URLS list (which is what the

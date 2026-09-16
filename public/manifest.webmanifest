@@ -1,6 +1,6 @@
 {
-  "name": "HiTech Business & Accounting System",
-  "short_name": "HiTech",
+  "name": "Hi-Tech Business & Accounting System",
+  "short_name": "Hi-Tech",
   "description": "Material Supply & Fabrication — Query to Cash, one integrated system.",
   "start_url": "/",
   "scope": "/",
@@ -10,8 +10,8 @@
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

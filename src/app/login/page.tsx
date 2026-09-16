@@ -21,7 +21,7 @@ export default function LoginPage() {
               <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-ledger text-ledger-soft font-mono text-lg font-semibold">
                 H
               </div>
-              <h1 className="mt-4 text-xl font-semibold text-ink">HiTech Business System</h1>
+              <h1 className="mt-4 text-xl font-semibold text-ink">Hi-Tech Business &amp; Accounting System</h1>
             </>
           ) : (
             <span className="company-logo mx-auto">

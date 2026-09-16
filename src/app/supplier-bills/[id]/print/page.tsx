@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { printStyles, AUTO_PRINT_SCRIPT } from "@/lib/printStyles";
 import { getCompanyBrandingUrls } from "@/lib/companyBranding";
 import { PrintLogoBlock } from "@/components/PrintLogoBlock";
+import { PrintFooter } from "@/components/PrintFooter";
 import { PrintWatermark } from "@/components/PrintWatermark";
 import { PrintBackLink } from "@/components/PrintBackLink";
 import type { Metadata } from "next";
@@ -109,6 +110,8 @@ export default async function SupplierBillPrintPage({
             Total: {bill.grand_total} {company?.base_currency}
           </span>
         </div>
+
+        <PrintFooter />
 
         <script dangerouslySetInnerHTML={{ __html: AUTO_PRINT_SCRIPT }} />
       </div>
