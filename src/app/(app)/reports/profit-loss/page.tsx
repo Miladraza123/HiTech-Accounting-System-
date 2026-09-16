@@ -19,32 +19,24 @@ export default async function ProfitLossPage({ searchParams }: { searchParams: P
   const toDate = to || defaults.to;
 
   const supabase = await createClient();
-  const { data: entries } = await supabase
-    .from("journal_entries")
-    .select("entry_date, journal_lines(debit, credit, chart_of_accounts(code, name, account_type))")
-    .gte("entry_date", fromDate)
-    .lte("entry_date", toDate);
+  // The period's per-account net is summed by the database (fn_profit_loss)
+  // rather than by fetching every journal entry and line in the period and
+  // reducing them here. journal_entries grows with every posted document, so
+  // the old shape shipped an entire financial year of transactions to the app
+  // on each page view; this returns one row per account instead.
+  const { data: accounts } = await supabase.rpc("fn_profit_loss", { p_from: fromDate, p_to: toDate });
 
-  type Line = { debit: number; credit: number; chart_of_accounts: { code: string; name: string; account_type: string } | null };
-  const accountTotals = new Map<string, { name: string; account_type: string; net: number }>();
+  const byCode = (accounts ?? []).slice().sort((a, b) => a.code.localeCompare(b.code));
 
-  for (const e of entries ?? []) {
-    const lines = e.journal_lines as unknown as Line[];
-    for (const l of lines) {
-      const acc = l.chart_of_accounts;
-      if (!acc) continue;
-      const existing = accountTotals.get(acc.code) ?? { name: acc.name, account_type: acc.account_type, net: 0 };
-      existing.net += l.debit - l.credit;
-      accountTotals.set(acc.code, existing);
-    }
-  }
-
-  const revenueRows = [...accountTotals.entries()].filter(([, v]) => v.account_type === "income").map(([code, v]) => ({ code, name: v.name, amount: -v.net }));
-  const cogsRows = [...accountTotals.entries()].filter(([code]) => code === "5000" || code === "5010").map(([code, v]) => ({ code, name: v.name, amount: v.net }));
-  const opexRows = [...accountTotals.entries()]
-    .filter(([code, v]) => v.account_type === "expense" && code !== "5000" && code !== "5010")
-    .map(([code, v]) => ({ code, name: v.name, amount: v.net }))
-    .sort((a, b) => a.code.localeCompare(b.code));
+  const revenueRows = byCode
+    .filter((a) => a.account_type === "income")
+    .map((a) => ({ code: a.code, name: a.name, amount: -a.net }));
+  const cogsRows = byCode
+    .filter((a) => a.code === "5000" || a.code === "5010")
+    .map((a) => ({ code: a.code, name: a.name, amount: a.net }));
+  const opexRows = byCode
+    .filter((a) => a.account_type === "expense" && a.code !== "5000" && a.code !== "5010")
+    .map((a) => ({ code: a.code, name: a.name, amount: a.net }));
 
   const totalRevenue = revenueRows.reduce((s, r) => s + r.amount, 0);
   const totalCogs = cogsRows.reduce((s, r) => s + r.amount, 0);

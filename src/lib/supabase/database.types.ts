@@ -4137,6 +4137,20 @@ export type Database = {
         Args: { a: string; b: string }
         Returns: boolean
       }
+      fn_account_ledger: {
+        Args: { p_account_id: string; p_limit: number; p_offset: number }
+        Returns: {
+          credit: number
+          debit: number
+          entry_date: string
+          memo: string
+          narration: string
+          running: number
+          total_credit: number
+          total_debit: number
+          total_rows: number
+        }[]
+      }
       fn_admin_restore_delete_orphans: {
         Args: { p_rows: Json; p_table_name: string }
         Returns: number
@@ -4221,6 +4235,13 @@ export type Database = {
       fn_cancel_task: {
         Args: { p_reason?: string; p_task_id: string }
         Returns: undefined
+      }
+      fn_cash_opening_balances: {
+        Args: { p_before: string }
+        Returns: {
+          code: string
+          opening: number
+        }[]
       }
       fn_complete_task: { Args: { p_task_id: string }; Returns: undefined }
       fn_create_bank_account: {
@@ -4787,6 +4808,20 @@ export type Database = {
       }
       fn_owner_bootstrap_already_used: { Args: never; Returns: boolean }
       fn_owner_exists: { Args: never; Returns: boolean }
+      fn_party_ledger: {
+        Args: { p_limit: number; p_offset: number; p_party_id: string }
+        Returns: {
+          credit: number
+          debit: number
+          entry_date: string
+          memo: string
+          narration: string
+          running: number
+          total_credit: number
+          total_debit: number
+          total_rows: number
+        }[]
+      }
       fn_post_journal_entry: {
         Args: {
           p_entry_date: string
@@ -4805,6 +4840,15 @@ export type Database = {
           p_narration: string
         }
         Returns: string
+      }
+      fn_profit_loss: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          account_type: string
+          code: string
+          name: string
+          net: number
+        }[]
       }
       fn_record_dispute: {
         Args: { p_dc_id: string; p_note: string }

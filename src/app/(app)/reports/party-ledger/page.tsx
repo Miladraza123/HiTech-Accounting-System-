@@ -2,37 +2,39 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
-export default async function PartyLedgerPage({ searchParams }: { searchParams: Promise<{ party_id?: string }> }) {
+export default async function PartyLedgerPage({ searchParams }: { searchParams: Promise<{ party_id?: string; page?: string }> }) {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
-  const { party_id } = await searchParams;
+  const { party_id, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom] = pageRange(page);
 
   const supabase = await createClient();
   const { data: parties } = await supabase.from("parties").select("id, legal_name, party_type").order("legal_name");
 
-  let rows: { entry_date: string; narration: string; debit: number; credit: number; memo: string | null }[] = [];
+  // Same change as the General Ledger: a long-standing client accumulates a
+  // journal line per transaction forever, so the running balance is computed
+  // in the database and only this page is returned.
+  let rowsWithBalance: { entry_date: string; narration: string; debit: number; credit: number; memo: string | null; running: number }[] = [];
+  let totalDebit = 0;
+  let totalCredit = 0;
+  let totalRows = 0;
   if (party_id) {
-    const { data: lines } = await supabase
-      .from("journal_lines")
-      .select("debit, credit, memo, journal_entries!inner(entry_date, narration)")
-      .eq("party_id", party_id);
-    rows = (lines ?? [])
-      .map((l) => {
-        const je = l.journal_entries as unknown as { entry_date: string; narration: string };
-        return { entry_date: je.entry_date, narration: je.narration, debit: l.debit, credit: l.credit, memo: l.memo };
-      })
-      .sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+    const { data: ledger } = await supabase.rpc("fn_party_ledger", {
+      p_party_id: party_id,
+      p_limit: DEFAULT_PAGE_SIZE,
+      p_offset: rangeFrom,
+    });
+    rowsWithBalance = ledger ?? [];
+    totalDebit = ledger?.[0]?.total_debit ?? 0;
+    totalCredit = ledger?.[0]?.total_credit ?? 0;
+    totalRows = ledger?.[0]?.total_rows ?? 0;
   }
-
-  const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
-  const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
-  const rowsWithBalance = rows.reduce<(typeof rows[number] & { running: number })[]>((acc, r) => {
-    const prev = acc.length ? acc[acc.length - 1].running : 0;
-    acc.push({ ...r, running: prev + r.debit - r.credit });
-    return acc;
-  }, []);
+  const totalPages = computeTotalPages(totalRows);
 
   const selectedParty = parties?.find((p) => p.id === party_id);
 
@@ -91,7 +93,7 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.running.toLocaleString()}</td>
                   </tr>
                 ))}
-                {!rows.length && (
+                {!rowsWithBalance.length && (
                   <tr>
                     <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
                       No ledger entries for this party.
@@ -100,6 +102,16 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="px-3 pb-3">
+            <PaginationControls
+              basePath="/reports/party-ledger"
+              searchParams={{ party_id }}
+              currentPage={page}
+              totalPages={totalPages}
+              totalCount={totalRows}
+            />
           </div>
         </div>
       )}

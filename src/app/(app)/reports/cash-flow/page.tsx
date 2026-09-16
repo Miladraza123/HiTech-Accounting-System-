@@ -24,11 +24,14 @@ export default async function CashFlowPage({ searchParams }: { searchParams: Pro
 
   const supabase = await createClient();
 
-  const [{ data: openingEntries }, { data: periodEntries }] = await Promise.all([
-    supabase
-      .from("journal_entries")
-      .select("journal_lines(debit, credit, chart_of_accounts(code))")
-      .lt("entry_date", fromDate),
+  // The opening balance used to be derived by fetching EVERY journal entry
+  // dated before the period — the company's entire history, growing every
+  // day — and summing the cash accounts here. fn_cash_opening_balances does
+  // that sum in the database and returns one row per cash account. The
+  // period query below stays as it is: it is bounded by the range the user
+  // picked, not by how old the company is.
+  const [{ data: opening }, { data: periodEntries }] = await Promise.all([
+    supabase.rpc("fn_cash_opening_balances", { p_before: fromDate }),
     supabase
       .from("journal_entries")
       .select("entry_date, narration, journal_lines(debit, credit, chart_of_accounts(code, name))")
@@ -40,12 +43,8 @@ export default async function CashFlowPage({ searchParams }: { searchParams: Pro
   type Line = { debit: number; credit: number; chart_of_accounts: { code: string; name?: string } | null };
 
   const openingByCode: Record<string, number> = { "1050": 0, "1100": 0, "1060": 0 };
-  for (const e of openingEntries ?? []) {
-    const lines = e.journal_lines as unknown as Line[];
-    for (const l of lines) {
-      const code = l.chart_of_accounts?.code;
-      if (code && CASH_CODES.includes(code)) openingByCode[code] += l.debit - l.credit;
-    }
+  for (const row of opening ?? []) {
+    if (CASH_CODES.includes(row.code)) openingByCode[row.code] = row.opening;
   }
 
   const receiptsByCode: Record<string, number> = { "1050": 0, "1100": 0, "1060": 0 };

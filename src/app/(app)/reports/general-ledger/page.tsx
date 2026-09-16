@@ -2,40 +2,45 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
-export default async function GeneralLedgerPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+export default async function GeneralLedgerPage({ searchParams }: { searchParams: Promise<{ code?: string; page?: string }> }) {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
-  const { code } = await searchParams;
+  const { code, page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom] = pageRange(page);
 
   const supabase = await createClient();
   const { data: accounts } = await supabase.from("chart_of_accounts").select("code, name, account_type").eq("is_active", true).order("code");
 
-  let rows: { entry_date: string; narration: string; debit: number; credit: number; memo: string | null }[] = [];
+  // Was: fetch every line ever posted to this account and accumulate the
+  // running balance here. An account like Bank or Sales collects a line from
+  // every transaction the business ever makes, so that set only ever grows.
+  // fn_account_ledger computes the running balance with a window function and
+  // returns just this page — the full-history scan stays inside the database.
+  let rowsWithBalance: { entry_date: string; narration: string; debit: number; credit: number; memo: string | null; running: number }[] = [];
+  let totalDebit = 0;
+  let totalCredit = 0;
+  let totalRows = 0;
   if (code) {
     const { data: account } = await supabase.from("chart_of_accounts").select("id").eq("code", code).maybeSingle();
     if (account) {
-      const { data: lines } = await supabase
-        .from("journal_lines")
-        .select("debit, credit, memo, journal_entries!inner(entry_date, narration)")
-        .eq("account_id", account.id);
-      rows = (lines ?? [])
-        .map((l) => {
-          const je = l.journal_entries as unknown as { entry_date: string; narration: string };
-          return { entry_date: je.entry_date, narration: je.narration, debit: l.debit, credit: l.credit, memo: l.memo };
-        })
-        .sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+      const { data: ledger } = await supabase.rpc("fn_account_ledger", {
+        p_account_id: account.id,
+        p_limit: DEFAULT_PAGE_SIZE,
+        p_offset: rangeFrom,
+      });
+      rowsWithBalance = ledger ?? [];
+      // Every row carries the same whole-ledger totals, so read them once.
+      totalDebit = ledger?.[0]?.total_debit ?? 0;
+      totalCredit = ledger?.[0]?.total_credit ?? 0;
+      totalRows = ledger?.[0]?.total_rows ?? 0;
     }
   }
-
-  const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
-  const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
-  const rowsWithBalance = rows.reduce<(typeof rows[number] & { running: number })[]>((acc, r) => {
-    const prev = acc.length ? acc[acc.length - 1].running : 0;
-    acc.push({ ...r, running: prev + r.debit - r.credit });
-    return acc;
-  }, []);
+  const totalPages = computeTotalPages(totalRows);
 
   const selectedAccount = accounts?.find((a) => a.code === code);
 
@@ -96,7 +101,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.running.toLocaleString()}</td>
                   </tr>
                 ))}
-                {!rows.length && (
+                {!rowsWithBalance.length && (
                   <tr>
                     <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
                       No entries for this account.
@@ -105,6 +110,16 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="px-3 pb-3">
+            <PaginationControls
+              basePath="/reports/general-ledger"
+              searchParams={{ code }}
+              currentPage={page}
+              totalPages={totalPages}
+              totalCount={totalRows}
+            />
           </div>
         </div>
       )}
