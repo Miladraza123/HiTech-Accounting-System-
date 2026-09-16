@@ -5,6 +5,7 @@ import { createQueryAction, type ActionResult } from "@/app/actions/queries";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { buttonClass } from "@/components/ui/Button";
 import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
+import { SearchablePicker, PARTY_SOURCE, type PickerOption } from "@/components/SearchablePicker";
 import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -25,12 +26,15 @@ export function QueryForm({
   parties,
   sources,
 }: {
-  parties: Tables<"parties">[];
+  // Only a first page of clients — the rest are found by typing, searched
+  // in the database rather than shipped to the browser. See SearchablePicker.
+  parties: Pick<Tables<"parties">, "id" | "legal_name">[];
   sources: Tables<"query_sources">[];
 }) {
   const [state, formAction, pending] = useActionState(createQueryAction, initialState);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  const [offlineError, setOfflineError] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);
   // Guards the offline branch below against a rapid double-click — see
   // useOfflineSubmitGuard's own comment for why `pending` above (from
@@ -48,12 +52,27 @@ export function QueryForm({
     getPendingCreateOptions("parties").then(setPendingParties);
   }, []);
 
+  const partyOptions: PickerOption[] = parties.map((p) => ({ id: p.id, label: p.legal_name }));
+  const pendingPartyOptions: PickerOption[] = pendingParties.map((p) => ({
+    id: p.id,
+    label: String(p.payload.legal_name ?? p.label),
+  }));
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
     const partyId = String(formData.get("party_id") ?? "");
+    const requirement = String(formData.get("requirement") ?? "").trim();
+    // The client is picked through a hidden input now, which native form
+    // validation does not cover — so check it here, the same way the server
+    // action does for the online path.
+    if (!partyId || !requirement) {
+      setOfflineError("Client and requirement are required.");
+      return;
+    }
+    setOfflineError(null);
     const pendingParty = pendingParties.find((p) => p.id === partyId);
     await guard(async () => {
       await enqueue({
@@ -63,7 +82,7 @@ export function QueryForm({
         label: "Query",
         payload: {
           party_id: partyId,
-          requirement: String(formData.get("requirement") ?? "").trim(),
+          requirement,
           source: String(formData.get("source") ?? "") || null,
           query_date: String(formData.get("query_date") ?? "") || today,
           next_followup_at: String(formData.get("next_followup_at") ?? "") || null,
@@ -95,21 +114,13 @@ export function QueryForm({
       <div className="grid grid-cols-2 gap-4">
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Client *</span>
-          <select name="party_id" required defaultValue="" className="input">
-            <option value="" disabled>
-              — Select —
-            </option>
-            {parties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.legal_name}
-              </option>
-            ))}
-            {pendingParties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {String(p.payload.legal_name ?? p.label)} (offline — pending sync)
-              </option>
-            ))}
-          </select>
+          <SearchablePicker
+            name="party_id"
+            source={PARTY_SOURCE}
+            initialOptions={partyOptions}
+            pendingOptions={pendingPartyOptions}
+            placeholder="Type a client name…"
+          />
         </label>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Query Date</span>
@@ -152,7 +163,9 @@ export function QueryForm({
         </p>
       )}
 
-      {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
+      {(state.error || offlineError) && (
+        <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error ?? offlineError}</p>
+      )}
 
       <button
         type="submit"

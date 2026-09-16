@@ -10,8 +10,11 @@ export default async function NewQueryPage() {
   if (!(await hasPermission(user, "query.manage"))) redirect("/queries");
 
   const supabase = await createClient();
+  // Only the first page of clients, and only the two columns the picker
+  // shows. Anything beyond this is found by typing, which searches in the
+  // database — so this page no longer grows with the customer list.
   const [{ data: parties }, { data: sources }] = await Promise.all([
-    supabase.from("parties").select("*").eq("is_active", true).order("legal_name"),
+    supabase.from("parties").select("id, legal_name").eq("is_active", true).order("legal_name").limit(20),
     supabase.from("query_sources").select("*").order("name"),
   ]);
 
