@@ -10,6 +10,17 @@ import math, numpy as np, sys
 SRC = sys.argv[1]
 OUT = sys.argv[2]
 
+# Bump this whenever the artwork changes, and update the three places that
+# reference the filenames (manifest.webmanifest, app/layout.tsx, sw.js).
+#
+# The filenames carry a version for a concrete reason, learned the hard way:
+# Chrome decides whether to re-download a PWA's icons by comparing the icon
+# URLs in the manifest, not their contents. When the mark changed but the
+# URLs stayed /icon-192.png and /icon-512.png, installed apps picked up the
+# new NAME (a plain string compare) and kept the OLD ICON. Changing the URL
+# is what makes the update visible.
+VERSION = "v2"
+
 im = Image.open(SRC).convert('RGBA')
 
 # The gear + arrow mark. These bounds come from the alpha channel at a
@@ -39,11 +50,11 @@ def build(size, frac, rounded):
 # not guessed, so the artwork can never be clipped by a launcher mask.
 SAFE = 0.8 * R / math.sqrt(1 + R * R)          # 0.5857
 
-build(192, 0.78, True ).save(f'{OUT}/icon-192.png')
-build(512, 0.78, True ).save(f'{OUT}/icon-512.png')
-build(192, SAFE, False).save(f'{OUT}/icon-maskable-192.png')
-build(512, SAFE, False).save(f'{OUT}/icon-maskable-512.png')
-build(180, 0.74, False).save(f'{OUT}/apple-touch-icon.png')   # iOS rounds it itself
+build(192, 0.78, True ).save(f'{OUT}/icon-192-{VERSION}.png')
+build(512, 0.78, True ).save(f'{OUT}/icon-512-{VERSION}.png')
+build(192, SAFE, False).save(f'{OUT}/icon-maskable-192-{VERSION}.png')
+build(512, SAFE, False).save(f'{OUT}/icon-maskable-512-{VERSION}.png')
+build(180, 0.74, False).save(f'{OUT}/apple-touch-icon-{VERSION}.png')   # iOS rounds it itself
 
 # Assert the safe-zone guarantee rather than trusting the arithmetic.
 for size in (192, 512):
