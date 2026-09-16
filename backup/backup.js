@@ -148,10 +148,75 @@ function indexBy(rows, key) {
   return new Map((rows ?? []).map((r) => [r[key], r]));
 }
 
+// ---------- Line-item detail + complete raw dump ----------
+// The summary sheets above are header-level only: an invoice showed its
+// number, client and total, but not WHICH items at WHAT rate. That detail
+// was always in the JSON restore file, but nobody opens a 64-table JSON to
+// answer "what was on invoice INV-0003". These two additions put every
+// column and every row into the workbook people actually open.
+
+/**
+ * Excel caps sheet names at 31 chars and treats them as case-INSENSITIVE
+ * for uniqueness -- ExcelJS throws on a collision. That bites here because
+ * the summary sheets use title case ("Items", "Invoices") and the raw dump
+ * uses the table names ("items", "invoices"), which collide.
+ */
+function uniqueSheetName(used, desired) {
+  let name = desired.slice(0, 31);
+  let n = 2;
+  while (used.has(name.toLowerCase())) {
+    const suffix = ` (${n++})`;
+    name = `${desired.slice(0, 31 - suffix.length)}${suffix}`;
+  }
+  used.add(name.toLowerCase());
+  return name;
+}
+
+/** Excel cannot hold a jsonb object or an array in a cell. */
+function cellValue(v) {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return JSON.stringify(v);
+  return v;
+}
+
+/**
+ * Every row of a table with every column, exactly as stored. Columns are
+ * taken from the union of all rows' keys, so a column that is null in the
+ * first row is never dropped.
+ */
+function addRawSheet(wb, used, table, rows) {
+  const list = rows ?? [];
+  const cols = [];
+  const seen = new Set();
+  for (const row of list) {
+    for (const k of Object.keys(row)) {
+      if (!seen.has(k)) { seen.add(k); cols.push(k); }
+    }
+  }
+  const name = uniqueSheetName(used, `DATA ${table}`);
+  const ws = wb.addWorksheet(name);
+  if (!cols.length) {
+    ws.addRow(["(no rows)"]);
+    return { name, rows: 0, cols: 0 };
+  }
+  ws.addRow(cols);
+  ws.getRow(1).font = { bold: true };
+  ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFEAE0" } };
+  ws.views = [{ state: "frozen", ySplit: 1 }];
+  for (const row of list) ws.addRow(cols.map((c) => cellValue(row[c])));
+  autoWidth(ws);
+  return { name, rows: list.length, cols: cols.length };
+}
+
 function buildExcel(tables) {
   const wb = new ExcelJS.Workbook();
   wb.creator = `${APP_NAME} Daily Backup`;
   wb.created = new Date();
+
+  // Created first, filled last. ExcelJS derives `wb.worksheets` from its
+  // internal map, so a sheet cannot be moved to the front after the fact --
+  // it has to be added before everything else.
+  const contents = wb.addWorksheet("Contents");
 
   const partyById = indexBy(tables.parties, "id");
   const itemById = indexBy(tables.items, "id");
@@ -349,6 +414,104 @@ function buildExcel(tables) {
      { label: "Client", value: (r) => partyById.get(r.party_id)?.legal_name ?? "—" }, { label: "Status", value: "status" },
      { label: "Acceptance", value: "acceptance_status" }],
     (tables.delivery_challans ?? []).sort((a, b) => (b.delivery_date ?? "").localeCompare(a.delivery_date ?? "")));
+
+  // --- Line-item detail: which items, at what rate, on which document ---
+  // The sheets above answer "what is invoice INV-0003 worth". These answer
+  // "what was ON it". Each line is joined back to its parent document's
+  // number and to the item master, so the item shows as its code and
+  // description rather than a uuid nobody can read.
+  const itemLabel = (id) => {
+    const it = itemById.get(id);
+    return it ? `${it.item_code}` : "";
+  };
+  const itemDesc = (id) => itemById.get(id)?.description ?? "";
+
+  function linesSheet(sheetName, lineRows, parentRows, parentFk, parentNoKey, cols) {
+    const parentById = indexBy(parentRows, "id");
+    const headers = [
+      { label: "Document #", value: (r) => parentById.get(r[parentFk])?.[parentNoKey] ?? "—" },
+      { label: "Item Code", value: (r) => itemLabel(r.item_id) },
+      { label: "Item Description", value: (r) => itemDesc(r.item_id) },
+      { label: "Line Description", value: "description" },
+      ...cols,
+    ];
+    const sorted = (lineRows ?? []).slice().sort((a, b) => {
+      const an = parentById.get(a[parentFk])?.[parentNoKey] ?? "";
+      const bn = parentById.get(b[parentFk])?.[parentNoKey] ?? "";
+      return String(bn).localeCompare(String(an)) || (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+    addSheet(wb, sheetName, headers, sorted);
+  }
+
+  const money = "#,##0.00";
+  linesSheet("Invoice Lines", tables.invoice_lines, tables.invoices, "invoice_id", "invoice_no", [
+    { label: "Qty", value: "qty" }, { label: "Unit", value: "unit" },
+    { label: "Rate", value: "rate", numFmt: money }, { label: "Tax %", value: "tax_pct" },
+    { label: "Amount", value: "amount", numFmt: money }, { label: "Returned Qty", value: "returned_qty" },
+  ]);
+
+  linesSheet("Sales Order Lines", tables.sales_order_lines, tables.sales_orders, "sales_order_id", "so_no", [
+    { label: "Ordered Qty", value: "ordered_qty" }, { label: "Unit", value: "unit" },
+    { label: "Rate", value: "rate", numFmt: money }, { label: "Tax %", value: "tax_pct" },
+    { label: "Amount", value: "amount", numFmt: money },
+    { label: "Delivered Qty", value: "delivered_qty" }, { label: "Invoiced Qty", value: "invoiced_qty" },
+  ]);
+
+  linesSheet("Purchase Order Lines", tables.purchase_order_lines, tables.purchase_orders, "purchase_order_id", "po_no", [
+    { label: "Ordered Qty", value: "ordered_qty" }, { label: "Unit", value: "unit" },
+    { label: "Rate", value: "rate", numFmt: money }, { label: "Tax %", value: "tax_pct" },
+    { label: "Amount", value: "amount", numFmt: money }, { label: "Received Qty", value: "received_qty" },
+  ]);
+
+  linesSheet("Supplier Bill Lines", tables.supplier_bill_lines, tables.supplier_bills, "supplier_bill_id", "bill_no", [
+    { label: "Qty", value: "qty" },
+    { label: "Rate", value: "rate", numFmt: money }, { label: "Tax %", value: "tax_pct" },
+    { label: "Amount", value: "amount", numFmt: money }, { label: "Returned Qty", value: "returned_qty" },
+  ]);
+
+  linesSheet("Delivery Challan Lines", tables.delivery_challan_lines, tables.delivery_challans, "dc_id", "dc_no", [
+    { label: "Delivered Qty", value: "delivered_qty" }, { label: "Unit", value: "unit" },
+    { label: "Issued From Stock", value: (r) => (r.issue_from_stock ? "Yes" : "No") },
+    { label: "Stock Qty", value: "stock_qty" },
+  ]);
+
+  linesSheet("GRN Lines", tables.grn_lines, tables.grns, "grn_id", "grn_no", [
+    { label: "Ordered Qty", value: "ordered_qty" }, { label: "This Receipt Qty", value: "this_receipt_qty" },
+    { label: "Total Received", value: "total_received_qty" }, { label: "Short/Excess", value: "short_excess_qty" },
+    { label: "Unit", value: "unit" }, { label: "Rate", value: "rate", numFmt: money },
+    { label: "Tax %", value: "tax_pct" },
+  ]);
+
+  linesSheet("Quotation Lines", tables.quotation_lines, tables.quotation_revisions, "revision_id", "rev_no", [
+    { label: "Qty", value: "qty" }, { label: "Unit", value: "unit" },
+    { label: "Rate", value: "rate", numFmt: money }, { label: "Tax %", value: "tax_pct" },
+    { label: "Amount", value: "amount", numFmt: money },
+  ]);
+
+  // --- Complete raw dump: every table, every column, every row ---
+  // Nothing curated, nothing dropped. Whatever the summary and detail
+  // sheets above do not show, this does.
+  const used = new Set(wb.worksheets.map((w) => w.name.toLowerCase()));
+  const rawIndex = [];
+  for (const table of TABLE_ORDER) {
+    rawIndex.push({ table, ...addRawSheet(wb, used, table, tables[table]) });
+  }
+
+  // --- Fill the Contents sheet created at the top ---
+  contents.addRow(["Sheet", "Contents", "Rows", "Columns"]);
+  contents.getRow(1).font = { bold: true };
+  contents.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8E2D4" } };
+  for (const w of wb.worksheets) {
+    if (w.name === "Contents") continue;
+    const raw = rawIndex.find((r) => r.name === w.name);
+    contents.addRow([
+      w.name,
+      raw ? `Complete table: ${raw.table}` : "Report / summary",
+      raw ? raw.rows : Math.max(w.rowCount - 1, 0),
+      raw ? raw.cols : w.columnCount,
+    ]);
+  }
+  autoWidth(contents);
 
   return wb;
 }
