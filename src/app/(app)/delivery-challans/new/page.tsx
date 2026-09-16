@@ -10,22 +10,28 @@ export default async function NewDeliveryChallanPage() {
   if (!(await hasPermission(user, "delivery_challan.manage"))) redirect("/delivery-challans");
 
   const supabase = await createClient();
+  // Which Sales Orders still have something left to deliver is a
+  // column-vs-column test that PostgREST cannot express, so this page used to
+  // fetch every open Sales Order with all of its lines and decide here.
+  // fn_deliverable_sales_order_ids answers it in the database; only those
+  // orders are fetched. The eligible set shrinks as orders are delivered.
+  const { data: eligibleIds } = await supabase.rpc("fn_deliverable_sales_order_ids");
+  const ids = (eligibleIds ?? []).map((r) => r.id);
+
   const [{ data: salesOrders }, { data: warehouses }, { data: items }, { data: altUnits }] = await Promise.all([
-    supabase
-      .from("sales_orders")
-      .select("*, parties(legal_name), sales_order_lines(*)")
-      .not("status", "in", "(Cancelled,Closed)")
-      .order("created_at", { ascending: false }),
+    ids.length
+      ? supabase
+          .from("sales_orders")
+          .select("*, parties(legal_name), sales_order_lines(*)")
+          .in("id", ids)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("items").select("*"),
     supabase.from("item_alt_units").select("*").eq("is_active", true),
   ]);
 
-  // Only Sales Orders that actually have something left to deliver
-  const eligible = (salesOrders ?? []).filter((so) => {
-    const lines = so.sales_order_lines as unknown as { ordered_qty: number; delivered_qty: number }[];
-    return lines.some((l) => l.delivered_qty < l.ordered_qty);
-  });
+  const eligible = salesOrders ?? [];
 
   return (
     <div className="space-y-4">

@@ -10,17 +10,22 @@ export default async function NewSupplierBillPage() {
   if (!(await hasPermission(user, "supplier_bill.manage"))) redirect("/supplier-bills");
 
   const supabase = await createClient();
-  const [{ data: grns }, { data: existingBills }] = await Promise.all([
-    supabase
-      .from("grns")
-      .select("*, parties(legal_name), purchase_orders!inner(purchase_type)")
-      .eq("purchase_orders.purchase_type", "stock")
-      .order("created_at", { ascending: false }),
-    supabase.from("supplier_bills").select("grn_id").neq("status", "Cancelled"),
-  ]);
+  // This used to fetch every 'stock' GRN ever received AND every supplier
+  // bill's grn_id, then anti-join them here — two sets that only ever grow,
+  // to offer the handful of GRNs still waiting to be billed.
+  // fn_unbilled_stock_grn_ids does the anti-join in the database.
+  const { data: eligibleIds } = await supabase.rpc("fn_unbilled_stock_grn_ids");
+  const ids = (eligibleIds ?? []).map((r) => r.id);
 
-  const billedGrnIds = new Set((existingBills ?? []).map((b) => b.grn_id));
-  const eligible = (grns ?? []).filter((g) => !billedGrnIds.has(g.id));
+  const { data: grns } = ids.length
+    ? await supabase
+        .from("grns")
+        .select("*, parties(legal_name), purchase_orders!inner(purchase_type)")
+        .in("id", ids)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+
+  const eligible = grns ?? [];
 
   return (
     <div className="space-y-4">

@@ -4831,6 +4831,12 @@ export type Database = {
         }[]
       }
       fn_days_since: { Args: { p_date: string }; Returns: number }
+      fn_deliverable_sales_order_ids: {
+        Args: never
+        Returns: {
+          id: string
+        }[]
+      }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_health_label: {
@@ -4861,6 +4867,12 @@ export type Database = {
       fn_invite_user: {
         Args: { p_email: string; p_full_name: string; p_role_ids: string[] }
         Returns: string
+      }
+      fn_invoiceable_sales_order_ids: {
+        Args: never
+        Returns: {
+          id: string
+        }[]
       }
       fn_issue_job_material: {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
@@ -5058,6 +5070,12 @@ export type Database = {
           p_table_name: string
         }
         Returns: Json
+      }
+      fn_unbilled_stock_grn_ids: {
+        Args: never
+        Returns: {
+          id: string
+        }[]
       }
       fn_update_draft_quotation: {
         Args: {

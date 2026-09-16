@@ -10,17 +10,24 @@ export default async function NewInvoicePage() {
   if (!(await hasPermission(user, "invoice.manage"))) redirect("/invoices");
 
   const supabase = await createClient();
-  const { data: salesOrders } = await supabase
-    .from("sales_orders")
-    .select("*, parties(legal_name), sales_order_lines(*)")
-    .not("status", "in", "(Cancelled,Closed)")
-    .order("created_at", { ascending: false });
+  // Which Sales Orders still have delivered-but-not-yet-invoiced quantity is
+  // a column-vs-column test, which PostgREST cannot express — so this page
+  // used to fetch every open Sales Order with all of its lines and decide
+  // here. fn_invoiceable_sales_order_ids answers it in the database, and only
+  // those orders are then fetched. The eligible set shrinks as orders get
+  // invoiced; the open-order book only grows.
+  const { data: eligibleIds } = await supabase.rpc("fn_invoiceable_sales_order_ids");
+  const ids = (eligibleIds ?? []).map((r) => r.id);
 
-  // Only Sales Orders that have delivered-but-not-yet-invoiced qty
-  const eligible = (salesOrders ?? []).filter((so) => {
-    const lines = so.sales_order_lines as unknown as { delivered_qty: number; invoiced_qty: number }[];
-    return lines.some((l) => l.invoiced_qty < l.delivered_qty);
-  });
+  const { data: salesOrders } = ids.length
+    ? await supabase
+        .from("sales_orders")
+        .select("*, parties(legal_name), sales_order_lines(*)")
+        .in("id", ids)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+
+  const eligible = salesOrders ?? [];
 
   return (
     <div className="space-y-4">
