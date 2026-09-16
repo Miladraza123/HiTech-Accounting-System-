@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
-import { signOutAction } from "@/app/actions/auth";
+import { signOutAction, dismissWeakPasswordWarningAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "@/components/MobileNav";
 import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
@@ -11,6 +11,12 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import { getNotifications } from "@/lib/notifications";
+import { cookies } from "next/headers";
+import {
+  WEAK_PASSWORD_COOKIE,
+  decodeWeakPasswordReasons,
+  weakPasswordWarning,
+} from "@/lib/passwordFeedback";
 // Single source of truth for the version shown to users — the splash screen
 // reads the same field, so the footer and the splash can never drift apart.
 import packageJson from "../../../package.json";
@@ -51,6 +57,12 @@ import {
 const ICON_SIZE = 15;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // Set at sign-in when Supabase reported the password used is weak or has
+  // been in a breach. Signing in still works in that case -- this banner is
+  // the only thing that tells anyone about it.
+  const weakPasswordReasons = decodeWeakPasswordReasons(
+    (await cookies()).get(WEAK_PASSWORD_COOKIE)?.value
+  );
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -296,6 +308,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {noRoleYet && (
               <div className="bg-warn-soft border-b border-warn px-4 py-2.5 text-sm text-warn">
                 You don&apos;t have a role assigned yet — ask the Owner to assign you one.
+              </div>
+            )}
+            {weakPasswordReasons.length > 0 && (
+              <div className="bg-warn-soft border-b border-warn px-4 py-2.5 text-sm text-warn flex items-start justify-between gap-3">
+                <p>
+                  {weakPasswordWarning(weakPasswordReasons)}{" "}
+                  <Link href="/account" className="underline underline-offset-2 font-medium">
+                    Change your password
+                  </Link>
+                  .
+                </p>
+                <form action={dismissWeakPasswordWarningAction}>
+                  <button type="submit" className="text-xs underline underline-offset-2 whitespace-nowrap">
+                    Dismiss
+                  </button>
+                </form>
               </div>
             )}
             <div className="max-w-5xl mx-auto px-5 py-8">{children}</div>

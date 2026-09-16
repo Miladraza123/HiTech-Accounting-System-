@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { weakPasswordErrorMessage } from "@/lib/passwordFeedback";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
 const COMPANY_ID = "00000000-0000-0000-0000-000000000001";
@@ -279,7 +280,10 @@ export async function createUserAction(
   });
   if (createError) {
     await supabase.rpc("fn_revoke_invite", { p_invite_id: inviteId });
-    return { error: createError.message };
+    // Supabase refuses a weak or breached password here too. Say why in the
+    // app's own words, so the Owner knows to pick another one rather than
+    // thinking user creation itself is broken.
+    return { error: weakPasswordErrorMessage(createError) ?? createError.message };
   }
 
   revalidatePath("/setup/users");
@@ -305,7 +309,7 @@ export async function resetUserPasswordAction(userId: string, newPassword: strin
   }
 
   const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
-  if (error) return { error: error.message };
+  if (error) return { error: weakPasswordErrorMessage(error) ?? error.message };
 
   return { error: null, success: true, password: newPassword };
 }

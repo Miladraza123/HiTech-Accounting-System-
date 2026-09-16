@@ -2,7 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { cookies, headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  WEAK_PASSWORD_COOKIE,
+  encodeWeakPasswordReasons,
+  weakPasswordErrorMessage,
+} from "@/lib/passwordFeedback";
 
 const SESSION_COOKIE = "app_login_session_id";
 
@@ -20,10 +26,28 @@ export async function signInAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Signing in with a weak or breached password is NOT refused by Supabase --
+  // the session is created and `error` stays null, with the finding attached to
+  // `data.weakPassword` instead. Reading it here is the only way anyone ever
+  // learns about it; the app layout turns this cookie into a banner. Written on
+  // every sign-in, so it also clears itself once the password is fixed.
+  const cookieStore = await cookies();
+  const weakReasons = data.weakPassword?.reasons ?? [];
+  if (weakReasons.length) {
+    cookieStore.set(WEAK_PASSWORD_COOKIE, encodeWeakPasswordReasons(weakReasons), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+    });
+  } else {
+    cookieStore.delete(WEAK_PASSWORD_COOKIE);
   }
 
   // Log this session (login_sessions) and remember its id for logout.
@@ -37,7 +61,6 @@ export async function signInAction(
   });
 
   if (sessionId) {
-    const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, sessionId as string, {
       httpOnly: true,
       sameSite: "lax",
@@ -171,8 +194,25 @@ export async function changePasswordAction(
 
   const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
   if (updateError) {
-    return { error: updateError.message };
+    // A password refused for being weak or breached gets the app's own wording;
+    // anything else is reported as Supabase phrased it.
+    return { error: weakPasswordErrorMessage(updateError) ?? updateError.message };
   }
 
+  // The password just cleared Supabase's own rules, so whatever the sign-in
+  // banner was warning about no longer applies.
+  const cookieStore = await cookies();
+  cookieStore.delete(WEAK_PASSWORD_COOKIE);
+
   return { error: null, success: true };
+}
+
+// Clears the "your password should be changed" banner for this browser. The
+// warning is rewritten on every sign-in, so dismissing it hides it until the
+// next login rather than for good -- the finding itself is not dismissable,
+// only the reminder.
+export async function dismissWeakPasswordWarningAction(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(WEAK_PASSWORD_COOKIE);
+  revalidatePath("/", "layout");
 }
