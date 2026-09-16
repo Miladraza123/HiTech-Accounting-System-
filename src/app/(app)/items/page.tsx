@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ItemForm } from "@/components/ItemForm";
 import { ItemToggle } from "@/components/ItemToggle";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const TAX_LABEL: Record<string, string> = {
   standard: "Standard",
@@ -11,15 +13,20 @@ const TAX_LABEL: Record<string, string> = {
   exempt: "Exempt",
 };
 
-export default async function ItemsPage() {
+export default async function ItemsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
+
   const user = await getCurrentUser();
   const canManage = isOwner(user) || hasRole(user, "store") || hasRole(user, "production");
 
   const supabase = await createClient();
-  const [{ data: items }, { data: units }] = await Promise.all([
-    supabase.from("items").select("*").order("item_code"),
+  const [{ data: items, count }, { data: units }] = await Promise.all([
+    supabase.from("items").select("*", { count: "exact" }).order("item_code").range(rangeFrom, rangeTo),
     supabase.from("units").select("*").order("code"),
   ]);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -86,6 +93,8 @@ export default async function ItemsPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/items" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

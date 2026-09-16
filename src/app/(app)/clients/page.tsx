@@ -3,18 +3,25 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { PartyForm } from "@/components/PartyForm";
 import { PartyToggle } from "@/components/PartyToggle";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const TYPE_LABEL: Record<string, string> = { client: "Client", supplier: "Supplier", both: "Client + Supplier" };
 
-export default async function ClientsPage() {
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
+
   const user = await getCurrentUser();
   const canManage = isOwner(user) || hasRole(user, "sales") || hasRole(user, "store");
 
   const supabase = await createClient();
-  const [{ data: parties }, { data: provinces }] = await Promise.all([
-    supabase.from("parties").select("*").order("created_at", { ascending: false }),
+  const [{ data: parties, count }, { data: provinces }] = await Promise.all([
+    supabase.from("parties").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(rangeFrom, rangeTo),
     supabase.from("provinces").select("*").order("name"),
   ]);
+  const totalPages = computeTotalPages(count ?? 0);
 
   return (
     <div className="space-y-6">
@@ -80,6 +87,8 @@ export default async function ClientsPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/clients" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }
