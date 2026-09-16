@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { EditVehicleForm } from "@/components/EditVehicleForm";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 const STATUS_STYLE: Record<string, string> = {
   Active: "bg-good-soft text-good",
@@ -12,30 +14,49 @@ const STATUS_STYLE: Record<string, string> = {
   Unassigned: "bg-surface-2 text-ink-faint",
 };
 
-export default async function VehicleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function VehicleDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { id } = await params;
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom, rangeTo] = pageRange(page);
   const user = await getCurrentUser();
   const canManage = isOwner(user) || hasRole(user, "accounts");
 
   const supabase = await createClient();
-  const [{ data: vehicle }, { data: profiles }, { data: expenses }, { data: attachments }] = await Promise.all([
+  // A vehicle in service accumulates fuel and maintenance entries for years,
+  // so its expense history is paginated and the two totals come from
+  // vehicle_expense_summary — a per-vehicle aggregate that already existed —
+  // instead of being summed here over every row ever recorded.
+  const [{ data: vehicle }, { data: summary }, { data: profiles }, { data: expenses, count: expenseCount }, { data: attachments }] = await Promise.all([
     supabase.from("vehicles").select("*, profiles(full_name)").eq("id", id).maybeSingle(),
+    supabase.from("vehicle_expense_summary").select("total_expense, fuel_expense").eq("vehicle_id", id).maybeSingle(),
     supabase.from("profiles").select("*").eq("is_active", true).order("full_name"),
     supabase
       .from("expenses")
-      .select("*, expense_heads(name)")
+      .select("*, expense_heads(name)", { count: "exact" })
       .eq("vehicle_id", id)
-      .order("expense_date", { ascending: false }),
+      .order("expense_date", { ascending: false })
+      .range(rangeFrom, rangeTo),
     supabase.from("attachments").select("*").eq("owner_table", "vehicles").eq("owner_id", id).order("uploaded_at", { ascending: false }),
   ]);
 
   if (!vehicle) notFound();
 
   const assignee = vehicle.profiles as unknown as { full_name: string } | null;
-  const totalExpense = (expenses ?? []).filter((e) => e.status === "Posted").reduce((s, e) => s + e.amount, 0);
-  const fuelExpense = (expenses ?? [])
-    .filter((e) => e.status === "Posted" && (e.expense_heads as unknown as { name: string } | null)?.name === "Fuel")
-    .reduce((s, e) => s + e.amount, 0);
+  // Note: the view identifies fuel by the expense head's CODE ('FUEL'); this
+  // page previously matched on its NAME ('Fuel'). Both pick out the same head
+  // today, but the code is the stable system field while the name is
+  // owner-editable — so renaming the head no longer silently zeroes this
+  // figure.
+  const totalExpense = summary?.total_expense ?? 0;
+  const fuelExpense = summary?.fuel_expense ?? 0;
+  const totalPages = computeTotalPages(expenseCount ?? 0);
   const distance = vehicle.current_meter_reading - vehicle.opening_meter_reading;
   const costPerKm = distance > 0 ? totalExpense / distance : null;
 
@@ -128,6 +149,15 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="px-4 pb-4">
+              <PaginationControls
+                basePath={`/setup/vehicles/${id}`}
+                searchParams={{}}
+                currentPage={page}
+                totalPages={totalPages}
+                totalCount={expenseCount ?? 0}
+              />
             </div>
           </div>
         </div>
