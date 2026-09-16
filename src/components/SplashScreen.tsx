@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 // Static import (rather than a string src) so Next.js reads the file's real
-// dimensions at build time, reserves the exact box before the bytes arrive
-// (no layout shift, no logo jumping into place) and generates an automatic
-// blur placeholder from it.
+// dimensions at build time and reserves the exact box before the bytes
+// arrive — no layout shift, no logo jumping into place.
 //
 // `oht-logo-mark.png` is the official logo asset with its transparent
 // canvas trimmed away — an exact sub-rectangle of `oht-logo.png` (verified
@@ -94,10 +93,19 @@ export function SplashScreen({ appVersion }: { appVersion: string }) {
           is what keeps the logo's own navy ink legible without touching the
           artwork — see the splash block in globals.css. */}
       <div className="splash-slot">
+        {/* Deliberately NO `placeholder="blur"`. Next.js renders a blur
+            placeholder as a `background-image` on the <img> itself, sized
+            `cover` over the whole element box — an opaque rectangle. This
+            logo is a transparent PNG, so that rectangle showed straight
+            through the artwork as a visible box behind the logo until the
+            real bytes loaded (reported twice from a real device). No blur
+            colour can fix it: the box is opaque by construction while the
+            splash background is cream, and dark mode wants a different
+            colour again. `priority` already emits a <link rel="preload">,
+            so the real file starts downloading with the document. */}
         <Image
           src={ohtLogo}
           alt="OHT Solutions"
-          placeholder="blur"
           priority
           sizes="(min-width: 1024px) 470px, (min-width: 600px) 343px, 90vw"
           className="splash-logo"
