@@ -4780,6 +4780,7 @@ export type Database = {
         }
         Returns: string
       }
+      fn_days_since: { Args: { p_date: string }; Returns: number }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_import_opening_stock: {
@@ -4849,6 +4850,26 @@ export type Database = {
           total_rows: number
         }[]
       }
+      fn_pending_orders: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          client: string
+          client_po_number: string
+          days: number
+          delivered: number
+          description: string
+          invoiced: number
+          ordered: number
+          pending_deliver: number
+          pending_invoice: number
+          po_date: string
+          so_id: string
+          so_no: string
+          total_pending_deliver: number
+          total_rows: number
+          unit: string
+        }[]
+      }
       fn_post_journal_entry: {
         Args: {
           p_entry_date: string
@@ -4875,6 +4896,22 @@ export type Database = {
           code: string
           name: string
           net: number
+        }[]
+      }
+      fn_purchase_pending: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          description: string
+          expected: string
+          ordered: number
+          overdue_days: number
+          pending: number
+          po_id: string
+          po_no: string
+          received: number
+          supplier: string
+          total_rows: number
+          unit: string
         }[]
       }
       fn_record_dispute: {

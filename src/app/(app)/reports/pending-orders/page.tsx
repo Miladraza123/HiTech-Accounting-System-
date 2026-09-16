@@ -2,45 +2,47 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
-}
-
-export default async function PendingOrdersReportPage() {
+export default async function PendingOrdersReportPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "sales") || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom] = pageRange(page);
+
   const supabase = await createClient();
-  const { data: soLines } = await supabase
-    .from("sales_order_lines")
-    .select("*, sales_orders!inner(so_no, client_po_number, po_date, status, parties(legal_name))")
-    .not("sales_orders.status", "in", "(Cancelled,Closed)")
-    .order("sales_order_id");
+  // Was: fetch every line of every non-closed sales order, then drop the
+  // fully delivered-and-invoiced ones here. That filter lived in JS only
+  // because PostgREST cannot compare one column against another; in
+  // fn_pending_orders it is a WHERE clause, so only genuinely pending lines
+  // are fetched, one page at a time.
+  const { data: pending } = await supabase.rpc("fn_pending_orders", {
+    p_limit: DEFAULT_PAGE_SIZE,
+    p_offset: rangeFrom,
+  });
 
-  type SoInfo = { so_no: string; client_po_number: string; po_date: string; status: string; parties: { legal_name: string } | null };
-  const rows = (soLines ?? [])
-    .map((l) => {
-      const so = l.sales_orders as unknown as SoInfo;
-      return {
-        so_no: so.so_no,
-        client_po_number: so.client_po_number,
-        client: so.parties?.legal_name ?? "—",
-        po_date: so.po_date,
-        description: l.description,
-        ordered: l.ordered_qty,
-        delivered: l.delivered_qty,
-        pendingDeliver: l.ordered_qty - l.delivered_qty,
-        invoiced: l.invoiced_qty,
-        pendingInvoice: l.delivered_qty - l.invoiced_qty,
-        unit: l.unit,
-        days: daysSince(so.po_date),
-      };
-    })
-    .filter((r) => r.pendingDeliver > 0.001 || r.pendingInvoice > 0.001)
-    .sort((a, b) => b.days - a.days);
+  const rows = (pending ?? []).map((r) => ({
+    so_no: r.so_no,
+    client_po_number: r.client_po_number,
+    client: r.client,
+    po_date: r.po_date,
+    description: r.description,
+    ordered: r.ordered,
+    delivered: r.delivered,
+    pendingDeliver: r.pending_deliver,
+    invoiced: r.invoiced,
+    pendingInvoice: r.pending_invoice,
+    unit: r.unit,
+    days: r.days,
+  }));
 
-  const totalPendingDeliverValue = rows.reduce((s, r) => s + r.pendingDeliver, 0);
+  // Whole-report figures — the function repeats them on every row.
+  const totalRows = pending?.[0]?.total_rows ?? 0;
+  const totalPendingDeliverValue = pending?.[0]?.total_pending_deliver ?? 0;
+  const totalPages = computeTotalPages(totalRows);
 
   return (
     <div className="space-y-6">
@@ -111,6 +113,8 @@ export default async function PendingOrdersReportPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/reports/pending-orders" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={totalRows} />
     </div>
   );
 }

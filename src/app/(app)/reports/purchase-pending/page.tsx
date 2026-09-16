@@ -2,42 +2,42 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
-function daysOverdue(expected: string | null): number | null {
-  if (!expected) return null;
-  return Math.floor((Date.now() - new Date(expected).getTime()) / (1000 * 60 * 60 * 24));
-}
-
-export default async function PurchasePendingReportPage() {
+export default async function PurchasePendingReportPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "store") || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
-  const supabase = await createClient();
-  const { data: poLines } = await supabase
-    .from("purchase_order_lines")
-    .select("*, purchase_orders!inner(po_no, expected_delivery, status, parties(legal_name))")
-    .not("purchase_orders.status", "in", "(Cancelled,Closed)")
-    .order("purchase_order_id");
+  const { page: pageParam } = await searchParams;
+  const page = parsePage(pageParam);
+  const [rangeFrom] = pageRange(page);
 
-  type PoInfo = { po_no: string; expected_delivery: string | null; status: string; parties: { legal_name: string } | null };
-  const rows = (poLines ?? [])
-    .map((l) => {
-      const po = l.purchase_orders as unknown as PoInfo;
-      const pending = l.ordered_qty - l.received_qty;
-      return {
-        po_no: po.po_no,
-        supplier: po.parties?.legal_name ?? "—",
-        expected: po.expected_delivery,
-        description: l.description,
-        ordered: l.ordered_qty,
-        received: l.received_qty,
-        pending,
-        unit: l.unit,
-        overdueDays: daysOverdue(po.expected_delivery),
-      };
-    })
-    .filter((r) => r.pending > 0.001)
-    .sort((a, b) => (b.overdueDays ?? -9999) - (a.overdueDays ?? -9999));
+  const supabase = await createClient();
+  // Same change as the Pending Orders report: every line of every open PO
+  // used to be fetched so the fully-received ones could be dropped here.
+  // fn_purchase_pending filters in SQL and returns a single page. Sorting by
+  // overdue-days descending with nulls last is exactly expected_delivery
+  // ascending nulls last, so the order is unchanged.
+  const { data: pending } = await supabase.rpc("fn_purchase_pending", {
+    p_limit: DEFAULT_PAGE_SIZE,
+    p_offset: rangeFrom,
+  });
+
+  const rows = (pending ?? []).map((r) => ({
+    po_no: r.po_no,
+    supplier: r.supplier,
+    expected: r.expected,
+    description: r.description,
+    ordered: r.ordered,
+    received: r.received,
+    pending: r.pending,
+    unit: r.unit,
+    overdueDays: r.overdue_days,
+  }));
+
+  const totalRows = pending?.[0]?.total_rows ?? 0;
+  const totalPages = computeTotalPages(totalRows);
 
   return (
     <div className="space-y-6">
@@ -101,6 +101,8 @@ export default async function PurchasePendingReportPage() {
           </table>
         </div>
       </div>
+
+      <PaginationControls basePath="/reports/purchase-pending" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={totalRows} />
     </div>
   );
 }

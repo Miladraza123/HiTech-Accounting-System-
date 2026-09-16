@@ -2,9 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { buildExcelResponse } from "@/lib/excelExport";
 
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
-}
+// A spreadsheet export is meant to contain every matching row, so unlike the
+// screen this asks for all of them — but it shares the screen's
+// fn_pending_orders, so the "is anything still pending" filter now runs in
+// SQL and only genuinely pending lines cross the network, instead of every
+// line of every open order. The cap is a safety valve, not a page size.
+const EXPORT_ROW_CAP = 50000;
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -13,29 +16,19 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { data: soLines } = await supabase
-    .from("sales_order_lines")
-    .select("*, sales_orders!inner(so_no, client_po_number, po_date, status, parties(legal_name))")
-    .not("sales_orders.status", "in", "(Cancelled,Closed)");
+  const { data: pending } = await supabase.rpc("fn_pending_orders", { p_limit: EXPORT_ROW_CAP, p_offset: 0 });
 
-  type SoInfo = { so_no: string; client_po_number: string; po_date: string; status: string; parties: { legal_name: string } | null };
-  const rows = (soLines ?? [])
-    .map((l) => {
-      const so = l.sales_orders as unknown as SoInfo;
-      return {
-        so_no: so.so_no,
-        client: so.parties?.legal_name ?? "—",
-        description: l.description,
-        ordered: l.ordered_qty,
-        delivered: l.delivered_qty,
-        pending_deliver: l.ordered_qty - l.delivered_qty,
-        invoiced: l.invoiced_qty,
-        pending_invoice: l.delivered_qty - l.invoiced_qty,
-        days_since_po: daysSince(so.po_date),
-      };
-    })
-    .filter((r) => r.pending_deliver > 0.001 || r.pending_invoice > 0.001)
-    .sort((a, b) => b.days_since_po - a.days_since_po);
+  const rows = (pending ?? []).map((r) => ({
+    so_no: r.so_no,
+    client: r.client,
+    description: r.description,
+    ordered: r.ordered,
+    delivered: r.delivered,
+    pending_deliver: r.pending_deliver,
+    invoiced: r.invoiced,
+    pending_invoice: r.pending_invoice,
+    days_since_po: r.days,
+  }));
 
   return buildExcelResponse(
     "Pending Orders",
