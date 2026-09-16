@@ -19,6 +19,9 @@
 // throws.
 "use strict";
 
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
 const ExcelJS = require("exceljs");
 const nodemailer = require("nodemailer");
@@ -34,6 +37,14 @@ const BACKUP_TO_EMAIL = requireEnv("BACKUP_TO_EMAIL");
 
 const APP_NAME = "HiTech";
 const BUSINESS_TIMEZONE = "Asia/Karachi";
+
+// Gmail rejects a message whose total size exceeds 25 MB, and base64 encoding
+// inflates an attachment by about a third on the way out — so 20 MB of files
+// is roughly where a message stops being deliverable. Past that the backup is
+// still TAKEN and still complete; it just cannot travel by email, and the
+// alert below says so in as many words instead of the message silently
+// bouncing. Override with BACKUP_MAX_ATTACHMENT_MB if the mailbox allows more.
+const MAX_ATTACHMENT_BYTES = Number(process.env.BACKUP_MAX_ATTACHMENT_MB || 20) * 1024 * 1024;
 
 function requireEnv(name) {
   const v = process.env[name];
@@ -94,14 +105,63 @@ function takenAtText() {
 }
 
 // ---------- Resilient fetch ----------
+// One `select("*")` per table used to fetch the whole table in a single
+// response. That is fine for a young database and wrong for a grown one: it
+// depends on PostgREST never capping a response (`db-max-rows` is unset on
+// Supabase today, but it is a server setting, not a promise), and it asks for
+// one HTTP response holding every row of the largest table — 80 MB for
+// 240,000 invoice lines on the load-test dataset. A capped response would not
+// error; it would quietly hand back the first N rows and the backup would
+// look successful while being incomplete, which is the worst way for a backup
+// to fail.
+//
+// So each table is read a page at a time until a short page arrives. Paging
+// only means anything with a defined order, and PostgREST gives no ordering
+// guarantee of its own — without one, rows can repeat or be skipped between
+// pages. Every table here has a primary key (checked against the live
+// database), so the pages are ordered by it.
+const FETCH_PAGE_SIZE = 1000;
+
+// Tables whose primary key is not "id".
+const PRIMARY_KEY = {
+  provinces: ["code"],
+  query_sources: ["code"],
+  units: ["code"],
+  role_permissions: ["permission_key"],
+  unit_conversions: ["from_unit", "to_unit"],
+  user_roles: ["user_id", "role_id"],
+};
+
+async function fetchTable(supabase, table) {
+  const keyColumns = PRIMARY_KEY[table] ?? ["id"];
+  const rows = [];
+  for (;;) {
+    let query = supabase.from(table).select("*");
+    for (const column of keyColumns) query = query.order(column);
+    // The next page starts where the rows collected so far end, NOT at a
+    // multiple of FETCH_PAGE_SIZE. That difference is the whole point: if the
+    // server returns fewer rows than were asked for — which a `db-max-rows`
+    // setting smaller than this page size would do on every single request —
+    // stepping by the requested size would step straight over the rows that
+    // were never sent, and the backup would come back short without any error
+    // to show for it. Stepping by what actually arrived just means more,
+    // smaller pages.
+    const { data, error } = await query.range(rows.length, rows.length + FETCH_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = data ?? [];
+    // An empty page is the only end-of-table signal that cannot be confused
+    // with a capped one, so a full table costs one extra, empty request.
+    if (!page.length) return rows;
+    for (const row of page) rows.push(row);
+  }
+}
+
 async function fetchAll(supabase) {
   const tables = {};
   const missed = [];
   for (const table of TABLE_ORDER) {
     try {
-      const { data, error } = await supabase.from(table).select("*");
-      if (error) throw error;
-      tables[table] = data ?? [];
+      tables[table] = await fetchTable(supabase, table);
     } catch (err) {
       console.error(`[backup] table "${table}" failed:`, err.message ?? err);
       tables[table] = [];
@@ -534,39 +594,135 @@ function buildRestoreJson(tables, missed, dateStr) {
   };
 }
 
-// ---------- Email ----------
-async function sendEmail({ dateStr, missed, excelBuffer, jsonBuffer }) {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
-  });
+// The restore file is written straight to disk, one row at a time, instead of
+// being built as one big string in memory. JSON.stringify() of the whole
+// document stops working long before the machine runs out of memory: V8 caps a
+// single string at about 512 MB, and on the load-test dataset (1.3 million
+// rows) `JSON.stringify(..., null, 2)` threw "Invalid string length" outright
+// — reproduced, not predicted. Streaming has no such ceiling, and nodemailer
+// sends the attachment from the file rather than from another copy in memory.
+//
+// The document is the same one buildRestoreJson() describes, and the in-app
+// Restore feature parses it with JSON.parse(), so only the whitespace layout
+// differs from the old pretty-printed output: one row per line instead of one
+// field per line. backup/backup.test.js proves the streamed file parses back
+// to exactly the object buildRestoreJson() returns.
+function writeRestoreJson(tables, missed, dateStr, filePath) {
+  const meta = buildRestoreJson({}, missed, dateStr);
+  delete meta.tables;
+  for (const t of TABLE_ORDER) meta.counts[t] = (tables[t] ?? []).length;
 
+  return new Promise((resolve, reject) => {
+    const out = fs.createWriteStream(filePath, { encoding: "utf8" });
+    out.on("error", reject);
+    out.on("finish", () => resolve(out.bytesWritten));
+
+    // Everything except "tables" is small, so it can be stringified normally;
+    // the closing brace is dropped so the tables can be appended into it.
+    const head = JSON.stringify(meta, null, 2);
+    out.write(head.slice(0, head.lastIndexOf("}")).replace(/\s*$/, ",\n"));
+    out.write('  "tables": {\n');
+
+    TABLE_ORDER.forEach((table, ti) => {
+      const rows = tables[table] ?? [];
+      const tableComma = ti === TABLE_ORDER.length - 1 ? "" : ",";
+      if (!rows.length) {
+        out.write(`    ${JSON.stringify(table)}: []${tableComma}\n`);
+        return;
+      }
+      out.write(`    ${JSON.stringify(table)}: [\n`);
+      rows.forEach((row, ri) => {
+        out.write(`      ${JSON.stringify(row)}${ri === rows.length - 1 ? "" : ","}\n`);
+      });
+      out.write(`    ]${tableComma}\n`);
+    });
+
+    out.write("  }\n}\n");
+    out.end();
+  });
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ---------- Email ----------
+// Kept separate from sending so the wording and, more importantly, the
+// too-large decision can be tested without a mail server — see
+// backup/backup.test.js.
+function composeEmail({ dateStr, missed, files, workbookError, maxBytes }) {
+  const limit = maxBytes ?? MAX_ATTACHMENT_BYTES;
+  const tooLarge = files.filter((f) => f.bytes > limit);
+  const attachable = files.filter((f) => f.bytes <= limit);
   const incomplete = missed.length > 0;
-  const subject = `${incomplete ? "⚠ INCOMPLETE — " : ""}${APP_NAME} Daily Backup — ${dateStr}`;
+  const undeliverable = tooLarge.length > 0;
+  const flag = incomplete ? "⚠ INCOMPLETE — " : undeliverable || workbookError ? "⚠ NOT ATTACHED — " : "";
+
   const lines = [
     `${APP_NAME} Daily Backup — data for ${dateStr}.`,
     `Backup ran at: ${takenAtText()}.`,
     "",
-    "Two files are attached:",
-    `  1. ${APP_NAME}-Backup-${dateStr}.xlsx — human-readable (ledgers, invoices, stock, parties, etc.)`,
-    `  2. ${APP_NAME}-Restore-${dateStr}.json — raw data for the in-app Restore feature (Setup → Backup & Restore). Keep this file safe.`,
   ];
+  if (attachable.length) {
+    lines.push("Attached:");
+    for (const f of attachable) lines.push(`  - ${f.filename} (${formatBytes(f.bytes)}) — ${f.description}`);
+  } else {
+    lines.push("Nothing could be attached to this message. See below.");
+  }
+  if (undeliverable) {
+    lines.push(
+      "",
+      "⚠ The following file was produced successfully but is TOO LARGE to send by email,",
+      `   so it is NOT attached (limit ${formatBytes(limit)}; Gmail's own ceiling is 25 MB per message):`
+    );
+    for (const f of tooLarge) lines.push(`  - ${f.filename} — ${formatBytes(f.bytes)}`);
+    lines.push(
+      "",
+      "   The backup itself was taken and is complete; only its delivery failed. The",
+      "   database has outgrown what email can carry, which means emailed backups",
+      "   alone are no longer enough. Use Supabase's own automatic daily backups",
+      "   (Project Settings → Database → Backups) as the primary copy and treat this",
+      "   message as the readable summary."
+    );
+  }
+  if (workbookError) {
+    lines.push(
+      "",
+      "⚠ The readable Excel workbook could not be produced this run:",
+      `  ${workbookError}`,
+      "",
+      "   The restore file is unaffected and is the copy a restore actually uses.",
+      "   The most likely cause at this size is memory: the whole workbook has to be",
+      "   assembled before it can be written."
+    );
+  }
   if (incomplete) {
     lines.push("", "⚠ The following table(s) FAILED to back up and are NOT included in this file:");
     for (const m of missed) lines.push(`  - ${m.table}: ${m.reason}`);
     lines.push("", "Please investigate before relying on this backup for a full restore.");
   }
 
-  await transporter.sendMail({
-    from: GMAIL_USER,
-    to: BACKUP_TO_EMAIL,
-    subject,
+  return {
+    subject: `${flag}${APP_NAME} Daily Backup — ${dateStr}`,
     text: lines.join("\n"),
-    attachments: [
-      { filename: `${APP_NAME}-Backup-${dateStr}.xlsx`, content: excelBuffer },
-      { filename: `${APP_NAME}-Restore-${dateStr}.json`, content: jsonBuffer },
-    ],
+    // `path` lets nodemailer stream each file instead of holding another copy
+    // of it in memory.
+    attachments: attachable.map((f) => ({ filename: f.filename, path: f.path })),
+    undeliverable,
+  };
+}
+
+async function sendEmail({ dateStr, missed, files, workbookError }) {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
   });
+
+  const { subject, text, attachments, undeliverable } = composeEmail({ dateStr, missed, files, workbookError });
+  await transporter.sendMail({ from: GMAIL_USER, to: BACKUP_TO_EMAIL, subject, text, attachments });
+  return { undeliverable };
 }
 
 // ---------- Main ----------
@@ -582,17 +738,64 @@ async function main() {
   }
 
   const { tables, missed } = await fetchAll(supabase);
-  console.log(`[backup] fetched ${TABLE_ORDER.length} tables, ${missed.length} failed`);
+  const totalRows = Object.values(tables).reduce((s, rows) => s + rows.length, 0);
+  console.log(`[backup] fetched ${TABLE_ORDER.length} tables, ${totalRows} rows, ${missed.length} failed`);
 
-  const workbook = buildExcel(tables);
-  const excelBuffer = Buffer.from(await workbook.xlsx.writeBuffer());
-  const jsonBuffer = Buffer.from(JSON.stringify(buildRestoreJson(tables, missed, dateStr), null, 2));
+  // Both files are written to disk and then streamed into the message, rather
+  // than being held in memory a second time as attachment buffers.
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "hitech-backup-"));
+  const xlsxPath = path.join(workDir, `${APP_NAME}-Backup-${dateStr}.xlsx`);
+  const jsonPath = path.join(workDir, `${APP_NAME}-Restore-${dateStr}.json`);
 
-  await sendEmail({ dateStr, missed, excelBuffer, jsonBuffer });
+  // The restore file is written FIRST, and deliberately so. It is the copy the
+  // business actually depends on; the workbook is the readable convenience.
+  // buildExcel() holds the entire workbook in memory before it can be written
+  // (8.2 GB of resident memory on the 1.3-million-row load-test dataset), so
+  // it is the step most likely to run the process out of memory — and if it
+  // ran first, that failure would take the restore file down with it. In this
+  // order a workbook that cannot be built costs only the workbook.
+  const jsonBytes = await writeRestoreJson(tables, missed, dateStr, jsonPath);
+
+  const files = [
+    {
+      filename: path.basename(jsonPath),
+      path: jsonPath,
+      bytes: jsonBytes,
+      description: "raw data for the in-app Restore feature (Setup → Backup & Restore). Keep this file safe.",
+    },
+  ];
+
+  let workbookError = null;
+  try {
+    const workbook = buildExcel(tables);
+    await workbook.xlsx.writeFile(xlsxPath);
+    files.unshift({
+      filename: path.basename(xlsxPath),
+      path: xlsxPath,
+      bytes: fs.statSync(xlsxPath).size,
+      description: "human-readable (ledgers, invoices, stock, parties, etc.)",
+    });
+  } catch (err) {
+    workbookError = String(err && err.message ? err.message : err);
+    console.error("[backup] workbook could not be built:", workbookError);
+  }
+  for (const f of files) console.log(`[backup] ${f.filename} — ${formatBytes(f.bytes)}`);
+
+  const { undeliverable } = await sendEmail({ dateStr, missed, files, workbookError });
   console.log(`[backup] email sent to ${BACKUP_TO_EMAIL}`);
+  fs.rmSync(workDir, { recursive: true, force: true });
 
   if (missed.length > 0) {
     console.error(`[backup] completed WITH FAILURES: ${missed.map((m) => m.table).join(", ")}`);
+    process.exitCode = 1;
+  } else if (workbookError) {
+    console.error("[backup] completed, but without the readable workbook — see the message body.");
+    process.exitCode = 1;
+  } else if (undeliverable) {
+    // The backup was taken and is complete, but it did not reach the mailbox.
+    // A non-zero exit makes the workflow's own failure alert fire too, so this
+    // cannot pass unnoticed as an ordinary success.
+    console.error("[backup] completed, but a file was too large to email — see the message body.");
     process.exitCode = 1;
   } else {
     console.log("[backup] completed successfully — no failures.");
@@ -606,5 +809,5 @@ if (require.main === module) {
   });
 } else {
   // Exposed for verification tooling only — `node backup.js` still runs main() as normal.
-  module.exports = { TABLE_ORDER, fetchAll, buildExcel, buildRestoreJson, dataDate, takenAtText };
+  module.exports = { TABLE_ORDER, fetchAll, fetchTable, buildExcel, buildRestoreJson, writeRestoreJson, composeEmail, formatBytes, dataDate, takenAtText };
 }
