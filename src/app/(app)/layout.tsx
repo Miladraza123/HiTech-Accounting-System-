@@ -213,7 +213,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/setup/users", label: "Users & Roles", show: owner, icon: <UserCog size={ICON_SIZE} /> },
         {
           href: "/setup/login-history",
-          label: "Login History",
+          label: "Activity Log",
           show: owner || user.roles.includes("auditor"),
           icon: <History size={ICON_SIZE} />,
         },

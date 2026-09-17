@@ -4137,6 +4137,7 @@ export type Database = {
         Args: { a: string; b: string }
         Returns: boolean
       }
+      describe_login_device: { Args: { p_user_agent: string }; Returns: string }
       fn_account_ledger: {
         Args: { p_account_id: string; p_limit: number; p_offset: number }
         Returns: {
@@ -4148,6 +4149,20 @@ export type Database = {
           running: number
           total_credit: number
           total_debit: number
+          total_rows: number
+        }[]
+      }
+      fn_activity_feed: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          at: string
+          actor_name: string
+          event_type: string
+          summary: string
+          doc_no: string | null
+          detail: string | null
+          ip_address: string | null
+          link_href: string | null
           total_rows: number
         }[]
       }
@@ -4918,6 +4933,10 @@ export type Database = {
         Returns: string
       }
       fn_log_logout: { Args: { p_session_id: string }; Returns: undefined }
+      fn_log_password_change: {
+        Args: { p_self_change: boolean; p_subject_user_id: string }
+        Returns: undefined
+      }
       fn_mark_job_ready_for_dispatch: {
         Args: { p_job_id: string }
         Returns: undefined

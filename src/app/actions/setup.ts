@@ -311,6 +311,14 @@ export async function resetUserPasswordAction(userId: string, newPassword: strin
   const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
   if (error) return { error: weakPasswordErrorMessage(error) ?? error.message };
 
+  // Recorded for the Activity Log (Phase 35). Uses the NORMAL client, not the
+  // admin one above — auth.uid() inside the logging function needs to resolve
+  // to the Owner actually doing this, and the admin client (service-role key)
+  // carries no session to resolve. Best-effort: a logging failure must never
+  // turn an already-successful reset into a reported error.
+  const supabase = await createClient();
+  await supabase.rpc("fn_log_password_change", { p_subject_user_id: userId, p_self_change: false });
+
   return { error: null, success: true, password: newPassword };
 }
 

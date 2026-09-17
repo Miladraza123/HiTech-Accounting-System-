@@ -199,6 +199,12 @@ export async function changePasswordAction(
     return { error: weakPasswordErrorMessage(updateError) ?? updateError.message };
   }
 
+  // Recorded for the Activity Log (Phase 35) — this is a Supabase Auth API
+  // call, not a write to any `public` schema row, so nothing here would
+  // otherwise leave a trail. Best-effort: a logging failure must never turn
+  // an already-successful password change into a reported error.
+  await supabase.rpc("fn_log_password_change", { p_subject_user_id: user.id, p_self_change: true });
+
   // The password just cleared Supabase's own rules, so whatever the sign-in
   // banner was warning about no longer applies.
   const cookieStore = await cookies();
