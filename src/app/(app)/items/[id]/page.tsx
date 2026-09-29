@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ItemAltUnitsPanel } from "@/components/ItemAltUnitsPanel";
 import { ItemToggle } from "@/components/ItemToggle";
 import { ItemReorderLevelField } from "@/components/ItemReorderLevelField";
+import { EditItemForm } from "@/components/EditItemForm";
 
 const TAX_LABEL: Record<string, string> = {
   standard: "Standard",
@@ -44,6 +45,24 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
           {item.spec && <span className="block text-xs text-ink-faint">{item.spec}</span>}
         </p>
       </div>
+
+      {canManage && (
+        <EditItemForm
+          itemId={item.id}
+          item={{
+            item_code: item.item_code,
+            description: item.description,
+            category: item.category,
+            spec: item.spec,
+            base_unit: item.base_unit,
+            hs_code: item.hs_code,
+            tax_category: item.tax_category,
+            is_stocked: item.is_stocked,
+            standard_cost: item.standard_cost,
+          }}
+          units={units ?? []}
+        />
+      )}
 
       <div className="rounded-xl border border-line bg-surface p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <div>

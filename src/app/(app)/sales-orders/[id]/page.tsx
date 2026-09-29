@@ -87,8 +87,13 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
             <Field label="Client PO Number" value={so.client_po_number} />
             <Field label="PO Date" value={so.po_date} />
             <Field label="Delivery Schedule" value={so.delivery_schedule ?? "—"} />
-            <Field label="Payment Terms" value={so.payment_terms ?? "—"} />
             <Field label="Reference Query" value={query?.query_no ?? "—"} />
+            {so.payment_terms && (
+              <div className="col-span-2">
+                <p className="text-xs text-ink-faint">Payment Terms</p>
+                <p className="text-ink mt-0.5 whitespace-pre-wrap">{so.payment_terms}</p>
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-line bg-surface overflow-hidden">

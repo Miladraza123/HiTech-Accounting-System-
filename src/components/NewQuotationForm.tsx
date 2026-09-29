@@ -129,7 +129,7 @@ export function NewQuotationForm({
         </div>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Payment Terms</span>
-          <input name="payment_terms" className="input" placeholder="e.g. 50% advance, balance on delivery" />
+          <textarea name="payment_terms" rows={2} className="input resize-none" placeholder="e.g. 50% advance, balance on delivery" />
         </label>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Terms &amp; Conditions</span>

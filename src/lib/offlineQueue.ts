@@ -74,7 +74,7 @@ type SyncMeta = {
 export type QueuedEdit = SyncMeta & {
   kind: "edit";
   id: string;
-  table: "company" | "parties" | "warehouses" | "vehicles";
+  table: "company" | "parties" | "warehouses" | "vehicles" | "items";
   rowId: string;
   /** Human-readable label shown in the pending-sync UI, e.g. "Company Profile". */
   label: string;

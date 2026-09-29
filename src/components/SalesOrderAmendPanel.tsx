@@ -130,7 +130,7 @@ export function SalesOrderAmendPanel({
         </label>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Payment Terms</span>
-          <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input" />
+          <textarea value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} rows={2} className="input resize-none" />
         </label>
       </div>
 

@@ -33,7 +33,7 @@ export function printStyles(scopeClass: string): string {
     .${scopeClass} .terms dd { margin: 2px 0 0; }
     .${scopeClass} .signoff { display: flex; justify-content: space-between; margin-top: 56px; font-size: 12px; }
     .${scopeClass} .signoff .box { width: 45%; }
-    .${scopeClass} .signoff .line { border-top: 1px solid #20242E; margin-top: 14px; padding-top: 4px; }
+    .${scopeClass} .signoff .line { border-top: 1px solid #20242E; margin-top: 4px; padding-top: 4px; }
     .${scopeClass} .print-foot { position: absolute; left: 32px; right: 32px; bottom: 20px; padding-top: 8px; border-top: 1px solid #DDD6C7; text-align: left; font-size: 10px; letter-spacing: .04em; color: #8B8F99; }
     @media print {
       .${scopeClass} { padding: 0 0 56px; max-width: none; min-height: 267mm; }

@@ -123,7 +123,7 @@ export function CreateRevisionPanel({
       </div>
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Payment Terms</span>
-        <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="input" />
+        <textarea value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} rows={2} className="input resize-none" />
       </label>
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Terms &amp; Conditions</span>

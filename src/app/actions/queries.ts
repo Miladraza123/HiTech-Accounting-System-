@@ -47,6 +47,31 @@ export async function createQueryAction(
 
   if (error || !inserted) return { error: error?.message ?? "Failed to save Query." };
 
+  // Optional first-document attachment (e.g. the client's drawing/email
+  // screenshot) — reuses the exact same Storage bucket + `attachments`
+  // table the detail page's AttachmentsPanel writes to, so it shows up
+  // there immediately. Best-effort: a failed upload must never lose the
+  // Query that was just saved — the user can still attach it afterwards
+  // from the detail page.
+  const attachment = formData.get("attachment") as File | null;
+  if (attachment && attachment.size > 0) {
+    const safeName = attachment.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `queries/${inserted.id}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from("attachments")
+      .upload(path, attachment, { contentType: attachment.type || undefined });
+    if (!uploadError) {
+      await supabase.from("attachments").insert({
+        owner_table: "queries",
+        owner_id: inserted.id,
+        file_path: path,
+        file_type: attachment.type || null,
+        label: null,
+        uploaded_by: user?.id,
+      });
+    }
+  }
+
   redirect(`/queries/${inserted.id}`);
 }
 

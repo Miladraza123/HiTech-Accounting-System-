@@ -157,6 +157,14 @@ export function QueryForm({
         <textarea name="notes" rows={2} className="input resize-none" />
       </label>
 
+      {isOnline && (
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-ink-soft">Document Attached (optional)</span>
+          <input name="attachment" type="file" className="input file:mr-3 file:rounded-md file:border-0 file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs" />
+          <span className="block text-[11px] text-ink-faint">e.g. client&apos;s drawing, spec sheet, or email screenshot for this Query.</span>
+        </label>
+      )}
+
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
           ⏳ You&apos;re offline — this Query will be saved on this device and synced automatically once you&apos;re

@@ -78,7 +78,7 @@ export default async function QuotationPrintPage({
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
           <div>
-            <div className="muted">Bill To</div>
+            <div className="muted">Quote To</div>
             <div style={{ fontWeight: 600 }}>{party?.legal_name}</div>
             {party?.billing_address && <div className="muted">{party.billing_address}</div>}
             {party?.ntn && <div className="muted">NTN: {party.ntn}</div>}
@@ -138,7 +138,7 @@ export default async function QuotationPrintPage({
           {revision.payment_terms && (
             <>
               <dt>Payment Terms</dt>
-              <dd>{revision.payment_terms}</dd>
+              <dd style={{ whiteSpace: "pre-wrap" }}>{revision.payment_terms}</dd>
             </>
           )}
           {revision.terms && (

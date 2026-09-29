@@ -46,8 +46,13 @@ export function QuotationRevisionView({
       <div className="rounded-xl border border-line bg-surface p-5 grid grid-cols-2 gap-4 text-sm">
         <Field label="Validity Date" value={revision.validity_date ?? "—"} />
         <Field label="Delivery Terms" value={revision.delivery_terms ?? "—"} />
-        <Field label="Payment Terms" value={revision.payment_terms ?? "—"} />
         {revision.reason && <Field label="Revision Reason" value={revision.reason} />}
+        {revision.payment_terms && (
+          <div className="col-span-2">
+            <p className="text-xs text-ink-faint mb-1">Payment Terms</p>
+            <p className="text-ink whitespace-pre-wrap">{revision.payment_terms}</p>
+          </div>
+        )}
         {revision.terms && (
           <div className="col-span-2">
             <p className="text-xs text-ink-faint mb-1">Terms &amp; Conditions</p>

@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
-export type ActionResult = { error: string | null; success?: boolean };
+export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[] };
 
 export async function createItemAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
@@ -32,6 +33,42 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
 
   if (error) return { error: error.message };
   revalidatePath("/items");
+  return { error: null, success: true };
+}
+
+export type ItemEditableFields = {
+  item_code: string;
+  description: string;
+  category: string | null;
+  spec: string | null;
+  base_unit: string;
+  hs_code: string | null;
+  tax_category: string;
+  is_stocked: boolean;
+  standard_cost: number;
+};
+
+// Every Item Master field except reorder_level (its own dedicated inline
+// field, unchanged) and is_active (its own toggle, unchanged) now goes
+// through the same generic Smart Merge engine as Company/Party/Warehouse/
+// Vehicle instead of having no edit path at all — a genuine field-level
+// 3-way merge, so two people editing different fields of the same item at
+// once never lose either change.
+export async function updateItemAction(
+  id: string,
+  base: ItemEditableFields,
+  next: ItemEditableFields
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const changes = diffFields(base, next);
+  const { result, error } = await smartMergeUpdate(supabase, "items", id, base, changes);
+  if (error) return { error: error.message };
+  if (result && result.conflicts.length > 0) {
+    return { error: null, conflicts: result.conflicts };
+  }
+
+  revalidatePath("/items");
+  revalidatePath(`/items/${id}`);
   return { error: null, success: true };
 }
 
