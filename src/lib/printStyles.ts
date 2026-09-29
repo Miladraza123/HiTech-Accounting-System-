@@ -15,7 +15,7 @@ export function printStyles(scopeClass: string): string {
        padding-bottom reserves its strip so content can never run into it. */
     .${scopeClass} { all: initial; box-sizing: border-box; position: relative; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px 32px 64px; max-width: 210mm; min-height: 297mm; margin: 0 auto; overflow: hidden; }
     .${scopeClass} * { box-sizing: border-box; }
-    .${scopeClass} .watermark { position: absolute; right: -40px; bottom: -40px; opacity: 0.04; pointer-events: none; z-index: 0; }
+    .${scopeClass} .watermark { position: absolute; right: 24px; bottom: 96px; opacity: 0.12; pointer-events: none; z-index: 0; }
     .${scopeClass} .hdr { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #A85A28; padding-bottom: 16px; margin-bottom: 20px; }
     .${scopeClass} .logo-block { display: flex; align-items: center; gap: 12px; }
     .${scopeClass} .co-name { font-size: 20px; font-weight: 700; }
