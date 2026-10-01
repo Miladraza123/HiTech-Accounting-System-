@@ -20,8 +20,9 @@ function newKey() {
   return `m${keySeq}`;
 }
 
-export function blankMaterialLine(): EditableMaterialLine {
-  return { key: newKey(), item_id: "", qty: "1", unit: "" };
+// See blankLine: first-render lines need an explicit, deterministic `key`.
+export function blankMaterialLine(key = newKey()): EditableMaterialLine {
+  return { key, item_id: "", qty: "1", unit: "" };
 }
 
 /**

@@ -247,7 +247,12 @@ export async function commitOpeningBalancesImportAction(
         .select("id")
         .single();
       if (createErr || !created) {
-        rowErrors.push({ row: i + 1, message: createErr?.message ?? "Failed to create party." });
+        // 42501 = blocked by RLS: only Owner/Sales/Store may create parties.
+        const message =
+          createErr?.code === "42501"
+            ? `"${r.party_name.trim()}" is not in Clients & Suppliers yet, and your role can't add it — ask the Owner, Sales or Store to add it first.`
+            : (createErr?.message ?? "Failed to create party.");
+        rowErrors.push({ row: i + 1, message });
         continue;
       }
       partyId = created.id;

@@ -115,7 +115,11 @@ export async function toggleItemAltUnitActiveAction(id: string, itemId: string, 
 
 export async function deleteItemAltUnitAction(id: string, itemId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("item_alt_units").delete().eq("id", id);
+  // RLS (Owner-only delete) filters the row out instead of raising, so an
+  // unauthorized delete would otherwise look like a success.
+  const { data, error } = await supabase.from("item_alt_units").delete().eq("id", id).select("id");
   revalidatePath(`/items/${itemId}`);
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "Only the Owner can remove an alternate unit — deactivate it instead." };
+  return { error: null };
 }

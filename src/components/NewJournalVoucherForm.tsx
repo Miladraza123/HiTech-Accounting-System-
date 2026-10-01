@@ -34,7 +34,7 @@ export function NewJournalVoucherForm({
   const router = useRouter();
   const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
   const [narration, setNarration] = useState("");
-  const [lines, setLines] = useState<EditableJvLine[]>([blankJvLine(), blankJvLine()]);
+  const [lines, setLines] = useState<EditableJvLine[]>([blankJvLine("init-0"), blankJvLine("init-1")]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();

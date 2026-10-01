@@ -1,4 +1,7 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element -- served by our own /api/company-logo route as plain bytes, not through the optimizer. */
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 
 /**
@@ -32,10 +35,20 @@ export function CompanyLogo({
   className?: string;
   alt?: string;
 }) {
-  if (!hasLogo) return <Logo size={fallbackSize} className={className} />;
+  // The route 404s when the file can't be served (e.g. no service-role key
+  // configured); show the built-in mark instead of a broken image.
+  // The error can fire before hydration attaches onError, so also check the
+  // image's state once mounted.
+  const [failed, setFailed] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
+  if (!hasLogo || failed) return <Logo size={fallbackSize} className={className} />;
   return (
     <span className={`company-logo ${className}`}>
-      <img src="/api/company-logo" alt={alt} style={{ width, height: "auto" }} />
+      <img ref={imgRef} src="/api/company-logo" alt={alt} style={{ width, height: "auto" }} onError={() => setFailed(true)} />
     </span>
   );
 }

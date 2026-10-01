@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recordPodAction, recordDisputeAction } from "@/app/actions/deliveryChallans";
 
-export function PodPanel({ dcId, canDispute }: { dcId: string; canDispute: boolean }) {
+// canAccept: delivery_challan.manage. canDispute: delivery_challan.dispute,
+// which the matrix also grants to Sales — they see only the Dispute button.
+export function PodPanel({ dcId, canDispute, canAccept = true }: { dcId: string; canDispute: boolean; canAccept?: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<"none" | "accept" | "dispute">("none");
   const [acceptedByName, setAcceptedByName] = useState("");
@@ -50,13 +52,15 @@ export function PodPanel({ dcId, canDispute }: { dcId: string; canDispute: boole
 
       {mode === "none" && (
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMode("accept")}
-            className="flex-1 rounded-md bg-good px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition"
-          >
-            Mark as Accepted
-          </button>
+          {canAccept && (
+            <button
+              type="button"
+              onClick={() => setMode("accept")}
+              className="flex-1 rounded-md bg-good px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition"
+            >
+              Mark as Accepted
+            </button>
+          )}
           {canDispute && (
             <button
               type="button"

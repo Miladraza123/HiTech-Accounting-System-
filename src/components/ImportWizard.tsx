@@ -62,8 +62,9 @@ const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: s
 
 type Row = Record<string, string>;
 
-export function ImportWizard() {
-  const [entity, setEntity] = useState<EntityType>("clients");
+export function ImportWizard({ canImportParties }: { canImportParties: boolean }) {
+  const entities = canImportParties ? ENTITIES : ENTITIES.filter((e) => e.value !== "clients" && e.value !== "suppliers");
+  const [entity, setEntity] = useState<EntityType>(entities[0].value);
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -71,7 +72,7 @@ export function ImportWizard() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
 
-  const config = ENTITIES.find((e) => e.value === entity)!;
+  const config = entities.find((e) => e.value === entity)!;
 
   async function handleFile(file: File) {
     setResult(null);
@@ -176,7 +177,7 @@ export function ImportWizard() {
             }}
             className="input mt-1.5"
           >
-            {ENTITIES.map((e) => (
+            {entities.map((e) => (
               <option key={e.value} value={e.value}>
                 {e.label}
               </option>

@@ -53,6 +53,7 @@ import {
   ShieldCheck,
   DatabaseBackup,
   History,
+  BarChart3,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -186,6 +187,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           icon: <BookOpen size={ICON_SIZE} />,
         },
       ],
+    },
+    {
+      // The Owner reaches every report from the Owner Dashboard, which is
+      // Owner-only; Accounts/Auditor are allowed on these report pages but
+      // otherwise had no link to them at all.
+      label: "Reports",
+      items: [
+        ["/reports/trial-balance", "Trial Balance"],
+        ["/reports/profit-loss", "Profit & Loss"],
+        ["/reports/balance-sheet", "Balance Sheet"],
+        ["/reports/general-ledger", "General Ledger"],
+        ["/reports/party-ledger", "Party Ledger"],
+        ["/reports/ar-aging", "AR Aging"],
+        ["/reports/ap-aging", "AP Aging"],
+        ["/reports/cash-flow", "Cash Flow"],
+        ["/reports/daily-ledger", "Daily Ledger"],
+      ].map(([href, label]) => ({
+        href,
+        label,
+        show: !owner && (user.roles.includes("accounts") || user.roles.includes("auditor")),
+        icon: <BarChart3 size={ICON_SIZE} />,
+      })),
     },
     {
       label: "Settings / Administration",

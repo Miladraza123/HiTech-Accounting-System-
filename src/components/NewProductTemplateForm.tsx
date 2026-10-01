@@ -68,7 +68,7 @@ export function NewProductTemplateForm({
   const [description, setDescription] = useState("");
   const [outputItemId, setOutputItemId] = useState("");
   const [outputUnit, setOutputUnit] = useState("");
-  const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine()]);
+  const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine("init-0")]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();

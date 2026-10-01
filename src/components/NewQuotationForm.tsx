@@ -51,7 +51,7 @@ export function NewQuotationForm({
   // useItemCatalog.
   const { items, addItem } = useItemCatalog(itemsProp);
   const [state, formAction, pending] = useActionState(createQuotationAction, initialState);
-  const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct)]);
+  const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct, "init-0")]);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
   // Guards the offline branch below against a rapid double-click — see
