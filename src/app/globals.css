@@ -410,6 +410,21 @@ button:focus-visible,
   }
 }
 
+/* One page's content fading in after a route change — see
+   PageFadeTransition.tsx, which remounts this element (restarting the
+   animation) by keying it off the pathname. */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-fade {
+  animation: page-fade-in 220ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .splash-slot,
   .splash-loader,
@@ -418,6 +433,9 @@ button:focus-visible,
   }
   .splash-spinner {
     animation-duration: 2400ms;
+  }
+  .page-fade {
+    animation: none;
   }
 }
 

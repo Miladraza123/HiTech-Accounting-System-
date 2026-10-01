@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { getCachedMasterData, type CachedMasterDataTable } from "@/lib/offlineQueue";
@@ -146,6 +147,12 @@ export function SearchablePicker({
     options: [],
   });
   const boxRef = useRef<HTMLDivElement>(null);
+  // The dropdown itself lives in a portal (see below) so it can never be
+  // clipped by a scrollable ancestor — e.g. a line-item table's own
+  // overflow-x-auto wrapper, which previously hid it behind a scrollbar
+  // whenever the row was near the bottom of the table.
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
 
   const allPending = useMemo(
     () => pendingOptions.map((p) => ({ ...p, hint: "offline — pending sync" })),
@@ -160,11 +167,68 @@ export function SearchablePicker({
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      // The menu itself is portaled to document.body (outside boxRef's own
+      // DOM subtree), so a click inside it must be checked separately —
+      // otherwise every pick would register as an "outside" click and
+      // close the menu before its own onClick ever fired.
+      if (boxRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  // Positions the dropdown against the real viewport instead of the input's
+  // own offset parent, and flips it above the input (capping its height to
+  // whatever space is actually available) whenever there isn't comfortably
+  // enough room below — the previous version always opened downward, which
+  // is what let it get clipped or hidden behind a scrollbar near the
+  // bottom of a scrollable table.
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function place() {
+      const el = boxRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const GAP = 4;
+      const MARGIN = 8; // breathing room from the viewport edge
+      const PREFERRED_MAX = 256; // matches the old max-h-64
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const openAbove = spaceBelow < Math.min(PREFERRED_MAX, 160) && spaceAbove > spaceBelow;
+
+      setMenuStyle(
+        openAbove
+          ? {
+              position: "fixed",
+              left: rect.left,
+              width: rect.width,
+              bottom: window.innerHeight - rect.top + GAP,
+              maxHeight: Math.max(80, Math.min(PREFERRED_MAX, spaceAbove - GAP - MARGIN)),
+            }
+          : {
+              position: "fixed",
+              left: rect.left,
+              width: rect.width,
+              top: rect.bottom + GAP,
+              maxHeight: Math.max(80, Math.min(PREFERRED_MAX, spaceBelow - GAP - MARGIN)),
+            }
+      );
+    }
+
+    place();
+    window.addEventListener("resize", place);
+    // `true` = capture phase, so this also fires for scrolling inside any
+    // scrollable ancestor (e.g. the line-item table), not just the window.
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open]);
 
   const term = query.trim();
 
@@ -275,27 +339,36 @@ export function SearchablePicker({
         />
       )}
 
-      {open && !selected && !disabled && (
-        <div className="absolute z-40 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-line bg-surface shadow-lg">
-          {shown.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => pick(o)}
-              className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-2"
-            >
-              {o.label}
-              {o.hint && <span className="block text-[11px] text-ink-faint">{o.hint}</span>}
-            </button>
-          ))}
-          {searching && <p className="px-3 py-2 text-xs text-ink-faint">Searching…</p>}
-          {!searching && !shown.length && (
-            <p className="px-3 py-2 text-xs text-ink-faint">
-              {term ? "No match found." : "Start typing to search…"}
-            </p>
-          )}
-        </div>
-      )}
+      {open &&
+        !selected &&
+        !disabled &&
+        menuStyle &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={menuStyle}
+            className="z-50 overflow-y-auto rounded-lg border border-line bg-surface shadow-lg"
+          >
+            {shown.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => pick(o)}
+                className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-2"
+              >
+                {o.label}
+                {o.hint && <span className="block text-[11px] text-ink-faint">{o.hint}</span>}
+              </button>
+            ))}
+            {searching && <p className="px-3 py-2 text-xs text-ink-faint">Searching…</p>}
+            {!searching && !shown.length && (
+              <p className="px-3 py-2 text-xs text-ink-faint">
+                {term ? "No match found." : "Start typing to search…"}
+              </p>
+            )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

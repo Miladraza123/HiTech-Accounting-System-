@@ -4,6 +4,7 @@ import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
 import { signOutAction, dismissWeakPasswordWarningAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "@/components/MobileNav";
+import { PageFadeTransition } from "@/components/PageFadeTransition";
 import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -326,7 +327,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </form>
               </div>
             )}
-            <div className="max-w-5xl mx-auto px-5 py-8">{children}</div>
+            <div className="max-w-5xl mx-auto px-5 py-8">
+              <PageFadeTransition>{children}</PageFadeTransition>
+            </div>
           </main>
         </div>
 

@@ -6,6 +6,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
+import { useAutoDismissSuccess } from "@/lib/useAutoDismissSuccess";
 
 const initialState: ActionResult = { error: null };
 
@@ -37,6 +38,7 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
   const { isSubmitting, guard } = useOfflineSubmitGuard();
+  const showSuccess = useAutoDismissSuccess(state);
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -168,7 +170,7 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
       )}
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
-      {state.success && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
+      {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
 
       <div className="border-t border-line pt-4">
         <button type="submit" disabled={pending || isSubmitting} className={buttonClass("primary", "md", "disabled:opacity-60")}>

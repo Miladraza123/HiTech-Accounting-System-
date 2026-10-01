@@ -3,12 +3,14 @@
 import { useActionState, useRef, useEffect } from "react";
 import { changePasswordAction, type ChangePasswordState } from "@/app/actions/auth";
 import { buttonClass } from "@/components/ui/Button";
+import { useAutoDismissSuccess } from "@/lib/useAutoDismissSuccess";
 
 const initialState: ChangePasswordState = { error: null };
 
 export function ChangePasswordForm() {
   const [state, formAction, pending] = useActionState(changePasswordAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const showSuccess = useAutoDismissSuccess(state);
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -59,7 +61,7 @@ export function ChangePasswordForm() {
       </div>
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
-      {state.success && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Password changed.</p>}
+      {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Password changed.</p>}
 
       <button type="submit" disabled={pending} className={buttonClass("primary", "sm")}>
         {pending ? "Changing…" : "Change Password"}

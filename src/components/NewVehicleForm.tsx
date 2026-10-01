@@ -20,7 +20,7 @@ export function NewVehicleForm({ profiles }: { profiles: Tables<"profiles">[] })
   const [makeModel, setMakeModel] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
   const [assignmentDate, setAssignmentDate] = useState(new Date().toISOString().slice(0, 10));
-  const [openingMeter, setOpeningMeter] = useState("0");
+  const [openingMeter, setOpeningMeter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
@@ -127,7 +127,7 @@ export function NewVehicleForm({ profiles }: { profiles: Tables<"profiles">[] })
         )}
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Opening Meter Reading</span>
-          <input type="number" step="0.01" min="0" value={openingMeter} onChange={(e) => setOpeningMeter(e.target.value)} className="input" />
+          <input type="number" step="0.01" min="0" value={openingMeter} onChange={(e) => setOpeningMeter(e.target.value)} placeholder="0" className="input" />
         </label>
       </div>
       {!isOnline && (

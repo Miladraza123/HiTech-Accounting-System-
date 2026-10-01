@@ -11,7 +11,7 @@ export function NewBankAccountForm() {
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [branch, setBranch] = useState("");
-  const [openingBalance, setOpeningBalance] = useState("0");
+  const [openingBalance, setOpeningBalance] = useState("");
   const [openingDate, setOpeningDate] = useState(new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -87,7 +87,7 @@ export function NewBankAccountForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Opening Balance</span>
-          <input type="number" step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="input" />
+          <input type="number" step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} placeholder="0" className="input" />
         </label>
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Opening Balance Date</span>

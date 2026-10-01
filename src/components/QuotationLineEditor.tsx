@@ -37,7 +37,7 @@ function newKey() {
 }
 
 export function blankLine(defaultTaxPct = 18): EditableLine {
-  return { key: newKey(), item_id: "", description: "", qty: "1", unit: "", rate: "0", tax_pct: String(defaultTaxPct) };
+  return { key: newKey(), item_id: "", description: "", qty: "1", unit: "", rate: "", tax_pct: String(defaultTaxPct) };
 }
 
 export function QuotationLineEditor({
@@ -197,6 +197,7 @@ export function QuotationLineEditor({
                       value={l.rate}
                       onChange={(e) => update(l.key, { rate: e.target.value })}
                       required
+                      placeholder="0"
                       className="input !py-1 text-xs text-right tabular"
                     />
                   </td>

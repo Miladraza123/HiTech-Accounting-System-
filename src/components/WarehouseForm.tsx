@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect, useState } from "react";
 import { addWarehouseAction, type ActionResult } from "@/app/actions/setup";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
+import { useAutoDismissSuccess } from "@/lib/useAutoDismissSuccess";
 
 const initialState: ActionResult = { error: null };
 
@@ -24,6 +25,7 @@ export function WarehouseForm() {
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
   const { isSubmitting, guard } = useOfflineSubmitGuard();
+  const showSuccess = useAutoDismissSuccess(state);
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -82,6 +84,7 @@ export function WarehouseForm() {
         </p>
       )}
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
+      {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
       <button
         type="submit"
         disabled={pending || isSubmitting}

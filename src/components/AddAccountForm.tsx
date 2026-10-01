@@ -3,6 +3,7 @@
 import { useActionState, useRef, useEffect } from "react";
 import { addAccountAction, type ActionResult } from "@/app/actions/setup";
 import type { Tables } from "@/lib/supabase/database.types";
+import { useAutoDismissSuccess } from "@/lib/useAutoDismissSuccess";
 
 const initialState: ActionResult = { error: null };
 
@@ -17,6 +18,7 @@ const TYPES = [
 export function AddAccountForm({ accounts }: { accounts: Tables<"chart_of_accounts">[] }) {
   const [state, formAction, pending] = useActionState(addAccountAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const showSuccess = useAutoDismissSuccess(state);
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -49,6 +51,7 @@ export function AddAccountForm({ accounts }: { accounts: Tables<"chart_of_accoun
         </select>
       </div>
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
+      {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
       <button
         type="submit"
         disabled={pending}

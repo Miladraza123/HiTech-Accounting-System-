@@ -6,6 +6,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { diffFields, type SmartMergeConflict } from "@/lib/smartMerge";
 import { findPendingEdit } from "@/lib/offlineQueue";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { useAutoDismissSuccess } from "@/lib/useAutoDismissSuccess";
 
 const initialState: ActionResult = { error: null };
 
@@ -42,6 +43,7 @@ export function CompanyForm({
   const formRef = useRef<HTMLFormElement>(null);
   const { isOnline, enqueue } = useOfflineQueue();
   const [queuedOffline, setQueuedOffline] = useState(false);
+  const showSuccess = useAutoDismissSuccess(state);
 
   const loaded: FormValues = {
     legal_name: company?.legal_name ?? "",
@@ -242,7 +244,7 @@ export function CompanyForm({
       </div>
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
-      {state.success && (
+      {showSuccess && (
         <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Saved.</p>
       )}
       {!isOnline && (
