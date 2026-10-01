@@ -1,6 +1,3 @@
--- NOT YET APPLIED to the live project: applying it was held back for the
--- owner to approve. Apply it deliberately (Supabase SQL editor or MCP).
---
 -- Role-access fixes from an audit of RLS vs. the app's own guards.
 
 -- 1. daily_snapshots holds cash/bank/petty-cash balances, AR/AP totals and
@@ -8,8 +5,7 @@
 --    only Owner/Accounts/Auditor may read. The snapshot was readable by every
 --    signed-in role over REST; give it the same audience as journal_lines and
 --    the /reports/daily-snapshot page.
-drop policy if exists p_select on public.daily_snapshots;
-create policy p_select on public.daily_snapshots for select to authenticated
+alter policy p_select on public.daily_snapshots
   using (public.is_owner() or public.has_role('accounts') or public.has_role('auditor'));
 
 -- 2. profiles' update policy lets a user edit their own row (name, phone),
@@ -31,8 +27,7 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_guard_profile_is_active on public.profiles;
-create trigger trg_guard_profile_is_active before update on public.profiles
+create or replace trigger trg_guard_profile_is_active before update on public.profiles
   for each row execute function public.fn_guard_profile_is_active();
 
 -- 3. fn_log_password_change accepted any subject, so any user could write
