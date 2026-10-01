@@ -3,10 +3,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 
-// Normal balance side per account type — used only to label Dr/Cr, the
-// numbers themselves are never flipped.
-const DEBIT_NORMAL = new Set(["asset", "expense"]);
-
 export default async function TrialBalancePage() {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
@@ -55,9 +51,9 @@ export default async function TrialBalancePage() {
             </thead>
             <tbody>
               {active.map((r) => {
-                const isDebitNormal = DEBIT_NORMAL.has(r.account_type ?? "");
+                // trial_balance.balance is debit - credit for every account
+                // type, so its sign alone says which side the balance is on.
                 const balance = r.balance ?? 0;
-                const shown = isDebitNormal ? balance : -balance;
                 return (
                   <tr key={r.account_id} className="border-t border-line">
                     <td className="px-3 py-2 font-mono text-xs text-ink">{r.code}</td>
@@ -66,7 +62,7 @@ export default async function TrialBalancePage() {
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{(r.total_debit ?? 0).toLocaleString()}</td>
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{(r.total_credit ?? 0).toLocaleString()}</td>
                     <td className="px-3 py-2 text-right tabular text-ink font-medium">
-                      {Math.abs(shown).toLocaleString()} {shown >= 0 ? "Dr" : "Cr"}
+                      {Math.abs(balance).toLocaleString()} {balance >= 0 ? "Dr" : "Cr"}
                     </td>
                   </tr>
                 );
