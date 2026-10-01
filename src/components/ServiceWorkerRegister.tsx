@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Registers the PWA service worker (public/sw.js) and shows a small toast
 // whenever a NEW version has finished installing in the background —
@@ -8,13 +8,21 @@ import { useEffect, useState } from "react";
 // the app silently swapping code out from under them mid-edit.
 export function ServiceWorkerRegister() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  // Set when the user clicks "Refresh", so that activation always reloads.
+  const refreshRequested = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
+    // On a device's very first visit there is no controller yet; the worker's
+    // clients.claim() then fires controllerchange several seconds after the
+    // page loaded. Reloading there would wipe whatever the user had started
+    // typing, and nothing actually changed — only reload when an existing
+    // worker is being replaced by a new version.
+    const hadController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (refreshing) return;
+      if (refreshing || (!hadController && !refreshRequested.current)) return;
       refreshing = true;
       window.location.reload();
     });
@@ -93,6 +101,7 @@ export function ServiceWorkerRegister() {
       <button
         type="button"
         onClick={() => {
+          refreshRequested.current = true;
           waitingWorker.postMessage("SKIP_WAITING");
           setWaitingWorker(null);
         }}
