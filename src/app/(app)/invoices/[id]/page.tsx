@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeInvoices } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { CancelInvoiceButton } from "@/components/CancelInvoiceButton";
 import { SalesReturnPanel } from "@/components/SalesReturnPanel";
@@ -16,6 +17,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
+  if (!canSeeInvoices(user)) redirect("/");
   const canManage = await hasPermission(user, "invoice.manage");
 
   const supabase = await createClient();

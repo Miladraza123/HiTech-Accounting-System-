@@ -8,6 +8,7 @@ import { PageFadeTransition } from "@/components/PageFadeTransition";
 import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -126,7 +127,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/quotations", label: "Quotations", show: true, icon: <FileText size={ICON_SIZE} /> },
         { href: "/sales-orders", label: "Sales Orders", show: true, icon: <ShoppingCart size={ICON_SIZE} /> },
         { href: "/delivery-challans", label: "Delivery Challans", show: true, icon: <Send size={ICON_SIZE} /> },
-        { href: "/invoices", label: "GST Invoices", show: true, icon: <Receipt size={ICON_SIZE} /> },
+        { href: "/invoices", label: "GST Invoices", show: canSeeInvoices(user), icon: <Receipt size={ICON_SIZE} /> },
         {
           href: "/sales-returns",
           label: "Sales Returns",
@@ -139,7 +140,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       label: "Purchases",
       items: [
         { href: "/purchase-orders", label: "Purchase Orders", show: true, icon: <Truck size={ICON_SIZE} /> },
-        { href: "/supplier-bills", label: "Supplier Bills", show: true, icon: <FileText size={ICON_SIZE} /> },
+        { href: "/supplier-bills", label: "Supplier Bills", show: canSeeSupplierBills(user), icon: <FileText size={ICON_SIZE} /> },
         {
           href: "/purchase-returns",
           label: "Purchase Returns",
@@ -166,14 +167,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       label: "Accounts & Finance",
       items: [
-        { href: "/payments", label: "Payments", show: true, icon: <CreditCard size={ICON_SIZE} /> },
+        { href: "/payments", label: "Payments", show: canSeeFinance(user), icon: <CreditCard size={ICON_SIZE} /> },
         {
           href: "/cash-bank",
           label: "Cash & Bank",
           show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
           icon: <Landmark size={ICON_SIZE} />,
         },
-        { href: "/expenses", label: "Expenses", show: true, icon: <Wallet size={ICON_SIZE} /> },
+        { href: "/expenses", label: "Expenses", show: canSeeFinance(user), icon: <Wallet size={ICON_SIZE} /> },
         {
           href: "/transfers",
           label: "Fund Transfers",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { EditVehicleForm } from "@/components/EditVehicleForm";
@@ -26,6 +26,8 @@ export default async function VehicleDetailPage({
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
   const user = await getCurrentUser();
+  // Same audience as the Vehicles nav link; the page shows fuel/expense totals.
+  if (!(isOwner(user) || hasRole(user, "accounts"))) redirect("/");
   const canManage = isOwner(user) || hasRole(user, "accounts");
 
   const supabase = await createClient();
