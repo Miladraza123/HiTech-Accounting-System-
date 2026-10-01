@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchLineItems } from "@/lib/itemOptions";
@@ -18,7 +19,10 @@ export default async function NewStockTransferPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-ink">New Stock Transfer</h1>
+        <Link href="/stock-transfers" className="text-xs text-ink-faint hover:text-ink">
+          ← Stock Transfers
+        </Link>
+        <h1 className="text-lg font-semibold text-ink mt-1">New Stock Transfer</h1>
         <p className="mt-1 text-sm text-ink-soft">Move stock from one warehouse to another.</p>
       </div>
       <NewStockTransferForm warehouses={warehouses ?? []} items={items} />
