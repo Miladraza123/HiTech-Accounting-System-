@@ -14,6 +14,15 @@ export function NewExpenseHeadForm() {
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
 
+  // The matching ledger account is always named "<name> Expense" (see
+  // fn_create_expense_head_idempotent) — shown live so a name that already
+  // contains the word "Expense" (a very natural way to name one, e.g. "Fuel
+  // Expense") visibly doubles up before it's saved, instead of only being
+  // noticed afterwards in the Chart of Accounts.
+  const trimmedName = name.trim();
+  const accountPreview = trimmedName ? `${trimmedName} Expense` : null;
+  const looksDuplicated = /\bexpense\b\s*$/i.test(trimmedName);
+
   function submit() {
     setError(null);
     if (!name.trim()) {
@@ -61,7 +70,18 @@ export function NewExpenseHeadForm() {
           <input value={code} onChange={(e) => setCode(e.target.value)} className="input" placeholder="e.g. TOLL" />
         </label>
       </div>
-      <p className="text-xs text-ink-faint">Adding a new head will automatically create a corresponding expense account in accounting.</p>
+      {accountPreview && (
+        <p className={`text-xs ${looksDuplicated ? "text-warn" : "text-ink-faint"}`}>
+          This will create ledger account: <span className="font-mono">&quot;{accountPreview}&quot;</span>
+          {looksDuplicated && (
+            <>
+              {" "}
+              — looks like &quot;Expense&quot; is already in the name above; you probably want just{" "}
+              <span className="font-mono">&quot;{trimmedName.replace(/\s*expense\s*$/i, "")}&quot;</span> here.
+            </>
+          )}
+        </p>
+      )}
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
           ⏳ You&apos;re offline — this Expense Head will be saved on this device and synced automatically once
