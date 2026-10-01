@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeSupplierBills } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -16,6 +18,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
 export default async function SupplierBillsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
+  if (!canSeeSupplierBills(user)) redirect("/");
   const canCreate = await hasPermission(user, "supplier_bill.manage");
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { canSeeFinance } from "@/lib/financeAccess";
 
 // How many Sales Orders the picker offers at once. This page exists to look up
 // ONE order, so the list is a search result, not the whole order book.
@@ -61,7 +62,7 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
     jobs: { job_no: string; status: string }[];
     dcs: { dc_no: string; status: string; acceptance_status: string }[];
     invoices: { id: string; invoice_no: string; status: string; grand_total: number }[];
-    payments: { payment_no: string; amount: number; payment_date: string }[];
+    payments: { label: string; status: string }[];
   } | null = null;
 
   if (so_id) {
@@ -79,16 +80,33 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
       ]);
 
       const invoiceIds = (invoices ?? []).map((i) => i.id);
-      const { data: allocations } = invoiceIds.length
-        ? await supabase.from("payment_allocations").select("amount, payments(payment_no, payment_date, status)").in("invoice_id", invoiceIds)
-        : { data: [] };
+      // Payments are finance-only in RLS. Sales still sees how much of each
+      // invoice has been received, via invoice_outstanding (allocated totals
+      // only, no payment documents).
+      const financeView = canSeeFinance(user);
+      const { data: allocations } =
+        financeView && invoiceIds.length
+          ? await supabase.from("payment_allocations").select("amount, payments(payment_no, payment_date, status)").in("invoice_id", invoiceIds)
+          : { data: [] };
+      const { data: received } =
+        !financeView && invoiceIds.length
+          ? await supabase.from("invoice_outstanding").select("invoice_id, allocated_amount, outstanding_amount").in("invoice_id", invoiceIds)
+          : { data: [] };
+      const invoiceNoById = new Map((invoices ?? []).map((i) => [i.id, i.invoice_no]));
 
-      const payments = (allocations ?? [])
-        .map((a) => {
-          const pay = a.payments as unknown as { payment_no: string; payment_date: string; status: string } | null;
-          return pay && pay.status === "Posted" ? { payment_no: pay.payment_no, amount: a.amount, payment_date: pay.payment_date } : null;
-        })
-        .filter((p): p is { payment_no: string; amount: number; payment_date: string } => p !== null);
+      const payments = financeView
+        ? (allocations ?? [])
+            .map((a) => {
+              const pay = a.payments as unknown as { payment_no: string; payment_date: string; status: string } | null;
+              return pay && pay.status === "Posted" ? { label: `${pay.payment_no} (${pay.payment_date})`, status: a.amount.toLocaleString() } : null;
+            })
+            .filter((p): p is { label: string; status: string } => p !== null)
+        : (received ?? [])
+            .filter((r) => (r.allocated_amount ?? 0) > 0)
+            .map((r) => ({
+              label: `${invoiceNoById.get(r.invoice_id ?? "") ?? "Invoice"} — received ${(r.allocated_amount ?? 0).toLocaleString()}`,
+              status: `Outstanding ${(r.outstanding_amount ?? 0).toLocaleString()}`,
+            }));
 
       chain = {
         query: so.queries as unknown as { query_no: string; status: string } | null,
@@ -166,7 +184,7 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
           />
           <Stage
             title="Payments"
-            items={chain.payments.map((p) => ({ label: `${p.payment_no} (${p.payment_date})`, status: p.amount.toLocaleString() }))}
+            items={chain.payments}
             empty="No Payment allocated yet."
           />
         </div>

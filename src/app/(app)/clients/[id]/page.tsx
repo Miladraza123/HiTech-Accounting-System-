@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner } from "@/lib/auth";
 import { EditCreditTermsForm } from "@/components/EditCreditTermsForm";
 import { agingBucket, dueDateFrom, emptyBuckets, bucketTotal } from "@/lib/aging";
 import { TasksPanel } from "@/components/TasksPanel";
+import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
 
 const TYPE_LABEL: Record<string, string> = { client: "Client", supplier: "Supplier", both: "Client + Supplier" };
 
@@ -26,6 +27,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
 
   const isClient = party.party_type === "client" || party.party_type === "both";
   const isSupplier = party.party_type === "supplier" || party.party_type === "both";
+  // RLS hides these documents from other roles; hide the sections built on
+  // them rather than show a misleading 0.
+  const showAR = isClient && canSeeInvoices(user);
+  const showAP = isSupplier && canSeeSupplierBills(user);
+  const showPayments = canSeeFinance(user);
 
   const [
     { data: queries },
@@ -42,11 +48,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
     isClient ? supabase.from("quotations").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
     isClient ? supabase.from("sales_orders").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
     isClient ? supabase.from("delivery_challans").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
-    isClient ? supabase.from("invoices").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
-    isClient ? supabase.from("invoice_outstanding").select("*").eq("party_id", id) : Promise.resolve({ data: [] }),
+    showAR ? supabase.from("invoices").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
+    showAR ? supabase.from("invoice_outstanding").select("*").eq("party_id", id) : Promise.resolve({ data: [] }),
     isSupplier ? supabase.from("purchase_orders").select("*").eq("supplier_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
-    isSupplier ? supabase.from("supplier_bills").select("*").eq("supplier_id", id).order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
-    supabase.from("payments").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20),
+    showAP ? supabase.from("supplier_bills").select("*").eq("supplier_id", id).order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
+    showPayments ? supabase.from("payments").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
   ]);
 
   const totalReceivable = arSummary?.total_outstanding ?? 0;
@@ -83,7 +89,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isClient && (
+        {showAR && (
           <div className="rounded-xl border border-line bg-surface p-4">
             <p className={`text-2xl font-semibold tabular ${totalReceivable > 0 ? "text-warn" : "text-ink"}`}>{totalReceivable.toLocaleString()}</p>
             <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Outstanding Receivable</p>
@@ -97,7 +103,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Credit Limit</p>
           </div>
         )}
-        {isClient && creditLimit > 0 && (
+        {showAR && creditLimit > 0 && (
           <div className="rounded-xl border border-line bg-surface p-4">
             <p className={`text-2xl font-semibold tabular ${(availableCredit ?? 0) < 0 ? "text-bad" : "text-good"}`}>
               {(availableCredit ?? 0).toLocaleString()}
@@ -105,7 +111,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Available Credit</p>
           </div>
         )}
-        {isSupplier && (
+        {showAP && (
           <div className="rounded-xl border border-line bg-surface p-4">
             <p className={`text-2xl font-semibold tabular ${totalPayable > 0 ? "text-warn" : "text-ink"}`}>{totalPayable.toLocaleString()}</p>
             <p className="mt-0.5 text-xs text-ink-faint uppercase tracking-wide font-mono">Outstanding Payable</p>
@@ -128,7 +134,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         </div>
       )}
 
-      {isClient && hasOpenInvoices && (
+      {showAR && hasOpenInvoices && (
         <div className="rounded-xl border border-line bg-surface overflow-hidden">
           <div className="px-4 py-2.5 border-b border-line">
             <h2 className="text-sm font-semibold text-ink">AR Aging</h2>
@@ -200,7 +206,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             rows={(deliveryChallans ?? []).map((d) => ({ id: d.id, label: d.dc_no, href: `/delivery-challans/${d.id}`, sub: `${d.status} / ${d.acceptance_status}`, date: d.created_at }))}
           />
         )}
-        {isClient && (
+        {showAR && (
           <RecordSection
             title="Invoices"
             rows={(invoices ?? []).map((i) => ({ id: i.id, label: i.invoice_no, href: `/invoices/${i.id}`, sub: i.status, date: i.created_at, amount: i.grand_total }))}
@@ -212,23 +218,25 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             rows={(purchaseOrders ?? []).map((p) => ({ id: p.id, label: p.po_no, href: `/purchase-orders/${p.id}`, sub: p.status, date: p.created_at, amount: p.grand_total }))}
           />
         )}
-        {isSupplier && (
+        {showAP && (
           <RecordSection
             title="Supplier Bills"
             rows={(supplierBills ?? []).map((b) => ({ id: b.id, label: b.bill_no, href: `/supplier-bills/${b.id}`, sub: b.status, date: b.created_at, amount: b.grand_total }))}
           />
         )}
-        <RecordSection
-          title="Payments"
-          rows={(payments ?? []).map((p) => ({
-            id: p.id,
-            label: p.payment_no,
-            href: `/payments/${p.id}`,
-            sub: `${p.direction === "receipt" ? "Receipt" : "Payment"} / ${p.status}`,
-            date: p.created_at,
-            amount: p.amount,
-          }))}
-        />
+        {showPayments && (
+          <RecordSection
+            title="Payments"
+            rows={(payments ?? []).map((p) => ({
+              id: p.id,
+              label: p.payment_no,
+              href: `/payments/${p.id}`,
+              sub: `${p.direction === "receipt" ? "Receipt" : "Payment"} / ${p.status}`,
+              date: p.created_at,
+              amount: p.amount,
+            }))}
+          />
+        )}
       </div>
     </div>
   );
