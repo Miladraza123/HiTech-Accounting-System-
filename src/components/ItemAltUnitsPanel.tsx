@@ -20,12 +20,14 @@ export function ItemAltUnitsPanel({
   units,
   altUnits,
   canManage,
+  canDelete = false,
 }: {
   itemId: string;
   baseUnit: string;
   units: Tables<"units">[];
   altUnits: Tables<"item_alt_units">[];
   canManage: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [unit, setUnit] = useState("");
@@ -111,14 +113,17 @@ export function ItemAltUnitsPanel({
                     >
                       {pendingId === a.id ? "…" : a.is_active ? "Deactivate" : "Activate"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(a.id)}
-                      disabled={pending}
-                      className="text-xs text-bad underline underline-offset-2 disabled:opacity-60"
-                    >
-                      Remove
-                    </button>
+                    {/* Delete is Owner-only in RLS; others can Deactivate. */}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => remove(a.id)}
+                        disabled={pending}
+                        className="text-xs text-bad underline underline-offset-2 disabled:opacity-60"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>

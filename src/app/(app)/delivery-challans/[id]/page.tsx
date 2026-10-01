@@ -142,8 +142,8 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
         </div>
 
         <div className="space-y-6">
-          {dc.status === "Issued" && dc.acceptance_status === "Pending" && canManage && <PodPanel dcId={id} canDispute={canDispute} />}
-          {dc.status === "Issued" && dc.acceptance_status === "Disputed" && canManage && <PodPanel dcId={id} canDispute={canDispute} />}
+          {dc.status === "Issued" && dc.acceptance_status === "Pending" && canDispute && <PodPanel dcId={id} canDispute={canDispute} canAccept={canManage} />}
+          {dc.status === "Issued" && dc.acceptance_status === "Disputed" && canDispute && <PodPanel dcId={id} canDispute={canDispute} canAccept={canManage} />}
 
           {canCancel && (
             <div className="rounded-xl border border-line bg-surface p-4">
