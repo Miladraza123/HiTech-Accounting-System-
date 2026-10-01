@@ -67,7 +67,7 @@ export function NewPurchaseOrderForm({
   const [linkedSoId, setLinkedSoId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [expectedDelivery, setExpectedDelivery] = useState("");
-  const [lines, setLines] = useState<EditableLine[]>([blankLine(0)]);
+  const [lines, setLines] = useState<EditableLine[]>([blankLine(0, "init-0")]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();

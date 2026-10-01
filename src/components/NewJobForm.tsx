@@ -87,7 +87,7 @@ export function NewJobForm({
   const [responsibleUserId, setResponsibleUserId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [requiredDeliveryDate, setRequiredDeliveryDate] = useState("");
-  const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine()]);
+  const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine("init-0")]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();

@@ -9,7 +9,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 function fromQuotationLines(lines: Tables<"quotation_lines">[], defaultTaxPct: number): EditableLine[] {
-  if (!lines.length) return [blankLine(defaultTaxPct)];
+  if (!lines.length) return [blankLine(defaultTaxPct, "init-0")];
   return lines.map((l, i) => ({
     key: `q${i}`,
     item_id: l.item_id ?? "",

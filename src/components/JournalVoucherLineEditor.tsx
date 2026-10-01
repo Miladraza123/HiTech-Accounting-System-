@@ -19,8 +19,9 @@ function newKey() {
   return `jv${keySeq}`;
 }
 
-export function blankJvLine(): EditableJvLine {
-  return { key: newKey(), account_code: "", dimension: "", debit: "", credit: "", memo: "" };
+// See blankLine: first-render lines need an explicit, deterministic `key`.
+export function blankJvLine(key = newKey()): EditableJvLine {
+  return { key, account_code: "", dimension: "", debit: "", credit: "", memo: "" };
 }
 
 export function decodeDimension(dimension: string): { party_id?: string; bank_account_id?: string; petty_cash_fund_id?: string } {
