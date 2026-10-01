@@ -4285,6 +4285,10 @@ export type Database = {
           opening: number
         }[]
       }
+      fn_close_purchase_order: {
+        Args: { p_purchase_order_id: string; p_reason: string }
+        Returns: undefined
+      }
       fn_complete_task: { Args: { p_task_id: string }; Returns: undefined }
       fn_create_bank_account: {
         Args: {

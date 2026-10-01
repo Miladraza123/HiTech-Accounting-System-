@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { ReceiveGrnPanel } from "@/components/ReceiveGrnPanel";
 import { CancelPurchaseOrderButton } from "@/components/CancelPurchaseOrderButton";
+import { ClosePurchaseOrderButton } from "@/components/ClosePurchaseOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
@@ -46,6 +47,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const linkedSo = po.sales_orders as unknown as { so_no: string } | null;
   const canReceive = canEdit && !["Cancelled", "Closed"].includes(po.status);
   const canCancel = canEdit && po.status === "Confirmed" && !grns?.length;
+  const canClose = canEdit && po.status === "PartiallyReceived";
 
   return (
     <div className="space-y-6">
@@ -73,6 +75,9 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
 
       {po.status === "Cancelled" && po.cancel_reason && (
         <div className="rounded-md bg-bad-soft border border-bad px-4 py-2 text-sm text-bad">Cancel reason: {po.cancel_reason}</div>
+      )}
+      {po.status === "Closed" && po.cancel_reason && (
+        <div className="rounded-md bg-surface-2 border border-line px-4 py-2 text-sm text-ink-soft">Closed: {po.cancel_reason}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -168,10 +173,11 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
         </div>
 
         <div className="space-y-6">
-          {canCancel && (
-            <div className="rounded-xl border border-line bg-surface p-4">
+          {(canCancel || canClose) && (
+            <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
-              <CancelPurchaseOrderButton purchaseOrderId={id} />
+              {canCancel && <CancelPurchaseOrderButton purchaseOrderId={id} />}
+              {canClose && <ClosePurchaseOrderButton purchaseOrderId={id} />}
             </div>
           )}
 

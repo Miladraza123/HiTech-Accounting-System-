@@ -57,6 +57,25 @@ export async function cancelPurchaseOrderAction(purchaseOrderId: string, reason:
   return { error: error?.message ?? null };
 }
 
+// For a PO that will never receive the rest of its ordered qty (e.g.
+// natural weight tolerance on raw material — 2000kg ordered, 1998kg
+// actually received) — marks it done without waiting for an exact match,
+// instead of it sitting at "Partially Received" (and in the Purchase
+// Pending Report) forever.
+export async function closePurchaseOrderAction(purchaseOrderId: string, reason: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_close_purchase_order", {
+    p_purchase_order_id: purchaseOrderId,
+    p_reason: reason,
+  });
+  revalidatePath(`/purchase-orders/${purchaseOrderId}`);
+  revalidatePath("/purchase-orders");
+  return { error: error?.message ?? null };
+}
+
 export type GrnLineInput = { po_line_id: string; this_receipt_qty: number };
 
 export async function createGrnAction(input: {
