@@ -99,6 +99,18 @@ export async function commitRestoreAction(fileText: string, mode: "merge" | "rep
   const outcomes: RestoreTableOutcome[] = [];
 
   if (mode === "replace") {
+    // Replace deletes every row the file doesn't contain, so a table absent
+    // from the file, or one the backup failed to fetch (written as [] and
+    // listed in `missed`), would be wiped entirely. Only a complete file may
+    // drive a Replace; Merge never deletes and stays available.
+    const missed = new Set(file.missed ?? []);
+    const incomplete = RESTORE_TABLE_ORDER.filter((t) => !Array.isArray(file.tables[t]) || missed.has(t));
+    if (incomplete.length) {
+      return {
+        error: `Replace refused: this file is incomplete (${incomplete.join(", ")}) — those tables would be wiped. Use Merge, or a complete backup file.`,
+      };
+    }
+
     // Orphan deletes go children-before-parents so a child row's FK never blocks
     // deleting a soon-to-be-gone parent. One table failing must not stop the rest.
     for (const table of [...RESTORE_TABLE_ORDER].reverse()) {
