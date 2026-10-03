@@ -22,7 +22,10 @@ export type PermissionKey =
   | "sales_return.manage"
   | "purchase_return.manage"
   | "inventory_adjustment.request"
-  | "stock_transfer.create";
+  | "stock_transfer.create"
+  | "service_job.manage"
+  | "service_delivery.manage"
+  | "service_invoice.manage";
 
 export type PermissionDef = {
   key: PermissionKey;
@@ -52,6 +55,9 @@ export const PERMISSION_DEFS: PermissionDef[] = [
   { key: "journal_voucher.manage", label: "Create Manual Journal Voucher", module: "Accounts & Finance", dbAllowedRoles: ["accounts"] },
   { key: "sales_return.manage", label: "Create/cancel Sales Return (credit note)", module: "Accounts & Finance", dbAllowedRoles: ["accounts"] },
   { key: "purchase_return.manage", label: "Create/cancel Purchase Return (debit note)", module: "Accounts & Finance", dbAllowedRoles: ["accounts", "store"] },
+  { key: "service_job.manage", label: "Intake/complete/cancel Service Job", module: "Service/Repair", dbAllowedRoles: ["sales", "store"] },
+  { key: "service_delivery.manage", label: "Create/cancel Service Delivery (returning the repaired item)", module: "Service/Repair", dbAllowedRoles: ["dispatch"] },
+  { key: "service_invoice.manage", label: "Create/cancel Service Invoice", module: "Service/Repair", dbAllowedRoles: ["accounts"] },
 ];
 
 export const PERMISSION_MODULES = [...new Set(PERMISSION_DEFS.map((p) => p.module))];

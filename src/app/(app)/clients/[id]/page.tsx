@@ -56,6 +56,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
     { data: purchaseOrders },
     { data: supplierBills },
     { data: payments },
+    { data: serviceJobs },
   ] = await Promise.all([
     isClient ? supabase.from("queries").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
     isClient ? supabase.from("quotations").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
@@ -66,6 +67,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
     isSupplier ? supabase.from("purchase_orders").select("*").eq("supplier_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
     showAP ? supabase.from("supplier_bills").select("*").eq("supplier_id", id).order("created_at", { ascending: false }).limit(30) : Promise.resolve({ data: [] }),
     showPayments ? supabase.from("payments").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
+    isClient ? supabase.from("service_jobs").select("*").eq("party_id", id).order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
   ]);
 
   const totalReceivable = arSummary?.total_outstanding ?? 0;
@@ -237,6 +239,12 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
           <RecordSection
             title="Invoices"
             rows={(invoices ?? []).map((i) => ({ id: i.id, label: i.invoice_no, href: `/invoices/${i.id}`, sub: i.status, date: i.created_at, amount: i.grand_total }))}
+          />
+        )}
+        {isClient && (
+          <RecordSection
+            title="Service Jobs"
+            rows={(serviceJobs ?? []).map((j) => ({ id: j.id, label: j.job_no, href: `/service-jobs/${j.id}`, sub: j.status, date: j.created_at }))}
           />
         )}
         {isSupplier && (

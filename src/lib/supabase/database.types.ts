@@ -3109,6 +3109,247 @@ export type Database = {
           },
         ]
       }
+      service_deliveries: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          delivery_date: string
+          delivery_no: string
+          driver_name: string | null
+          id: string
+          party_id: string
+          remarks: string | null
+          row_version: number
+          service_job_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vehicle_no: string | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivery_date?: string
+          delivery_no: string
+          driver_name?: string | null
+          id?: string
+          party_id: string
+          remarks?: string | null
+          row_version?: number
+          service_job_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivery_date?: string
+          delivery_no?: string
+          driver_name?: string | null
+          id?: string
+          party_id?: string
+          remarks?: string | null
+          row_version?: number
+          service_job_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_deliveries_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_deliveries_service_job_id_fkey"
+            columns: ["service_job_id"]
+            isOneToOne: false
+            referencedRelation: "service_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_invoice_lines: {
+        Row: {
+          amount: number | null
+          description: string
+          id: string
+          qty: number
+          rate: number
+          service_invoice_id: string
+          sort_order: number
+          tax_pct: number
+        }
+        Insert: {
+          amount?: number | null
+          description: string
+          id?: string
+          qty?: number
+          rate?: number
+          service_invoice_id: string
+          sort_order?: number
+          tax_pct?: number
+        }
+        Update: {
+          amount?: number | null
+          description?: string
+          id?: string
+          qty?: number
+          rate?: number
+          service_invoice_id?: string
+          sort_order?: number
+          tax_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_invoice_lines_service_invoice_id_fkey"
+            columns: ["service_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "service_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_invoices: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          grand_total: number
+          id: string
+          invoice_date: string
+          invoice_no: string
+          party_id: string
+          row_version: number
+          service_job_id: string
+          status: string
+          subtotal: number
+          tax_total: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_date?: string
+          invoice_no: string
+          party_id: string
+          row_version?: number
+          service_job_id: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number
+          id?: string
+          invoice_date?: string
+          invoice_no?: string
+          party_id?: string
+          row_version?: number
+          service_job_id?: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_invoices_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_invoices_service_job_id_fkey"
+            columns: ["service_job_id"]
+            isOneToOne: false
+            referencedRelation: "service_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_jobs: {
+        Row: {
+          asset_description: string
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          customer_dc_date: string | null
+          customer_dc_no: string | null
+          id: string
+          job_no: string
+          party_id: string
+          received_condition_notes: string | null
+          responsible_user_id: string | null
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          asset_description: string
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_dc_date?: string | null
+          customer_dc_no?: string | null
+          id?: string
+          job_no: string
+          party_id: string
+          received_condition_notes?: string | null
+          responsible_user_id?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          asset_description?: string
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_dc_date?: string | null
+          customer_dc_no?: string | null
+          id?: string
+          job_no?: string
+          party_id?: string
+          received_condition_notes?: string | null
+          responsible_user_id?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_jobs_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_adjustments: {
         Row: {
           decided_at: string | null
@@ -4155,19 +4396,24 @@ export type Database = {
       fn_activity_feed: {
         Args: { p_limit: number; p_offset: number }
         Returns: {
-          at: string
           actor_name: string
+          at: string
+          detail: string
+          doc_no: string
           event_type: string
+          ip_address: string
+          link_href: string
           summary: string
-          doc_no: string | null
-          detail: string | null
-          ip_address: string | null
-          link_href: string | null
           total_rows: number
         }[]
       }
       fn_adjust_party_balance: {
-        Args: { p_direction: string; p_narration: string; p_new_balance: number; p_party_id: string }
+        Args: {
+          p_direction: string
+          p_narration: string
+          p_new_balance: number
+          p_party_id: string
+        }
         Returns: string
       }
       fn_admin_restore_delete_orphans: {
@@ -4230,6 +4476,7 @@ export type Database = {
         }[]
       }
       fn_bootstrap_owner: { Args: never; Returns: undefined }
+      fn_can_access_doc_type: { Args: { p_type: string }; Returns: boolean }
       fn_cancel_contra_entry: {
         Args: { p_reason: string; p_transfer_id: string }
         Returns: undefined
@@ -4270,6 +4517,18 @@ export type Database = {
         Args: { p_reason: string; p_return_id: string }
         Returns: undefined
       }
+      fn_cancel_service_delivery: {
+        Args: { p_reason: string; p_service_delivery_id: string }
+        Returns: undefined
+      }
+      fn_cancel_service_invoice: {
+        Args: { p_reason: string; p_service_invoice_id: string }
+        Returns: undefined
+      }
+      fn_cancel_service_job: {
+        Args: { p_reason: string; p_service_job_id: string }
+        Returns: undefined
+      }
       fn_cancel_stock_transfer: {
         Args: { p_reason: string; p_transfer_id: string }
         Returns: undefined
@@ -4291,6 +4550,10 @@ export type Database = {
       }
       fn_close_purchase_order: {
         Args: { p_purchase_order_id: string; p_reason: string }
+        Returns: undefined
+      }
+      fn_complete_service_job: {
+        Args: { p_service_job_id: string }
         Returns: undefined
       }
       fn_complete_task: { Args: { p_task_id: string }; Returns: undefined }
@@ -4718,6 +4981,34 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_service_delivery: {
+        Args: {
+          p_delivery_date: string
+          p_driver_name: string
+          p_remarks: string
+          p_service_job_id: string
+          p_vehicle_no: string
+        }
+        Returns: string
+      }
+      fn_create_service_invoice: {
+        Args: {
+          p_invoice_date: string
+          p_lines: Json
+          p_service_job_id: string
+        }
+        Returns: string
+      }
+      fn_create_service_job: {
+        Args: {
+          p_asset_description: string
+          p_customer_dc_date: string
+          p_customer_dc_no: string
+          p_party_id: string
+          p_received_condition_notes: string
+        }
+        Returns: string
+      }
       fn_create_stock_transfer: {
         Args: {
           p_from_warehouse_id: string
@@ -4869,6 +5160,7 @@ export type Database = {
       }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
+      fn_has_write_role: { Args: never; Returns: boolean }
       fn_health_label: {
         Args: { p_promised: string; p_updated: string }
         Returns: string
@@ -4898,6 +5190,10 @@ export type Database = {
         Args: { p_email: string; p_full_name: string; p_role_ids: string[] }
         Returns: string
       }
+      fn_invoice_allocated_amount: {
+        Args: { p_invoice_id: string }
+        Returns: number
+      }
       fn_invoiceable_sales_order_ids: {
         Args: never
         Returns: {
@@ -4914,18 +5210,6 @@ export type Database = {
       fn_issue_job_material: {
         Args: { p_item_id: string; p_job_id: string; p_qty: number }
         Returns: undefined
-      }
-      fn_jobs_by_health: {
-        Args: {
-          p_health: string
-          p_limit: number
-          p_offset: number
-          p_status: string
-        }
-        Returns: {
-          id: string
-          total_rows: number
-        }[]
       }
       fn_issue_job_material_idempotent: {
         Args: {
@@ -4944,6 +5228,18 @@ export type Database = {
           po_no: string
           rate: number
           supplier_name: string
+        }[]
+      }
+      fn_jobs_by_health: {
+        Args: {
+          p_health: string
+          p_limit: number
+          p_offset: number
+          p_status: string
+        }
+        Returns: {
+          id: string
+          total_rows: number
         }[]
       }
       fn_log_login: {
@@ -5147,6 +5443,10 @@ export type Database = {
           p_table_name: string
         }
         Returns: Json
+      }
+      fn_supplier_bill_allocated_amount: {
+        Args: { p_supplier_bill_id: string }
+        Returns: number
       }
       fn_unbilled_stock_grn_ids: {
         Args: never

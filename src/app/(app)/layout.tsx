@@ -55,6 +55,7 @@ import {
   DatabaseBackup,
   History,
   BarChart3,
+  Hammer,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -163,6 +164,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/jobs", label: "Jobs / Work Orders", show: true, icon: <Wrench size={ICON_SIZE} /> },
         { href: "/product-templates", label: "BOM Templates", show: true, icon: <LayoutGrid size={ICON_SIZE} /> },
       ],
+    },
+    {
+      label: "Service / Repair",
+      items: [{ href: "/service-jobs", label: "Service Jobs", show: true, icon: <Hammer size={ICON_SIZE} /> }],
     },
     {
       label: "Accounts & Finance",
