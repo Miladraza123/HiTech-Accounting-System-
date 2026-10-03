@@ -57,6 +57,7 @@ import {
   History,
   BarChart3,
   Hammer,
+  Mail,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -125,6 +126,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       label: "Sales & Billing",
       items: [
+        { href: "/incoming-documents", label: "Incoming Documents", show: owner || user.roles.includes("sales"), icon: <Mail size={ICON_SIZE} /> },
         { href: "/queries", label: "Queries", show: true, icon: <HelpCircle size={ICON_SIZE} /> },
         { href: "/quotations", label: "Quotations", show: true, icon: <FileText size={ICON_SIZE} /> },
         { href: "/sales-orders", label: "Sales Orders", show: true, icon: <ShoppingCart size={ICON_SIZE} /> },

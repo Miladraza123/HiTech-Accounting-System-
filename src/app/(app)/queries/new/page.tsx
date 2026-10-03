@@ -5,17 +5,24 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { QueryForm } from "@/components/QueryForm";
 
-export default async function NewQueryPage() {
+export default async function NewQueryPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "query.manage"))) redirect("/queries");
+
+  const { from } = await searchParams;
 
   const supabase = await createClient();
   // Only the first page of clients, and only the two columns the picker
   // shows. Anything beyond this is found by typing, which searches in the
   // database — so this page no longer grows with the customer list.
-  const [{ data: parties }, { data: sources }] = await Promise.all([
+  const [{ data: parties }, { data: sources }, { data: incomingDocument }] = await Promise.all([
     supabase.from("parties").select("id, legal_name").eq("is_active", true).order("legal_name").limit(20),
     supabase.from("query_sources").select("*").order("name"),
+    // Only an un-converted document can still be turned into a Query —
+    // otherwise `?from=` is stale (already used, or someone else's link).
+    from
+      ? supabase.from("incoming_documents").select("*").eq("id", from).in("status", ["New", "Reviewed"]).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   return (
@@ -36,7 +43,13 @@ export default async function NewQueryPage() {
           .
         </div>
       ) : (
-        <QueryForm parties={parties} sources={sources ?? []} />
+        <QueryForm
+          parties={parties}
+          sources={sources ?? []}
+          initialRequirement={incomingDocument?.subject ?? undefined}
+          initialNotes={incomingDocument ? `From email: ${incomingDocument.from_address ?? ""}\n\n${incomingDocument.body_text ?? ""}`.trim() : undefined}
+          fromIncomingDocumentId={incomingDocument?.id}
+        />
       )}
     </div>
   );

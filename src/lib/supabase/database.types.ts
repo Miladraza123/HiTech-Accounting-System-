@@ -1013,6 +1013,94 @@ export type Database = {
         }
         Relationships: []
       }
+      incoming_document_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_name: string
+          id: string
+          incoming_document_id: string
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          id?: string
+          incoming_document_id: string
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          incoming_document_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incoming_document_attachments_incoming_document_id_fkey"
+            columns: ["incoming_document_id"]
+            isOneToOne: false
+            referencedRelation: "incoming_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incoming_documents: {
+        Row: {
+          body_text: string | null
+          converted_query_id: string | null
+          created_at: string
+          from_address: string | null
+          id: string
+          received_at: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          body_text?: string | null
+          converted_query_id?: string | null
+          created_at?: string
+          from_address?: string | null
+          id?: string
+          received_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          body_text?: string | null
+          converted_query_id?: string | null
+          created_at?: string
+          from_address?: string | null
+          id?: string
+          received_at?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incoming_documents_converted_query_id_fkey"
+            columns: ["converted_query_id"]
+            isOneToOne: false
+            referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_lines: {
         Row: {
           amount: number | null

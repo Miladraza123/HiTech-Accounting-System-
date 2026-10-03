@@ -25,11 +25,18 @@ const initialState: ActionResult = { error: null };
 export function QueryForm({
   parties,
   sources,
+  initialRequirement,
+  initialNotes,
+  fromIncomingDocumentId,
 }: {
   // Only a first page of clients — the rest are found by typing, searched
   // in the database rather than shipped to the browser. See SearchablePicker.
   parties: Pick<Tables<"parties">, "id" | "legal_name">[];
   sources: Tables<"query_sources">[];
+  /** Pre-fills from an Incoming Document (email RFQ/PR/PO) — see /queries/new's own `from=` handling. */
+  initialRequirement?: string;
+  initialNotes?: string;
+  fromIncomingDocumentId?: string;
 }) {
   const [state, formAction, pending] = useActionState(createQueryAction, initialState);
   const { isOnline, enqueue } = useOfflineQueue();
@@ -129,9 +136,18 @@ export function QueryForm({
         </label>
       </div>
 
+      {fromIncomingDocumentId && <input type="hidden" name="from_incoming_document_id" value={fromIncomingDocumentId} />}
+
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Requirement *</span>
-        <textarea name="requirement" required rows={3} className="input resize-none" placeholder="What does the client need…" />
+        <textarea
+          name="requirement"
+          required
+          rows={3}
+          defaultValue={initialRequirement}
+          className="input resize-none"
+          placeholder="What does the client need…"
+        />
       </label>
 
       <div className="grid grid-cols-2 gap-4">
@@ -154,7 +170,7 @@ export function QueryForm({
 
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Notes</span>
-        <textarea name="notes" rows={2} className="input resize-none" />
+        <textarea name="notes" rows={2} defaultValue={initialNotes} className="input resize-none" />
       </label>
 
       {isOnline && (

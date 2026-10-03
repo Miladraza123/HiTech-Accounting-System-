@@ -72,7 +72,13 @@ export const config = {
   // api/company-logo is the company's own letterhead logo, which the login
   // page has to show before anyone has signed in. It takes no input and can
   // only ever serve that one file — see the route for why that is safe.
+  //
+  // api/inbound-email is called by the email provider's webhook, which
+  // carries no Supabase session cookie at all — routing it through this
+  // proxy would redirect every delivery to /login before the route
+  // handler's own ?token= check ever ran. That check (and the admin
+  // client it writes through) is this route's real gate.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|api/company-logo|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|api/company-logo|api/inbound-email|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
