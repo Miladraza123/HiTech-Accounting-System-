@@ -29,11 +29,20 @@ function Field({ label, required = false, children }: { label: string; required?
 // intercepted before the native action runs and queued in IndexedDB with a
 // browser-generated UUID, replayed through `fn_create_party_idempotent`
 // (safe to retry) the moment connectivity returns.
-export function PartyForm({ provinces, defaultType = "client" }: { provinces: Tables<"provinces">[]; defaultType?: string }) {
+export function PartyForm({
+  provinces,
+  defaultType = "client",
+  canSetOpeningBalance = false,
+}: {
+  provinces: Tables<"provinces">[];
+  defaultType?: string;
+  canSetOpeningBalance?: boolean;
+}) {
   const [state, formAction, pending] = useActionState(createPartyAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  const [partyType, setPartyType] = useState(defaultType);
   // Guards the offline branch below against a rapid double-click — see
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
@@ -94,7 +103,7 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
             <input name="legal_name" required className="input" />
           </Field>
           <Field label="Type">
-            <select name="party_type" defaultValue={defaultType} className="input">
+            <select name="party_type" value={partyType} onChange={(e) => setPartyType(e.target.value)} className="input">
               <option value="client">Client</option>
               <option value="supplier">Supplier</option>
               <option value="both">Both</option>
@@ -143,6 +152,28 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
         </div>
       </div>
 
+      {canSetOpeningBalance && isOnline && (partyType === "client" || partyType === "both" || partyType === "supplier") && (
+        <div className="space-y-3 border-t border-line pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Opening Balance (optional)</p>
+          <div className="grid grid-cols-2 gap-3">
+            {(partyType === "client" || partyType === "both") && (
+              <Field label="Already owes us">
+                <input name="opening_receivable" type="number" step="0.01" min="0" placeholder="0" className="input" />
+              </Field>
+            )}
+            {(partyType === "supplier" || partyType === "both") && (
+              <Field label="We already owe them">
+                <input name="opening_payable" type="number" step="0.01" min="0" placeholder="0" className="input" />
+              </Field>
+            )}
+          </div>
+          <p className="text-xs text-ink-faint">
+            Only if this client/supplier already had a balance before Hi-Tech. Posted as of today&apos;s date — can be
+            corrected later from their own page.
+          </p>
+        </div>
+      )}
+
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
           ⏳ You&apos;re offline — this will be saved on this device and synced automatically once you&apos;re back
@@ -151,6 +182,7 @@ export function PartyForm({ provinces, defaultType = "client" }: { provinces: Ta
       )}
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
+      {state.warning && <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{state.warning}</p>}
       {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
 
       <div className="border-t border-line pt-4">

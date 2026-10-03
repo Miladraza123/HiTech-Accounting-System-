@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner } from "@/lib/auth";
+import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { EditCreditTermsForm } from "@/components/EditCreditTermsForm";
+import { AdjustPartyBalancePanel } from "@/components/AdjustPartyBalancePanel";
 import { agingBucket, dueDateFrom, emptyBuckets, bucketTotal } from "@/lib/aging";
 import { TasksPanel } from "@/components/TasksPanel";
 import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
+import { getPartyJournalBalanceAction } from "@/app/actions/parties";
 
 const TYPE_LABEL: Record<string, string> = { client: "Client", supplier: "Supplier", both: "Client + Supplier" };
 
@@ -13,6 +15,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const { id } = await params;
   const user = await getCurrentUser();
   const owner = isOwner(user);
+  const canAdjustBalance = owner || hasRole(user, "accounts");
 
   const supabase = await createClient();
   const [{ data: party }, { data: arSummary }, { data: apSummary }, { data: tasks }, { data: profiles }] = await Promise.all([
@@ -32,6 +35,16 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const showAR = isClient && canSeeInvoices(user);
   const showAP = isSupplier && canSeeSupplierBills(user);
   const showPayments = canSeeFinance(user);
+
+  // The true current balance (journal_lines, not the invoice-only
+  // party_ar_summary/party_ap_summary totals above) — only fetched for the
+  // one role allowed to use the Adjust panel these feed.
+  const [receivableBalance, payableBalance] = canAdjustBalance
+    ? await Promise.all([
+        isClient ? getPartyJournalBalanceAction(id, "receivable") : Promise.resolve(0),
+        isSupplier ? getPartyJournalBalanceAction(id, "payable") : Promise.resolve(0),
+      ])
+    : [0, 0];
 
   const [
     { data: queries },
@@ -155,6 +168,20 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {canAdjustBalance && (isClient || isSupplier) && (
+        <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Opening Balance</h2>
+            <p className="text-xs text-ink-faint mt-0.5">
+              The true balance from the ledger (includes any Opening Balance entry — not just open invoices/bills).
+              Enter the correct figure to post an adjusting entry for the difference.
+            </p>
+          </div>
+          {isClient && <AdjustPartyBalancePanel partyId={id} direction="receivable" label="Receivable" currentBalance={receivableBalance} />}
+          {isSupplier && <AdjustPartyBalancePanel partyId={id} direction="payable" label="Payable" currentBalance={payableBalance} />}
         </div>
       )}
 

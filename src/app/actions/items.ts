@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
-export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[] };
+export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string };
 
 export async function createItemAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
@@ -17,21 +17,59 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
   }
 
   const reorderLevelRaw = String(formData.get("reorder_level") ?? "").trim();
+  const standardCost = Number(formData.get("standard_cost") ?? 0);
 
-  const { error } = await supabase.from("items").insert({
-    item_code,
-    description,
-    base_unit,
-    category: String(formData.get("category") ?? "").trim() || null,
-    spec: String(formData.get("spec") ?? "").trim() || null,
-    hs_code: String(formData.get("hs_code") ?? "").trim() || null,
-    tax_category: String(formData.get("tax_category") ?? "standard"),
-    is_stocked: formData.get("is_stocked") === "on",
-    standard_cost: Number(formData.get("standard_cost") ?? 0),
-    reorder_level: reorderLevelRaw ? Number(reorderLevelRaw) : null,
-  });
+  const { data: item, error } = await supabase
+    .from("items")
+    .insert({
+      item_code,
+      description,
+      base_unit,
+      category: String(formData.get("category") ?? "").trim() || null,
+      spec: String(formData.get("spec") ?? "").trim() || null,
+      hs_code: String(formData.get("hs_code") ?? "").trim() || null,
+      tax_category: String(formData.get("tax_category") ?? "standard"),
+      is_stocked: formData.get("is_stocked") === "on",
+      standard_cost: standardCost,
+      reorder_level: reorderLevelRaw ? Number(reorderLevelRaw) : null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  // Optional Opening Stock at creation — the same fn_import_opening_stock
+  // RPC the Import Wizard already uses (posts the stock_ledger row + its
+  // offsetting journal entry), called directly here so this doesn't need a
+  // separate trip through Setup → Import. The item is already created at
+  // this point, so a failure here (e.g. no warehouse picked, or the creator
+  // isn't Owner/Accounts, which the RPC itself enforces) is reported as a
+  // warning rather than undoing the item.
+  const openingQty = Number(formData.get("opening_stock_qty") ?? 0);
+  const openingWarehouseId = String(formData.get("opening_stock_warehouse_id") ?? "").trim();
+  if (openingQty > 0) {
+    if (!openingWarehouseId) {
+      revalidatePath("/items");
+      return { error: null, success: true, warning: "Opening Stock needs a warehouse — not posted. You can add it later from Setup → Import." };
+    }
+    const { data: warehouse } = await supabase.from("warehouses").select("code").eq("id", openingWarehouseId).maybeSingle();
+    const openingRateRaw = String(formData.get("opening_stock_rate") ?? "").trim();
+    const { error: stockError } = await supabase.rpc("fn_import_opening_stock", {
+      p_item_code: item_code,
+      p_warehouse_code: warehouse?.code ?? "",
+      p_qty: openingQty,
+      p_rate: openingRateRaw ? Number(openingRateRaw) : standardCost,
+      p_as_of_date: new Date().toISOString().slice(0, 10),
+      p_ref_table: "items",
+      p_ref_id: item.id,
+      p_notes: `Opening stock — ${item_code}`,
+    });
+    if (stockError) {
+      revalidatePath("/items");
+      return { error: null, success: true, warning: `Opening Stock could not be posted: ${stockError.message}` };
+    }
+  }
+
   revalidatePath("/items");
   return { error: null, success: true };
 }

@@ -109,6 +109,16 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
+      {item.is_stocked && (
+        <p className="text-xs text-ink-faint">
+          Stock on hand looks wrong?{" "}
+          <Link href="/inventory/adjustments" className="text-accent-ink underline underline-offset-2">
+            Request a Stock Adjustment
+          </Link>
+          .
+        </p>
+      )}
+
       <ItemAltUnitsPanel itemId={item.id} baseUnit={item.base_unit} units={units ?? []} altUnits={altUnits ?? []} canManage={canManage} canDelete={isOwner(user)} />
 
       {!!purchaseHistory?.length && (

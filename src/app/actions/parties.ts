@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
-export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[] };
+export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string };
 
 export async function createPartyAction(
   _prev: ActionResult,
@@ -19,23 +19,99 @@ export async function createPartyAction(
   const party_type = String(formData.get("party_type") ?? "client");
   if (!legal_name) return { error: "Name is required." };
 
-  const { error } = await supabase.from("parties").insert({
-    legal_name,
-    party_type,
-    ntn: String(formData.get("ntn") ?? "").trim() || null,
-    strn: String(formData.get("strn") ?? "").trim() || null,
-    cnic: String(formData.get("cnic") ?? "").trim() || null,
-    billing_address: String(formData.get("billing_address") ?? "").trim() || null,
-    province: String(formData.get("province") ?? "").trim() || null,
-    credit_limit: Number(formData.get("credit_limit") ?? 0),
-    credit_days: Number(formData.get("credit_days") ?? 0),
-    created_by: user?.id,
-  });
+  const { data: party, error } = await supabase
+    .from("parties")
+    .insert({
+      legal_name,
+      party_type,
+      ntn: String(formData.get("ntn") ?? "").trim() || null,
+      strn: String(formData.get("strn") ?? "").trim() || null,
+      cnic: String(formData.get("cnic") ?? "").trim() || null,
+      billing_address: String(formData.get("billing_address") ?? "").trim() || null,
+      province: String(formData.get("province") ?? "").trim() || null,
+      credit_limit: Number(formData.get("credit_limit") ?? 0),
+      credit_days: Number(formData.get("credit_days") ?? 0),
+      created_by: user?.id,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
 
+  // Optional opening balance at creation, posted via the same
+  // fn_post_journal_entry RPC and account pair (1200/1900 receivable,
+  // 1900/2100 payable) the Import Wizard's opening_receivables/
+  // opening_payables already use. The party is already created at this
+  // point, so a failure here (e.g. the creator isn't Owner/Accounts, which
+  // the RPC itself enforces) is reported as a warning rather than undoing
+  // the party — it can still be set correctly afterwards from the party's
+  // own page.
+  const openingReceivable = Number(formData.get("opening_receivable") ?? 0);
+  const openingPayable = Number(formData.get("opening_payable") ?? 0);
+  const warnings: string[] = [];
+
+  if (openingReceivable > 0) {
+    const { error: jeError } = await supabase.rpc("fn_post_journal_entry", {
+      p_entry_date: new Date().toISOString().slice(0, 10),
+      p_narration: `Opening balance — ${legal_name}`,
+      p_source_table: "parties",
+      p_source_id: party.id,
+      p_lines: [
+        { account_code: "1200", party_id: party.id, debit: openingReceivable, credit: 0, memo: "Opening balance" },
+        { account_code: "1900", party_id: null, debit: 0, credit: openingReceivable, memo: "Opening balance" },
+      ],
+    });
+    if (jeError) warnings.push(`Opening Balance (Receivable) could not be posted: ${jeError.message}`);
+  }
+  if (openingPayable > 0) {
+    const { error: jeError } = await supabase.rpc("fn_post_journal_entry", {
+      p_entry_date: new Date().toISOString().slice(0, 10),
+      p_narration: `Opening balance — ${legal_name}`,
+      p_source_table: "parties",
+      p_source_id: party.id,
+      p_lines: [
+        { account_code: "1900", party_id: null, debit: openingPayable, credit: 0, memo: "Opening balance" },
+        { account_code: "2100", party_id: party.id, debit: 0, credit: openingPayable, memo: "Opening balance" },
+      ],
+    });
+    if (jeError) warnings.push(`Opening Balance (Payable) could not be posted: ${jeError.message}`);
+  }
+
   revalidatePath("/clients");
+  return { error: null, success: true, warning: warnings.length ? warnings.join(" ") : undefined };
+}
+
+// There is no separate "opening_balance" column — the balance is purely the
+// sum of journal_lines for this party's receivable/payable account (exactly
+// what the Party Ledger report already shows), so correcting it means
+// posting a new adjusting entry for the difference, never rewriting the
+// original one. fn_adjust_party_balance computes the current balance itself
+// so this action never has to pass a delta the party may have moved past.
+export async function adjustPartyBalanceAction(
+  partyId: string,
+  direction: "receivable" | "payable",
+  newBalance: number,
+  narration?: string
+): Promise<ActionResult> {
+  if (newBalance < 0) return { error: "Balance cannot be negative." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_adjust_party_balance", {
+    p_party_id: partyId,
+    p_direction: direction,
+    p_new_balance: newBalance,
+    p_narration: narration || "Opening balance adjustment",
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/clients/${partyId}`);
   return { error: null, success: true };
+}
+
+export async function getPartyJournalBalanceAction(partyId: string, direction: "receivable" | "payable"): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("fn_party_journal_balance", { p_party_id: partyId, p_direction: direction });
+  return data ?? 0;
 }
 
 export async function togglePartyActiveAction(id: string, isActive: boolean) {

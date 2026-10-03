@@ -29,11 +29,20 @@ function Field({ label, required = false, children }: { label: string; required?
 // action runs and queued in IndexedDB with a browser-generated UUID,
 // replayed through `fn_create_item_idempotent` (safe to retry) the moment
 // connectivity returns.
-export function ItemForm({ units }: { units: Tables<"units">[] }) {
+export function ItemForm({
+  units,
+  warehouses = [],
+  canSetOpeningStock = false,
+}: {
+  units: Tables<"units">[];
+  warehouses?: Pick<Tables<"warehouses">, "id" | "name">[];
+  canSetOpeningStock?: boolean;
+}) {
   const [state, formAction, pending] = useActionState(createItemAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  const [isStocked, setIsStocked] = useState(true);
   // Guards the offline branch below against a rapid double-click — see
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
@@ -144,14 +153,18 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
       <div className="space-y-3 border-t border-line pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Stock Tracking</p>
         <label className="flex items-center gap-2 text-sm text-ink-soft">
-          <input type="checkbox" name="is_stocked" defaultChecked className="h-3.5 w-3.5 accent-[var(--accent)]" />
+          <input
+            type="checkbox"
+            name="is_stocked"
+            checked={isStocked}
+            onChange={(e) => setIsStocked(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+          />
           This item will be kept in warehouse stock (raw material / stocked goods)
         </label>
         <p className="text-xs text-ink-faint">
-          Quantities aren&apos;t set here — they move on their own as GRNs, deliveries, and other stock documents are
-          posted. If this item already has stock on hand from before Hi-Tech (e.g. migrating from another system), add
-          that as an <span className="font-medium text-ink-soft">Opening Stock</span> from Setup → Import once it&apos;s
-          created here.
+          Quantities move on their own as GRNs, deliveries, and other stock documents are posted — the Opening Stock
+          below is only for stock this item already has on hand from before Hi-Tech.
         </p>
         <Field label="Reorder Level (optional)">
           <input name="reorder_level" type="number" step="0.001" min="0" placeholder="Leave blank for no low-stock alert" className="input" />
@@ -162,6 +175,34 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
         </p>
       </div>
 
+      {isStocked && canSetOpeningStock && isOnline && (
+        <div className="space-y-3 border-t border-line pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Opening Stock (optional)</p>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Qty">
+              <input name="opening_stock_qty" type="number" step="0.001" min="0" placeholder="0" className="input" />
+            </Field>
+            <Field label="Warehouse">
+              <select name="opening_stock_warehouse_id" defaultValue="" className="input">
+                <option value="">— Select —</option>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Rate">
+              <input name="opening_stock_rate" type="number" step="0.0001" min="0" placeholder="Defaults to Standard Cost" className="input" />
+            </Field>
+          </div>
+          <p className="text-xs text-ink-faint">
+            Only if this item already has stock on hand from before Hi-Tech (e.g. migrating from another system). Can
+            be corrected later with a Stock Adjustment.
+          </p>
+        </div>
+      )}
+
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
           ⏳ You&apos;re offline — this Item will be saved on this device and synced automatically once you&apos;re
@@ -170,6 +211,7 @@ export function ItemForm({ units }: { units: Tables<"units">[] }) {
       )}
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
+      {state.warning && <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{state.warning}</p>}
       {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
 
       <div className="border-t border-line pt-4">

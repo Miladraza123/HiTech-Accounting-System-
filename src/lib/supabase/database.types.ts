@@ -4166,6 +4166,10 @@ export type Database = {
           total_rows: number
         }[]
       }
+      fn_adjust_party_balance: {
+        Args: { p_direction: string; p_narration: string; p_new_balance: number; p_party_id: string }
+        Returns: string
+      }
       fn_admin_restore_delete_orphans: {
         Args: { p_rows: Json; p_table_name: string }
         Returns: number
@@ -4966,6 +4970,10 @@ export type Database = {
         Returns: Json
       }
       fn_owner_exists: { Args: never; Returns: boolean }
+      fn_party_journal_balance: {
+        Args: { p_direction: string; p_party_id: string }
+        Returns: number
+      }
       fn_party_ledger: {
         Args: { p_limit: number; p_offset: number; p_party_id: string }
         Returns: {

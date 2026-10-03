@@ -20,11 +20,13 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
 
   const user = await getCurrentUser();
   const canManage = isOwner(user) || hasRole(user, "store") || hasRole(user, "production");
+  const canSetOpeningStock = isOwner(user) || hasRole(user, "accounts");
 
   const supabase = await createClient();
-  const [{ data: items, count }, { data: units }] = await Promise.all([
+  const [{ data: items, count }, { data: units }, { data: warehouses }] = await Promise.all([
     supabase.from("items").select("*", { count: "exact" }).order("item_code").range(rangeFrom, rangeTo),
     supabase.from("units").select("*").order("code"),
+    canSetOpeningStock ? supabase.from("warehouses").select("id, name").eq("is_active", true).order("name") : Promise.resolve({ data: [] }),
   ]);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -35,7 +37,7 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
         <p className="mt-1 text-sm text-ink-soft">Raw material, stocked goods, and fabrication products are all selected from this list.</p>
       </div>
 
-      {canManage && <ItemForm units={units ?? []} />}
+      {canManage && <ItemForm units={units ?? []} warehouses={warehouses ?? []} canSetOpeningStock={canSetOpeningStock} />}
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         <div className="overflow-x-auto">

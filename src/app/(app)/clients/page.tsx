@@ -15,6 +15,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
 
   const user = await getCurrentUser();
   const canManage = isOwner(user) || hasRole(user, "sales") || hasRole(user, "store");
+  const canSetOpeningBalance = isOwner(user) || hasRole(user, "accounts");
 
   const supabase = await createClient();
   const [{ data: parties, count }, { data: provinces }] = await Promise.all([
@@ -30,7 +31,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         <p className="mt-1 text-sm text-ink-soft">Both Query and Purchase select their client/supplier from this same party list.</p>
       </div>
 
-      {canManage && <PartyForm provinces={provinces ?? []} />}
+      {canManage && <PartyForm provinces={provinces ?? []} canSetOpeningBalance={canSetOpeningBalance} />}
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         <div className="overflow-x-auto">
