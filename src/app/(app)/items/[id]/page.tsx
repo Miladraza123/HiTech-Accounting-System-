@@ -20,10 +20,11 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
   const canManage = isOwner(user) || hasRole(user, "store") || hasRole(user, "production");
 
   const supabase = await createClient();
-  const [{ data: item }, { data: units }, { data: altUnits }] = await Promise.all([
+  const [{ data: item }, { data: units }, { data: altUnits }, { data: purchaseHistory }] = await Promise.all([
     supabase.from("items").select("*").eq("id", id).maybeSingle(),
     supabase.from("units").select("*").order("code"),
     supabase.from("item_alt_units").select("*").eq("item_id", id).order("unit"),
+    supabase.rpc("fn_item_purchase_history", { p_item_id: id, p_limit: 20 }),
   ]);
 
   if (!item) notFound();
@@ -109,6 +110,41 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
       )}
 
       <ItemAltUnitsPanel itemId={item.id} baseUnit={item.base_unit} units={units ?? []} altUnits={altUnits ?? []} canManage={canManage} canDelete={isOwner(user)} />
+
+      {!!purchaseHistory?.length && (
+        <div className="rounded-xl border border-line bg-surface overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-line">
+            <h2 className="text-sm font-semibold text-ink">Purchase History</h2>
+            <p className="text-xs text-ink-faint mt-0.5">Every supplier and rate this item has been bought at — most recent first.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
+                <tr>
+                  <th className="text-left px-3 py-2">PO #</th>
+                  <th className="text-left px-3 py-2">Date</th>
+                  <th className="text-left px-3 py-2">Supplier</th>
+                  <th className="text-right px-3 py-2">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchaseHistory.map((h) => (
+                  <tr key={h.po_id} className="border-t border-line">
+                    <td className="px-3 py-2">
+                      <Link href={`/purchase-orders/${h.po_id}`} className="font-mono text-xs text-accent-ink underline underline-offset-2">
+                        {h.po_no}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-ink-soft text-xs">{h.po_date}</td>
+                    <td className="px-3 py-2 text-ink">{h.supplier_name}</td>
+                    <td className="px-3 py-2 text-right tabular text-ink">{h.rate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4932,6 +4932,16 @@ export type Database = {
         }
         Returns: string
       }
+      fn_item_purchase_history: {
+        Args: { p_item_id: string; p_limit?: number }
+        Returns: {
+          po_date: string
+          po_id: string
+          po_no: string
+          rate: number
+          supplier_name: string
+        }[]
+      }
       fn_log_login: {
         Args: { p_device?: string; p_ip?: string }
         Returns: string

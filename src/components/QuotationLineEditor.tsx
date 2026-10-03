@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
+import { LastPurchasedHint } from "@/components/LastPurchasedHint";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type EditableLine = {
@@ -52,6 +53,7 @@ export function QuotationLineEditor({
   onItemPicked,
   defaultTaxPct = 18,
   altUnitsByItem,
+  showPurchaseHistory = false,
 }: {
   /**
    * A first page of items PLUS every item already referenced by `lines`.
@@ -74,6 +76,12 @@ export function QuotationLineEditor({
    * When omitted (Quotation / PO usage), behavior is unchanged — any unit is selectable.
    */
   altUnitsByItem?: Record<string, { unit: string; factor: number }[]>;
+  /**
+   * Purchase Order usage only: shows each line's last few purchases (supplier,
+   * rate, date) once an item is picked, so a repeat PO for the same item
+   * doesn't need re-sourcing. Omitted (Quotation/SO usage) renders nothing.
+   */
+  showPurchaseHistory?: boolean;
 }) {
   useEffect(() => {
     if (lines.length === 0) onChange([blankLine(defaultTaxPct)]);
@@ -162,6 +170,7 @@ export function QuotationLineEditor({
                       placeholder="— Custom — or type a code…"
                       onChange={(o) => pickItem(l.key, o)}
                     />
+                    {showPurchaseHistory && l.item_id && <LastPurchasedHint key={l.item_id} itemId={l.item_id} />}
                   </td>
                   <td className="px-2 py-1.5">
                     <input

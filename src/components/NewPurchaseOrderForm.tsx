@@ -208,7 +208,7 @@ export function NewPurchaseOrderForm({
         </label>
       </div>
 
-      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} defaultTaxPct={0} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} defaultTaxPct={0} showPurchaseHistory />
 
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
