@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewPaymentForm } from "@/components/NewPaymentForm";
+import { attachPoRefs } from "@/lib/outstandingPoRefs";
 
 export default async function NewPaymentPage({
   searchParams,
@@ -45,9 +46,15 @@ export default async function NewPaymentPage({
         : Promise.resolve({ data: null }),
     ]);
 
-  const { data: initialOutstanding } = defaultParty
+  const { data: initialOutstandingRaw } = defaultParty
     ? await supabase.rpc("fn_party_outstanding", { p_party_id: defaultParty.id, p_direction: initialDirection, p_limit: 100 })
     : { data: [] };
+
+  // fn_party_outstanding doesn't carry sales_order_id (bills have none), so the
+  // linked Direct-type PO — a reference only, shown next to the invoice it was
+  // raised to fulfil — is found with the same two follow-up queries the
+  // Payment detail page's own allocation table uses.
+  const initialOutstanding = await attachPoRefs(supabase, initialDirection, initialOutstandingRaw ?? []);
 
   return (
     <div className="space-y-4">

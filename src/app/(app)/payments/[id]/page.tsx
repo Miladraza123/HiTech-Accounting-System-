@@ -32,7 +32,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const sourceLabel = bank?.account_name ?? fund?.fund_name ?? "Cash in Hand";
   const canCancel = canManage && payment.status === "Posted";
 
-  let allocRows: { key: string; label: string; date: string; outstanding: number }[] = [];
+  let allocRows: { key: string; label: string; date: string; outstanding: number; poNo?: string | null }[] = [];
   const invoiceIds = (allocations ?? []).map((a) => a.invoice_id).filter(Boolean) as string[];
   const billIds = (allocations ?? []).map((a) => a.supplier_bill_id).filter(Boolean) as string[];
   const [{ data: invoices }, { data: bills }] = await Promise.all([
@@ -45,14 +45,27 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   if (payment.status === "Posted" && payment.unallocated_amount > 0) {
     if (payment.direction === "receipt") {
       const { data: outstanding } = await supabase.from("invoice_outstanding").select("*").eq("party_id", payment.party_id).gt("outstanding_amount", 0);
-      const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_no, invoice_date").eq("party_id", payment.party_id);
+      const { data: allInvoices } = await supabase.from("invoices").select("id, invoice_no, invoice_date, sales_order_id").eq("party_id", payment.party_id);
       const invById = new Map((allInvoices ?? []).map((i) => [i.id, i]));
-      allocRows = (outstanding ?? []).map((o) => ({
-        key: o.invoice_id!,
-        label: invById.get(o.invoice_id!)?.invoice_no ?? "",
-        date: invById.get(o.invoice_id!)?.invoice_date ?? "",
-        outstanding: o.outstanding_amount ?? 0,
-      }));
+      // The PO shown here is a reference only — the Direct-type Purchase Order
+      // (if any) raised specifically to fulfil this invoice's Sales Order —
+      // found the same reverse-lookup way the Invoice detail page's own
+      // document trail does, since no invoice/SO row points forward to it.
+      const soIds = [...new Set((allInvoices ?? []).map((i) => i.sales_order_id).filter(Boolean))] as string[];
+      const { data: linkedPos } = soIds.length
+        ? await supabase.from("purchase_orders").select("po_no, linked_sales_order_id").eq("purchase_type", "direct").in("linked_sales_order_id", soIds)
+        : { data: [] };
+      const poNoBySoId = new Map((linkedPos ?? []).map((p) => [p.linked_sales_order_id, p.po_no]));
+      allocRows = (outstanding ?? []).map((o) => {
+        const inv = invById.get(o.invoice_id!);
+        return {
+          key: o.invoice_id!,
+          label: inv?.invoice_no ?? "",
+          date: inv?.invoice_date ?? "",
+          outstanding: o.outstanding_amount ?? 0,
+          poNo: inv?.sales_order_id ? poNoBySoId.get(inv.sales_order_id) ?? null : null,
+        };
+      });
     } else {
       const { data: outstanding } = await supabase.from("supplier_bill_outstanding").select("*").eq("supplier_id", payment.party_id).gt("outstanding_amount", 0);
       const { data: allBills } = await supabase.from("supplier_bills").select("id, bill_no, bill_date").eq("supplier_id", payment.party_id);

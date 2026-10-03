@@ -7,9 +7,10 @@ import { createPaymentAction, type PaymentAllocationInput } from "@/app/actions/
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
+import { attachPoRefs, type OutstandingDocWithPo } from "@/lib/outstandingPoRefs";
 
-/** One outstanding document of the selected party, as fn_party_outstanding returns it. */
-export type OutstandingDoc = { doc_id: string; doc_no: string; doc_date: string; outstanding_amount: number };
+/** One outstanding document of the selected party, as fn_party_outstanding returns it, plus its PO reference (receipts only). */
+export type OutstandingDoc = OutstandingDocWithPo;
 
 /**
  * How many outstanding documents of one party the allocation table offers.
@@ -103,22 +104,26 @@ export function NewPaymentForm({
     let cancelled = false;
     setOutstandingError(null);
     setLoadingOutstanding(true);
-    createClient()
+    const supabase = createClient();
+    supabase
       .rpc("fn_party_outstanding", { p_party_id: partyId, p_direction: direction, p_limit: OUTSTANDING_LIMIT })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return;
-        setLoadingOutstanding(false);
         if (error) {
           // Offline, or the request failed. The payment itself can still be
           // recorded — allocation is optional — so say so rather than silently
           // showing "no outstanding documents", which would be a different and
           // wrong statement. The key is released so picking the party again
           // after reconnecting retries.
+          setLoadingOutstanding(false);
           fetchedKeys.current.delete(key);
           setOutstandingError("Could not load this party's outstanding documents. You can still record the payment and allocate it later.");
           return;
         }
-        setOutstandingByKey((c) => ({ ...c, [key]: (data ?? []) as OutstandingDoc[] }));
+        const withPoRefs = await attachPoRefs(supabase, direction, data ?? []);
+        if (cancelled) return;
+        setLoadingOutstanding(false);
+        setOutstandingByKey((c) => ({ ...c, [key]: withPoRefs }));
       });
     return () => {
       cancelled = true;
@@ -127,7 +132,7 @@ export function NewPaymentForm({
 
   const rows = useMemo(() => {
     const docs = outstandingKey ? outstandingByKey[outstandingKey] : undefined;
-    return (docs ?? []).map((o) => ({ key: o.doc_id, label: o.doc_no, date: o.doc_date, outstanding: o.outstanding_amount }));
+    return (docs ?? []).map((o) => ({ key: o.doc_id, label: o.doc_no, date: o.doc_date, outstanding: o.outstanding_amount, poNo: o.po_no ?? null }));
   }, [outstandingKey, outstandingByKey]);
 
   const allocTotal = rows.reduce((s, r) => s + (Number(allocAmounts[r.key]) || 0), 0);
@@ -360,7 +365,10 @@ export function NewPaymentForm({
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.key} className="border-t border-line">
-                    <td className="px-3 py-2 font-mono text-xs text-ink">{r.label}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-ink">
+                      {r.label}
+                      {r.poNo && <span className="block text-ink-faint font-normal normal-case">PO: {r.poNo}</span>}
+                    </td>
                     <td className="px-3 py-2 text-ink-soft text-xs">{r.date}</td>
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.outstanding.toLocaleString()}</td>
                     <td className="px-2 py-1.5">

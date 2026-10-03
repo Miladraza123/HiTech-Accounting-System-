@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { allocatePaymentAction, type PaymentAllocationInput } from "@/app/actions/payments";
 
-type Row = { key: string; label: string; date: string; outstanding: number };
+type Row = { key: string; label: string; date: string; outstanding: number; poNo?: string | null };
 
 export function AllocatePaymentPanel({
   paymentId,
@@ -76,7 +76,10 @@ export function AllocatePaymentPanel({
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className="border-t border-line">
-                <td className="px-3 py-2 font-mono text-xs text-ink">{r.label}</td>
+                <td className="px-3 py-2 font-mono text-xs text-ink">
+                  {r.label}
+                  {r.poNo && <span className="block text-ink-faint font-normal normal-case">PO: {r.poNo}</span>}
+                </td>
                 <td className="px-3 py-2 text-right tabular text-ink-soft">{r.outstanding.toLocaleString()}</td>
                 <td className="px-2 py-1.5">
                   <input

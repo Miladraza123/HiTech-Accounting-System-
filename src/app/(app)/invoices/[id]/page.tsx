@@ -22,7 +22,9 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }, { data: company }] = await Promise.all([
     supabase
       .from("invoices")
-      .select("*, parties(legal_name, billing_address, ntn, strn, cnic), sales_orders(so_no, client_po_number)")
+      .select(
+        "*, parties(legal_name, billing_address, ntn, strn, cnic), sales_orders(so_no, client_po_number, quotation_id, query_id, quotations(quotation_no), queries(query_no))"
+      )
       .eq("id", id)
       .maybeSingle(),
     supabase.from("invoice_lines").select("*").eq("invoice_id", id).order("sort_order"),
@@ -36,7 +38,38 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   if (!invoice) notFound();
 
   const party = invoice.parties as unknown as { legal_name: string; billing_address: string | null; ntn: string | null; strn: string | null; cnic: string | null } | null;
-  const so = invoice.sales_orders as unknown as { so_no: string; client_po_number: string } | null;
+  const so = invoice.sales_orders as unknown as {
+    so_no: string;
+    client_po_number: string;
+    quotation_id: string | null;
+    query_id: string | null;
+    quotations: { quotation_no: string } | null;
+    queries: { query_no: string } | null;
+  } | null;
+  const quotation = so?.quotations ?? null;
+  const query = so?.queries ?? null;
+
+  // The document trail (Query/Quotation/PO) is one hop further than this
+  // invoice's own row reaches — sales_orders denormalizes query_id/quotation_id,
+  // but delivery_challans and purchase_orders only point UP at a sales order,
+  // never down at an invoice — so they're found by searching for this invoice's
+  // sales_order_id, not by any column on the invoice itself.
+  const [{ data: deliveryChallans }, { data: linkedPurchaseOrders }] = invoice.sales_order_id
+    ? await Promise.all([
+        supabase
+          .from("delivery_challans")
+          .select("id, dc_no")
+          .eq("sales_order_id", invoice.sales_order_id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("purchase_orders")
+          .select("id, po_no")
+          .eq("linked_sales_order_id", invoice.sales_order_id)
+          .eq("purchase_type", "direct")
+          .order("created_at", { ascending: false }),
+      ])
+    : [{ data: null }, { data: null }];
+
   const outstanding = outstandingRow?.outstanding_amount ?? 0;
   const canCancel = canManage && invoice.status === "Posted";
   const canReturn = (await hasPermission(user, "sales_return.manage")) && invoice.status === "Posted";
@@ -55,6 +88,49 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           <p className="text-sm text-ink-soft mt-0.5">
             {party?.legal_name} — SO {so?.so_no} (PO: {so?.client_po_number})
           </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1 text-xs">
+            {query && invoice.sales_order_id && (
+              <>
+                <Link href={`/queries/${so?.query_id}`} className="font-mono text-ink-faint hover:text-ink underline underline-offset-2">
+                  {query.query_no}
+                </Link>
+                <span className="text-ink-faint">→</span>
+              </>
+            )}
+            {quotation && invoice.sales_order_id && (
+              <>
+                <Link href={`/quotations/${so?.quotation_id}`} className="font-mono text-ink-faint hover:text-ink underline underline-offset-2">
+                  {quotation.quotation_no}
+                </Link>
+                <span className="text-ink-faint">→</span>
+              </>
+            )}
+            {so && invoice.sales_order_id && (
+              <>
+                <Link href={`/sales-orders/${invoice.sales_order_id}`} className="font-mono text-ink-faint hover:text-ink underline underline-offset-2">
+                  {so.so_no}
+                </Link>
+                <span className="text-ink-faint">→</span>
+              </>
+            )}
+            {(deliveryChallans ?? []).map((dc) => (
+              <Link key={dc.id} href={`/delivery-challans/${dc.id}`} className="font-mono text-ink-faint hover:text-ink underline underline-offset-2">
+                {dc.dc_no}
+              </Link>
+            ))}
+            {!!deliveryChallans?.length && <span className="text-ink-faint">→</span>}
+            <span className="font-mono text-ink font-medium">{invoice.invoice_no}</span>
+            {!!linkedPurchaseOrders?.length && (
+              <>
+                <span className="text-ink-faint ml-1">· PO:</span>
+                {linkedPurchaseOrders.map((po) => (
+                  <Link key={po.id} href={`/purchase-orders/${po.id}`} className="font-mono text-ledger hover:underline underline-offset-2">
+                    {po.po_no}
+                  </Link>
+                ))}
+              </>
+            )}
+          </div>
           {(party?.ntn || party?.strn || party?.cnic) && (
             <p className="text-xs text-ink-faint mt-0.5">
               {party?.ntn && <>NTN: {party.ntn} </>}
