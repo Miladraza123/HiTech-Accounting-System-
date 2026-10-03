@@ -74,6 +74,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     { data: recentQueries },
     { data: recentQuotations },
     { data: dailySnapshots },
+    { count: pendingGoAheadCount },
   ] = await Promise.all([
     supabase.rpc("fn_owner_dashboard", { p_line: selectedLine, p_from: from, p_to: to }),
     supabase.rpc("fn_dashboard_trend", { p_line: selectedLine, p_from: from, p_to: to }),
@@ -83,6 +84,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     supabase.from("queries").select("id, query_no, status, parties(legal_name)").order("created_at", { ascending: false }).limit(6),
     supabase.from("quotations").select("id, quotation_no, status, parties(legal_name)").order("created_at", { ascending: false }).limit(6),
     supabase.from("daily_snapshots").select("*").order("snapshot_date", { ascending: false }).limit(30),
+    // Separate, cheap count — not part of fn_owner_dashboard's own
+    // aggregation, since Dispatch Go-Ahead is a brand-new, unrelated
+    // concept (own table, own small count) rather than another metric to
+    // fold into that already-large function.
+    supabase.from("dispatch_go_aheads").select("*", { count: "exact", head: true }).in("status", ["Pending", "Accepted"]),
   ]);
 
   const d = (dash ?? {}) as Record<string, number>;
@@ -418,6 +424,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <StatTile label="Delayed" value={delayedCount} tone="bad" href="/reports/order-health" />
         </div>
       </div>
+
+      {(pendingGoAheadCount ?? 0) > 0 && (
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="text-sm font-semibold text-ink mb-3">Dispatch</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <StatTile label="Pending Go-Aheads" value={pendingGoAheadCount ?? 0} tone="warn" href="/delivery-challans" />
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-line bg-surface p-5">
         <h2 className="text-sm font-semibold text-ink mb-3">Pending From Whom?</h2>

@@ -289,7 +289,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <CompanyLogo hasLogo={hasCompanyLogo} width={150} alt="HITECH ENGINEERING" />
                   {!hasCompanyLogo && <span className="font-semibold text-ink text-sm">Hi-Tech Business</span>}
                 </div>
-                <NotificationBell notifications={notifications} align="left" />
+                <NotificationBell notifications={notifications} align="left" userId={user.id} />
               </div>
             </div>
 

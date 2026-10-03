@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner } from "@/lib/auth";
+import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { PodPanel } from "@/components/PodPanel";
 import { CancelDeliveryChallanButton } from "@/components/CancelDeliveryChallanButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
+import { DispatchGoAheadPanel, type GoAheadRow } from "@/components/DispatchGoAheadPanel";
 
 const STATUS_STYLE: Record<string, string> = {
   Issued: "bg-ledger-soft text-ledger",
@@ -24,9 +25,10 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
   const user = await getCurrentUser();
   const canManage = await hasPermission(user, "delivery_challan.manage");
   const canDispute = canManage || (await hasPermission(user, "delivery_challan.dispute"));
+  const canRequestGoAhead = isOwner(user) || hasRole(user, "sales");
 
   const supabase = await createClient();
-  const [{ data: dc }, { data: lines }, { data: attachments }, { data: company }] = await Promise.all([
+  const [{ data: dc }, { data: lines }, { data: attachments }, { data: company }, { data: goAheads }, { data: dispatchUsers }] = await Promise.all([
     supabase
       .from("delivery_challans")
       .select("*, parties(legal_name, billing_address), sales_orders(so_no, client_po_number), warehouses(name)")
@@ -35,9 +37,25 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
     supabase.from("delivery_challan_lines").select("*").eq("dc_id", id).order("sort_order"),
     supabase.from("attachments").select("*").eq("owner_table", "delivery_challans").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+    supabase.from("dispatch_go_aheads").select("*").eq("delivery_challan_id", id).order("created_at", { ascending: false }),
+    canRequestGoAhead ? supabase.rpc("fn_list_users_by_role", { p_role_code: "dispatch" }) : Promise.resolve({ data: [] }),
   ]);
 
   if (!dc) notFound();
+
+  const profileIds = [...new Set((goAheads ?? []).flatMap((g) => [g.given_by, g.given_to]))];
+  const { data: profiles } = profileIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", profileIds)
+    : { data: [] };
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+  const goAheadRows: GoAheadRow[] = (goAheads ?? []).map((g) => ({
+    id: g.id,
+    given_to: g.given_to,
+    given_to_name: nameById.get(g.given_to) ?? "—",
+    given_by_name: nameById.get(g.given_by) ?? "—",
+    status: g.status,
+    created_at: g.created_at,
+  }));
 
   const party = dc.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const so = dc.sales_orders as unknown as { so_no: string; client_po_number: string } | null;
@@ -150,6 +168,16 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               <CancelDeliveryChallanButton dcId={id} />
             </div>
+          )}
+
+          {(canRequestGoAhead || goAheadRows.length > 0) && dc.status === "Issued" && (
+            <DispatchGoAheadPanel
+              deliveryChallanId={id}
+              goAheads={goAheadRows}
+              currentUserId={user?.id ?? ""}
+              canRequest={canRequestGoAhead}
+              dispatchUsers={dispatchUsers ?? []}
+            />
           )}
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">

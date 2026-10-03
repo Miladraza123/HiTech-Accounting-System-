@@ -611,6 +611,47 @@ export type Database = {
           },
         ]
       }
+      dispatch_go_aheads: {
+        Row: {
+          accepted_at: string | null
+          completed_at: string | null
+          created_at: string
+          delivery_challan_id: string
+          given_by: string
+          given_to: string
+          id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivery_challan_id: string
+          given_by: string
+          given_to: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivery_challan_id?: string
+          given_by?: string
+          given_to?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_go_aheads_delivery_challan_id_fkey"
+            columns: ["delivery_challan_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_challans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_heads: {
         Row: {
           account_code: string
@@ -1651,6 +1692,45 @@ export type Database = {
           login_method?: string
           logout_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          description: string | null
+          href: string | null
+          id: string
+          is_read: boolean
+          recipient_user_id: string
+          related_id: string | null
+          related_table: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          recipient_user_id: string
+          related_id?: string | null
+          related_table?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          href?: string | null
+          id?: string
+          is_read?: boolean
+          recipient_user_id?: string
+          related_id?: string | null
+          related_table?: string | null
+          title?: string
+          type?: string
         }
         Relationships: []
       }
@@ -4379,6 +4459,10 @@ export type Database = {
         Returns: boolean
       }
       describe_login_device: { Args: { p_user_agent: string }; Returns: string }
+      fn_accept_dispatch_go_ahead: {
+        Args: { p_go_ahead_id: string }
+        Returns: undefined
+      }
       fn_account_ledger: {
         Args: { p_account_id: string; p_limit: number; p_offset: number }
         Returns: {
@@ -4552,6 +4636,10 @@ export type Database = {
         Args: { p_purchase_order_id: string; p_reason: string }
         Returns: undefined
       }
+      fn_complete_dispatch_go_ahead: {
+        Args: { p_go_ahead_id: string }
+        Returns: undefined
+      }
       fn_complete_service_job: {
         Args: { p_service_job_id: string }
         Returns: undefined
@@ -4617,6 +4705,10 @@ export type Database = {
           p_vehicle_no: string
           p_warehouse_id: string
         }
+        Returns: string
+      }
+      fn_create_dispatch_go_ahead: {
+        Args: { p_delivery_challan_id: string; p_given_to: string }
         Returns: string
       }
       fn_create_expense: {
@@ -5242,6 +5334,13 @@ export type Database = {
           total_rows: number
         }[]
       }
+      fn_list_users_by_role: {
+        Args: { p_role_code: string }
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
       fn_log_login: {
         Args: { p_device?: string; p_ip?: string }
         Returns: string
@@ -5253,6 +5352,10 @@ export type Database = {
       }
       fn_mark_job_ready_for_dispatch: {
         Args: { p_job_id: string }
+        Returns: undefined
+      }
+      fn_mark_notification_read: {
+        Args: { p_notification_id: string }
         Returns: undefined
       }
       fn_mark_quotation_sent: {

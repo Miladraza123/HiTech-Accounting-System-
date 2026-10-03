@@ -2,19 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, ListChecks, Landmark, Boxes } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, ListChecks, Landmark, Boxes, Truck } from "lucide-react";
 import type { NotificationItem } from "@/lib/notifications";
+import { createClient } from "@/lib/supabase/client";
 
 const TYPE_ICON: Record<NotificationItem["type"], React.ReactNode> = {
   task_due: <ListChecks size={13} />,
   credit_limit: <Landmark size={13} />,
   low_stock: <Boxes size={13} />,
+  dispatch_go_ahead: <Truck size={13} />,
 };
 
 const TYPE_LABEL: Record<NotificationItem["type"], string> = {
   task_due: "Tasks due",
   credit_limit: "Credit limit",
   low_stock: "Low stock",
+  dispatch_go_ahead: "Dispatch",
 };
 
 /**
@@ -31,9 +35,19 @@ const TYPE_LABEL: Record<NotificationItem["type"], string> = {
  * mobile top bar's bell sits near the right edge of the screen, where
  * `right-0` (the default) is correct.
  */
-export function NotificationBell({ notifications, align = "right" }: { notifications: NotificationItem[]; align?: "left" | "right" }) {
+export function NotificationBell({
+  notifications,
+  align = "right",
+  userId,
+}: {
+  notifications: NotificationItem[];
+  align?: "left" | "right";
+  /** Enables the live Realtime subscription below — omit to render the bell without it. */
+  userId?: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -43,8 +57,27 @@ export function NotificationBell({ notifications, align = "right" }: { notificat
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  // Dispatch Go-Ahead notifications are real one-time events, not a
+  // standing condition the bell re-derives on its own — without this, a
+  // recipient would only see one land after their next normal page
+  // navigation. router.refresh() re-runs the server layout that computed
+  // `notifications`, so the new row (and its unread count) appears live.
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `recipient_user_id=eq.${userId}` }, () => {
+        router.refresh();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, router]);
+
   const hasUrgent = notifications.some((n) => n.tone === "bad");
-  const grouped: NotificationItem["type"][] = ["task_due", "credit_limit", "low_stock"];
+  const grouped: NotificationItem["type"][] = ["task_due", "credit_limit", "low_stock", "dispatch_go_ahead"];
 
   return (
     <div ref={ref} className="relative">
