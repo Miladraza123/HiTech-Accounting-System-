@@ -60,11 +60,16 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
       const pageHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = pageWidth;
       const pxToPt = imgWidth / canvas.width;
-      const pageHeightPx = pageHeight / pxToPt;
+      // Whole pixels: a canvas height is truncated to an integer, so a
+      // fractional page height left a sub-pixel last "page" that became a
+      // 0-height canvas, whose empty data URL made jsPDF throw "wrong PNG
+      // signature" — every one-page document failed to download.
+      const pageHeightPx = Math.floor(pageHeight / pxToPt);
 
       let sy = 0;
       let pageIndex = 0;
-      while (sy < canvas.height) {
+      // Ignore a leftover of a pixel or two from rounding.
+      while (canvas.height - sy >= 2) {
         const sliceHeightPx = Math.min(pageHeightPx, canvas.height - sy);
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = canvas.width;
@@ -73,7 +78,9 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
         ctx?.drawImage(canvas, 0, sy, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
 
         if (pageIndex > 0) pdf.addPage();
-        pdf.addImage(pageCanvas.toDataURL("image/png"), "PNG", 0, 0, imgWidth, sliceHeightPx * pxToPt);
+        // JPEG: jsPDF stores PNG data uncompressed, which made even a one-page
+        // document ~10 MB — too heavy to email or send on WhatsApp.
+        pdf.addImage(pageCanvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, imgWidth, sliceHeightPx * pxToPt);
 
         sy += sliceHeightPx;
         pageIndex++;

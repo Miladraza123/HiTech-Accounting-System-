@@ -11,7 +11,7 @@ export default async function RawMaterialShortagePage() {
   const supabase = await createClient();
   const { data: requirements } = await supabase
     .from("job_material_requirements")
-    .select("item_id, required_qty, reserved_qty, issued_qty, source, unit, items(item_code, description, base_unit), jobs!inner(job_no, status)")
+    .select("item_id, required_qty, reserved_qty, issued_qty, returned_qty, source, unit, items(item_code, description, base_unit), jobs!inner(job_no, status)")
     .eq("source", "stock")
     .eq("jobs.status", "MaterialPending");
 
@@ -20,7 +20,8 @@ export default async function RawMaterialShortagePage() {
 
   const byItem = new Map<string, { item: ItemInfo; unit: string | null; shortfall: number; jobNos: Set<string> }>();
   for (const r of requirements ?? []) {
-    const shortfall = r.required_qty - r.reserved_qty - r.issued_qty;
+    // Returns only add to returned_qty, so subtract them to get net issued.
+    const shortfall = r.required_qty - r.reserved_qty - (r.issued_qty - r.returned_qty);
     if (shortfall <= 0.001) continue;
     const item = r.items as unknown as ItemInfo;
     const job = r.jobs as unknown as JobInfo;

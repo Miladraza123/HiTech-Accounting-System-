@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { buttonClass } from "@/components/ui/Button";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
@@ -15,6 +16,8 @@ const TYPE_LABEL: Record<string, string> = { cash: "Cash in Hand", bank: "Bank",
 
 export default async function TransfersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
+  // Same audience as the nav link and the Cash & Bank page.
+  if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
   const canCreate = await hasPermission(user, "fund_transfer.manage");
 
   const { page: pageParam } = await searchParams;

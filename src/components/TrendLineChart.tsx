@@ -51,9 +51,7 @@ export function TrendLineChart({
               <polyline points={points} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
               {s.values.map((v, i) => (
                 <circle key={i} cx={xFor(i)} cy={yFor(v)} r={2.5} fill={s.color}>
-                  <title>
-                    {s.label} — {labels[i]}: {v}
-                  </title>
+                  <title>{`${s.label} — ${labels[i]}: ${v}`}</title>
                 </circle>
               ))}
             </g>

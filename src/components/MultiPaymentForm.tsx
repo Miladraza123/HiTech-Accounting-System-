@@ -21,9 +21,11 @@ type Row = {
   notes: string;
 };
 
-function newRow(direction: "receipt" | "payment"): Row {
+// `key` ends up in the row's picker `name`, so rows rendered on the server
+// need a deterministic key (a random one differs between server and browser).
+function newRow(direction: "receipt" | "payment", key: string = crypto.randomUUID()): Row {
   return {
-    key: crypto.randomUUID(),
+    key,
     direction,
     partyId: "",
     amount: "",
@@ -71,7 +73,7 @@ export function MultiPaymentForm({
   pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {
   const router = useRouter();
-  const [rows, setRows] = useState<Row[]>([newRow("receipt"), newRow("receipt")]);
+  const [rows, setRows] = useState<Row[]>([newRow("receipt", "init-0"), newRow("receipt", "init-1")]);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<BatchPaymentResult[] | null>(null);
   const [pending, startTransition] = useTransition();

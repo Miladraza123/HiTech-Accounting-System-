@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
@@ -16,6 +18,7 @@ export default async function PaymentsPage({
   searchParams: Promise<{ from?: string; to?: string; direction?: string; page?: string }>;
 }) {
   const user = await getCurrentUser();
+  if (!canSeeFinance(user)) redirect("/");
   const canCreate = await hasPermission(user, "payment.manage");
   const { from, to, direction, page: pageParam } = await searchParams;
   const page = parsePage(pageParam);

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { AllocatePaymentPanel } from "@/components/AllocatePaymentPanel";
 import { CancelPaymentButton } from "@/components/CancelPaymentButton";
@@ -16,6 +17,7 @@ const DIRECTION_LABEL: Record<string, string> = { receipt: "Receipt — from Cli
 export default async function PaymentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
+  if (!canSeeFinance(user)) redirect("/");
   const canManage = await hasPermission(user, "payment.manage");
 
   const supabase = await createClient();

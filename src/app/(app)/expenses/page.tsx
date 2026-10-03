@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -18,6 +20,7 @@ const SOURCE_LABEL: Record<string, string> = { cash: "Cash", bank: "Bank", petty
 
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
+  if (!canSeeFinance(user)) redirect("/");
   const canCreate = await hasPermission(user, "expense.manage");
   const { page: pageParam } = await searchParams;
   const page = parsePage(pageParam);

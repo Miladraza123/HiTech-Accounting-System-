@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
+import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { JobMaterialPanel } from "@/components/JobMaterialPanel";
 import { JobStatusPanel } from "@/components/JobStatusPanel";
@@ -162,6 +163,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             canHandleMaterial={canHandleMaterial}
           />
 
+          {/* job_cost_ledger is finance-only in RLS; others would just see 0s. */}
+          {canSeeFinance(user) && (
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink">Job Cost Summary</h2>
             <div className="grid grid-cols-3 gap-3 text-sm tabular">
@@ -183,6 +186,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
               system — this is a deliberate scope deferral.
             </p>
           </div>
+          )}
 
           {!!notes?.length && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-3">

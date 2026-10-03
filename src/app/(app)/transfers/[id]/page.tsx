@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOwner } from "@/lib/auth";
+import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { CancelContraEntryButton } from "@/components/CancelContraEntryButton";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -14,6 +14,7 @@ const TYPE_LABEL: Record<string, string> = { cash: "Cash in Hand", bank: "Bank",
 export default async function TransferDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
+  if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
   const { data: t } = await supabase

@@ -6,6 +6,9 @@ export default async function ImportPage() {
   const user = await getCurrentUser();
   const canImport = isOwner(user) || hasRole(user, "accounts");
   if (!canImport) redirect("/");
+  // Matches the parties insert RLS policy (owner/sales/store). Accounts can
+  // import opening balances and stock, but not create clients/suppliers.
+  const canImportParties = isOwner(user) || hasRole(user, "sales") || hasRole(user, "store");
 
   return (
     <div className="space-y-6">
@@ -23,7 +26,7 @@ export default async function ImportPage() {
         </p>
       </div>
 
-      <ImportWizard />
+      <ImportWizard canImportParties={canImportParties} />
     </div>
   );
 }

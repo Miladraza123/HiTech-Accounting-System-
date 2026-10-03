@@ -36,8 +36,12 @@ function newKey() {
   return `l${keySeq}`;
 }
 
-export function blankLine(defaultTaxPct = 18): EditableLine {
-  return { key: newKey(), item_id: "", description: "", qty: "1", unit: "", rate: "", tax_pct: String(defaultTaxPct) };
+// Pass an explicit `key` for lines created during the first render: the
+// module-level counter keeps counting across requests on the server, so a
+// counter key there would not match the one the browser generates on
+// hydration.
+export function blankLine(defaultTaxPct = 18, key = newKey()): EditableLine {
+  return { key, item_id: "", description: "", qty: "1", unit: "", rate: "", tax_pct: String(defaultTaxPct) };
 }
 
 export function QuotationLineEditor({

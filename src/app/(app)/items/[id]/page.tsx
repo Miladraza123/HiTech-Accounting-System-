@@ -108,7 +108,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
-      <ItemAltUnitsPanel itemId={item.id} baseUnit={item.base_unit} units={units ?? []} altUnits={altUnits ?? []} canManage={canManage} />
+      <ItemAltUnitsPanel itemId={item.id} baseUnit={item.base_unit} units={units ?? []} altUnits={altUnits ?? []} canManage={canManage} canDelete={isOwner(user)} />
     </div>
   );
 }

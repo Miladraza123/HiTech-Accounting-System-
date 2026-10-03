@@ -137,10 +137,9 @@ export async function signOutAction() {
   redirect("/login");
 }
 
-export async function bootstrapOwnerAction(
-  _prevState: ActionState,
-  _formData: FormData
-): Promise<ActionState> {
+// Used with useActionState, which passes (prevState, formData) — neither is
+// needed here.
+export async function bootstrapOwnerAction(): Promise<ActionState> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_bootstrap_owner");
   if (error) {

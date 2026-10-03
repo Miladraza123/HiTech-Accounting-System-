@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { signInAction, type ActionState } from "@/app/actions/auth";
 
 const initialState: ActionState = { error: null };
@@ -11,6 +11,12 @@ export default function LoginPage() {
   // the database whether a logo exists. It just tries to load it and falls
   // back to the original monogram if the route 404s (no logo uploaded).
   const [logoFailed, setLogoFailed] = useState(false);
+  // The 404 can land before hydration attaches onError — check once mounted.
+  const logoRef = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const img = logoRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setLogoFailed(true);
+  }, []);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-bg px-4 py-12">
@@ -27,6 +33,7 @@ export default function LoginPage() {
             <span className="company-logo mx-auto">
               {/* eslint-disable-next-line @next/next/no-img-element -- served by our own /api/company-logo route as plain bytes. */}
               <img
+                ref={logoRef}
                 src="/api/company-logo"
                 alt="HITECH ENGINEERING"
                 style={{ height: 96, width: "auto" }}

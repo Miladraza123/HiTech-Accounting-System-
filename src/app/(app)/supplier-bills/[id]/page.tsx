@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeSupplierBills } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton";
 import { PurchaseReturnPanel } from "@/components/PurchaseReturnPanel";
@@ -16,6 +17,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function SupplierBillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
+  if (!canSeeSupplierBills(user)) redirect("/");
   const canManage = await hasPermission(user, "supplier_bill.manage");
 
   const supabase = await createClient();

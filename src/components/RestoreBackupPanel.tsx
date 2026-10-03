@@ -151,7 +151,9 @@ export function RestoreBackupPanel() {
                 <p className="text-[11px] text-ink-faint uppercase font-mono">Rows To Be Added</p>
               </div>
               <div className="rounded-lg border border-line bg-bg p-3 text-center">
-                <p className="text-xl font-semibold text-warn tabular">{mode === "replace" ? totals.to_update : 0}</p>
+                {/* to_update counts rows that already exist: Replace overwrites them,
+                    Merge skips them — the same number either way. */}
+                <p className="text-xl font-semibold text-warn tabular">{totals.to_update}</p>
                 <p className="text-[11px] text-ink-faint uppercase font-mono">{mode === "replace" ? "Rows To Be Updated" : "Will Be Skipped (already exist)"}</p>
               </div>
               <div className="rounded-lg border border-line bg-bg p-3 text-center">
@@ -169,7 +171,7 @@ export function RestoreBackupPanel() {
                     <th className="text-left px-3 py-2">Table</th>
                     <th className="text-right px-3 py-2">Incoming</th>
                     <th className="text-right px-3 py-2">Add</th>
-                    <th className="text-right px-3 py-2">Update</th>
+                    <th className="text-right px-3 py-2">{mode === "replace" ? "Update" : "Skip"}</th>
                     <th className="text-right px-3 py-2">Existing</th>
                     <th className="text-right px-3 py-2">Delete (Replace)</th>
                   </tr>

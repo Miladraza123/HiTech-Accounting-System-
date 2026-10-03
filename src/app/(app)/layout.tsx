@@ -8,6 +8,7 @@ import { PageFadeTransition } from "@/components/PageFadeTransition";
 import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -53,6 +54,7 @@ import {
   ShieldCheck,
   DatabaseBackup,
   History,
+  BarChart3,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -125,7 +127,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/quotations", label: "Quotations", show: true, icon: <FileText size={ICON_SIZE} /> },
         { href: "/sales-orders", label: "Sales Orders", show: true, icon: <ShoppingCart size={ICON_SIZE} /> },
         { href: "/delivery-challans", label: "Delivery Challans", show: true, icon: <Send size={ICON_SIZE} /> },
-        { href: "/invoices", label: "GST Invoices", show: true, icon: <Receipt size={ICON_SIZE} /> },
+        { href: "/invoices", label: "GST Invoices", show: canSeeInvoices(user), icon: <Receipt size={ICON_SIZE} /> },
         {
           href: "/sales-returns",
           label: "Sales Returns",
@@ -138,7 +140,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       label: "Purchases",
       items: [
         { href: "/purchase-orders", label: "Purchase Orders", show: true, icon: <Truck size={ICON_SIZE} /> },
-        { href: "/supplier-bills", label: "Supplier Bills", show: true, icon: <FileText size={ICON_SIZE} /> },
+        { href: "/supplier-bills", label: "Supplier Bills", show: canSeeSupplierBills(user), icon: <FileText size={ICON_SIZE} /> },
         {
           href: "/purchase-returns",
           label: "Purchase Returns",
@@ -165,14 +167,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       label: "Accounts & Finance",
       items: [
-        { href: "/payments", label: "Payments", show: true, icon: <CreditCard size={ICON_SIZE} /> },
+        { href: "/payments", label: "Payments", show: canSeeFinance(user), icon: <CreditCard size={ICON_SIZE} /> },
         {
           href: "/cash-bank",
           label: "Cash & Bank",
           show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
           icon: <Landmark size={ICON_SIZE} />,
         },
-        { href: "/expenses", label: "Expenses", show: true, icon: <Wallet size={ICON_SIZE} /> },
+        { href: "/expenses", label: "Expenses", show: canSeeFinance(user), icon: <Wallet size={ICON_SIZE} /> },
         {
           href: "/transfers",
           label: "Fund Transfers",
@@ -186,6 +188,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           icon: <BookOpen size={ICON_SIZE} />,
         },
       ],
+    },
+    {
+      // The Owner reaches every report from the Owner Dashboard, which is
+      // Owner-only; Accounts/Auditor are allowed on these report pages but
+      // otherwise had no link to them at all.
+      label: "Reports",
+      items: [
+        ["/reports/trial-balance", "Trial Balance"],
+        ["/reports/profit-loss", "Profit & Loss"],
+        ["/reports/balance-sheet", "Balance Sheet"],
+        ["/reports/general-ledger", "General Ledger"],
+        ["/reports/party-ledger", "Party Ledger"],
+        ["/reports/ar-aging", "AR Aging"],
+        ["/reports/ap-aging", "AP Aging"],
+        ["/reports/cash-flow", "Cash Flow"],
+        ["/reports/daily-ledger", "Daily Ledger"],
+      ].map(([href, label]) => ({
+        href,
+        label,
+        show: !owner && (user.roles.includes("accounts") || user.roles.includes("auditor")),
+        icon: <BarChart3 size={ICON_SIZE} />,
+      })),
     },
     {
       label: "Settings / Administration",

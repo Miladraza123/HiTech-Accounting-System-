@@ -213,7 +213,10 @@ export function JobMaterialPanel({
             </thead>
             <tbody>
               {requirements.map((r) => {
-                const shortfall = r.required_qty - r.reserved_qty;
+                // Issuing moves qty out of reserved_qty into issued_qty, so
+                // material already handed to the job (net of returns) still
+                // counts as covered.
+                const shortfall = r.required_qty - r.reserved_qty - (r.issued_qty - r.returned_qty);
                 return (
                   <tr key={r.id} className="border-t border-line align-top">
                     <td className="px-3 py-2 text-ink">
@@ -227,7 +230,7 @@ export function JobMaterialPanel({
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.returned_qty}</td>
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.free_qty}</td>
                     <td className="px-3 py-2">
-                      {shortfall > 0 ? (
+                      {shortfall > 0.001 ? (
                         <span className="rounded-full bg-bad-soft px-2 py-0.5 text-xs text-bad whitespace-nowrap">
                           Purchase Required ({shortfall.toFixed(3)})
                         </span>
