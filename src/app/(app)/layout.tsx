@@ -11,6 +11,7 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { EnablePushButton } from "@/components/EnablePushButton";
 import { NotificationBell } from "@/components/NotificationBell";
 import { getNotifications } from "@/lib/notifications";
 import { cookies } from "next/headers";
@@ -307,6 +308,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="border-t border-line px-3 py-4 space-y-3">
               <ThemeToggle />
               <InstallAppButton />
+              <EnablePushButton />
               <div className="px-2">
                 <p className="text-sm text-ink truncate">{user.fullName}</p>
                 <p className="text-[11px] text-ink-faint truncate">{userRoleLabel}</p>

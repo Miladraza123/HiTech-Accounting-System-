@@ -474,3 +474,46 @@ async function staleWhileRevalidate(request) {
     .catch(() => undefined);
   return cached ?? (await fetchPromise) ?? Response.error();
 }
+
+// Web Push (Phase 42): shows an OS-level notification even when the app
+// isn't open — that's the whole point of push over the in-app bell, which
+// only ever updates while a tab is actually loaded. The payload is the
+// plain JSON string src/lib/webPush.ts sends (title/body/href); a push
+// with no payload (rare, but allowed by the spec) falls back to a generic
+// message rather than throwing.
+self.addEventListener("push", (event) => {
+  let payload = { title: "Hi-Tech ERP", body: "You have a new notification.", href: "/" };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // Non-JSON payload — keep the generic fallback above.
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icon-192-v2.png",
+      badge: "/icon-192-v2.png",
+      data: { href: payload.href },
+    })
+  );
+});
+
+// Tapping the notification focuses an already-open tab on that URL instead
+// of always opening a new one — same "one window, not several" rule this
+// file's WARM_CACHE/launch_handler work already established elsewhere.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const href = event.notification.data?.href ?? "/";
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of clientsList) {
+        if (new URL(client.url).pathname === href && "focus" in client) {
+          client.focus();
+          return;
+        }
+      }
+      await self.clients.openWindow(href);
+    })()
+  );
+});
