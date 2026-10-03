@@ -1,21 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual, createHmac } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Inbound email intake (Phase 43). Written for Postmark's Inbound webhook
- * payload shape — chosen because it needs zero DNS/MX changes on the
- * user's existing domain: Postmark hands out a ready
- * `<hash>@inbound.postmarkapp.com` address immediately, and the user just
- * adds a forwarding rule in their existing inbox (e.g. Gmail Settings ->
- * Forwarding) for the RFQ/PR/PO mail they want captured. No inbound-email
- * infrastructure existed anywhere in this app before this phase.
+ * Inbound email intake (Phase 43, switched to Mailgun in Phase 43b). Mailgun
+ * chosen over Postmark for its permanently-free tier (100 emails/day, 1
+ * inbound route — Postmark's free tier is 100/MONTH). The user forwards
+ * matching mail from their existing inbox (Gmail Settings -> Forwarding) to
+ * the address Mailgun's Route gives them; no DNS/MX change on their own
+ * domain either way.
  *
- * Unauthenticated by nature (the email provider calls this, not a
- * signed-in user) — gated instead by a shared secret in the URL, and
- * writes through the admin client since there is no end-user session to
- * carry RLS. Configure the webhook URL in Postmark as:
- *   https://<your-app>/api/inbound-email?token=<INBOUND_EMAIL_WEBHOOK_SECRET>
+ * Mailgun's default Route delivery (no `.json` URL suffix) POSTs
+ * multipart/form-data: `sender`/`from`/`subject`/`body-plain` as plain
+ * fields, `attachment-count` + `attachment-<n>` as real file parts (not
+ * base64) — see the Mailgun docs for "Routes forward() webhook fields".
+ *
+ * Gated two ways: the `?token=` shared secret (works for any provider,
+ * matches this app's own convention), and — if
+ * MAILGUN_WEBHOOK_SIGNING_KEY is configured — Mailgun's own HMAC-SHA256
+ * signature (timestamp+token, keyed by the signing key, timing-safe
+ * compared), which is optional but recommended since it also rules out a
+ * stale/replayed delivery.
  */
+function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
+  const signingKey = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
+  if (!signingKey) return true; // Not configured — the ?token= secret is the only gate, same as any other provider.
+  const expected = createHmac("sha256", signingKey).update(timestamp + token).digest("hex");
+  const expectedBuf = Buffer.from(expected, "hex");
+  const givenBuf = Buffer.from(signature, "hex");
+  if (expectedBuf.length !== givenBuf.length) return false;
+  return timingSafeEqual(expectedBuf, givenBuf);
+}
+
 export async function POST(request: NextRequest) {
   const secret = process.env.INBOUND_EMAIL_WEBHOOK_SECRET;
   const token = request.nextUrl.searchParams.get("token");
@@ -23,13 +39,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data") && !contentType.includes("application/x-www-form-urlencoded")) {
+    return NextResponse.json({ error: "Expected a Mailgun form POST" }, { status: 400 });
+  }
 
-  const fromAddress: string | null = body.FromFull?.Email ?? body.From ?? null;
-  const subject: string | null = body.Subject ?? null;
-  const bodyText: string | null = body.TextBody ?? body.HtmlBody ?? null;
-  const attachments: { Name: string; Content: string; ContentType: string; ContentLength: number }[] = body.Attachments ?? [];
+  const form = await request.formData();
+
+  const mgTimestamp = String(form.get("timestamp") ?? "");
+  const mgToken = String(form.get("token") ?? "");
+  const mgSignature = String(form.get("signature") ?? "");
+  if (mgTimestamp && mgToken && mgSignature && !verifyMailgunSignature(mgTimestamp, mgToken, mgSignature)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  const fromAddress = String(form.get("sender") ?? form.get("from") ?? "") || null;
+  const subject = String(form.get("subject") ?? "") || null;
+  const bodyText = String(form.get("body-plain") ?? "") || null;
 
   const admin = createAdminClient();
   const { data: doc, error } = await admin
@@ -40,19 +66,22 @@ export async function POST(request: NextRequest) {
 
   if (error || !doc) return NextResponse.json({ error: error?.message ?? "Failed to record document" }, { status: 500 });
 
-  for (const att of attachments) {
+  const attachmentCount = Number(form.get("attachment-count") ?? 0);
+  for (let i = 1; i <= attachmentCount; i++) {
+    const file = form.get(`attachment-${i}`);
+    if (!(file instanceof File)) continue;
     try {
-      const safeName = att.Name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `incoming/${doc.id}/${Date.now()}-${safeName}`;
-      const bytes = Buffer.from(att.Content, "base64");
-      const { error: uploadError } = await admin.storage.from("attachments").upload(path, bytes, { contentType: att.ContentType || undefined });
+      const bytes = Buffer.from(await file.arrayBuffer());
+      const { error: uploadError } = await admin.storage.from("attachments").upload(path, bytes, { contentType: file.type || undefined });
       if (!uploadError) {
         await admin.from("incoming_document_attachments").insert({
           incoming_document_id: doc.id,
-          file_name: att.Name,
+          file_name: file.name,
           storage_path: path,
-          content_type: att.ContentType || null,
-          size_bytes: att.ContentLength || null,
+          content_type: file.type || null,
+          size_bytes: file.size || null,
         });
       }
     } catch {
