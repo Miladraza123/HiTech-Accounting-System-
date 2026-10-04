@@ -46,8 +46,17 @@ export default async function NewQueryPage({ searchParams }: { searchParams: Pro
         <QueryForm
           parties={parties}
           sources={sources ?? []}
-          initialRequirement={incomingDocument?.subject ?? undefined}
-          initialNotes={incomingDocument ? `From email: ${incomingDocument.from_address ?? ""}\n\n${incomingDocument.body_text ?? ""}`.trim() : undefined}
+          // The email body carries the actual ask (item list, quantities,
+          // etc.) — the subject is often just a generic label ("RFQ",
+          // "Query"). Requirement defaults to the body, falling back to
+          // the subject only when the body is empty, so the field a sales
+          // user actually reads isn't blank or a one-word placeholder.
+          initialRequirement={(incomingDocument?.body_text?.trim() || incomingDocument?.subject) ?? undefined}
+          initialNotes={
+            incomingDocument
+              ? `From email: ${incomingDocument.from_address ?? ""}${incomingDocument.subject ? `\nSubject: ${incomingDocument.subject}` : ""}`.trim()
+              : undefined
+          }
           fromIncomingDocumentId={incomingDocument?.id}
         />
       )}

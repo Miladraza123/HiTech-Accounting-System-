@@ -1,0 +1,11 @@
+-- Phase 43.02 — live updates for the Incoming Documents page.
+--
+-- Reported bug: a new email arriving via the Mailgun webhook only showed up
+-- on the Incoming Documents list after a manual refresh (or closing and
+-- reopening the page) — the page was a plain Server Component fetch with no
+-- live subscription. Fixed client-side by subscribing to Realtime INSERT
+-- events, mirroring the exact pattern already used for `notifications`
+-- (NotificationBell.tsx) — this just needs the table added to the same
+-- publication; RLS on incoming_documents' own `p_select` policy (Owner or
+-- Sales) already applies to what Realtime delivers.
+alter publication supabase_realtime add table public.incoming_documents;

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { IncomingDocumentRow, type IncomingDocumentData } from "@/components/IncomingDocumentRow";
+import { IncomingDocumentsLive } from "@/components/IncomingDocumentsLive";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 
@@ -33,6 +34,7 @@ export default async function IncomingDocumentsPage({ searchParams }: { searchPa
 
   return (
     <div className="space-y-6">
+      <IncomingDocumentsLive />
       <div>
         <h1 className="text-lg font-semibold text-ink">Incoming Documents</h1>
         <p className="mt-1 text-sm text-ink-soft">
