@@ -9,12 +9,12 @@ import { NewSalesOrderForm } from "@/components/NewSalesOrderForm";
 export default async function NewSalesOrderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ quotation_id?: string }>;
+  searchParams: Promise<{ quotation_id?: string; from_incoming_document_id?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "sales_order.manage"))) redirect("/quotations");
 
-  const { quotation_id } = await searchParams;
+  const { quotation_id, from_incoming_document_id } = await searchParams;
   if (!quotation_id) redirect("/quotations");
 
   const supabase = await createClient();
@@ -70,6 +70,7 @@ export default async function NewSalesOrderPage({
         defaultPaymentTerms={revision?.payment_terms ?? null}
         defaultTaxPct={company?.default_sales_tax_pct ?? 18}
         creditWarning={creditWarning}
+        fromIncomingDocumentId={from_incoming_document_id}
       />
     </div>
   );

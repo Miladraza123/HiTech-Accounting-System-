@@ -42,6 +42,7 @@ export function NewSalesOrderForm({
   defaultPaymentTerms,
   defaultTaxPct,
   creditWarning,
+  fromIncomingDocumentId,
 }: {
   quotationId: string;
   quotationLines: Tables<"quotation_lines">[];
@@ -52,6 +53,14 @@ export function NewSalesOrderForm({
   defaultPaymentTerms: string | null;
   defaultTaxPct: number;
   creditWarning?: string | null;
+  /**
+   * Set when this page was reached from Incoming Documents' "PO Received"
+   * action — carries the email's attachment over to this Sales Order and
+   * marks that document Converted (see createSalesOrderAction). That side
+   * effect needs a live round trip, so unlike the rest of this form there
+   * is no offline path when this is set — see `submit` below.
+   */
+  fromIncomingDocumentId?: string;
 }) {
   // The form works from this list, not the raw prop: every item picked by
   // searching is merged in, so the lookups below keep resolving. See
@@ -83,6 +92,11 @@ export function NewSalesOrderForm({
     setError(null);
     if (!clientPoNumber.trim()) {
       setError("Client PO Number is required.");
+      return;
+    }
+
+    if (!isOnline && fromIncomingDocumentId) {
+      setError("You're offline — linking this PO needs to be online so the email's attachment can be carried over. Try again once you're back online.");
       return;
     }
 
@@ -119,6 +133,7 @@ export function NewSalesOrderForm({
         business_line: businessLine,
         lines: serialize(lines),
         confirm_duplicate: confirmDuplicate,
+        from_incoming_document_id: fromIncomingDocumentId,
       });
       if (res.error === "DUPLICATE_PO") {
         setDuplicateWarning(true);
@@ -145,6 +160,11 @@ export function NewSalesOrderForm({
 
   return (
     <div className="space-y-4">
+      {fromIncomingDocumentId && (
+        <div className="rounded-md border border-line bg-surface-2 px-4 py-2.5 text-sm text-ink-soft">
+          Linked from an Incoming Document — its attachment will be copied here and it will be marked Converted once this Sales Order is created.
+        </div>
+      )}
       {creditWarning && (
         <div className="rounded-md border border-warn bg-warn-soft px-4 py-2.5 text-sm text-warn">
           ⚠ {creditWarning} — this is informational only, the order can still proceed.
@@ -226,8 +246,9 @@ export function NewSalesOrderForm({
 
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
-          ⏳ You&apos;re offline — this Sales Order will be saved on this device and synced automatically once
-          you&apos;re back online.
+          {fromIncomingDocumentId
+            ? "⏳ You're offline — linking this PO needs to be online. Reconnect and try again."
+            : "⏳ You're offline — this Sales Order will be saved on this device and synced automatically once you're back online."}
         </p>
       )}
 
@@ -239,7 +260,7 @@ export function NewSalesOrderForm({
         disabled={pending}
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : isOnline ? "Create Sales Order" : "Save Offline"}
+        {pending ? "Saving…" : isOnline || fromIncomingDocumentId ? "Create Sales Order" : "Save Offline"}
       </button>
     </div>
   );

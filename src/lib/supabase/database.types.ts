@@ -1058,6 +1058,7 @@ export type Database = {
           ai_needs_review: boolean
           body_text: string | null
           converted_query_id: string | null
+          converted_sales_order_id: string | null
           created_at: string
           doc_type: string | null
           from_address: string | null
@@ -1078,6 +1079,7 @@ export type Database = {
           ai_needs_review?: boolean
           body_text?: string | null
           converted_query_id?: string | null
+          converted_sales_order_id?: string | null
           created_at?: string
           doc_type?: string | null
           from_address?: string | null
@@ -1098,6 +1100,7 @@ export type Database = {
           ai_needs_review?: boolean
           body_text?: string | null
           converted_query_id?: string | null
+          converted_sales_order_id?: string | null
           created_at?: string
           doc_type?: string | null
           from_address?: string | null
@@ -1118,6 +1121,13 @@ export type Database = {
             columns: ["converted_query_id"]
             isOneToOne: false
             referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incoming_documents_converted_sales_order_id_fkey"
+            columns: ["converted_sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2862,6 +2872,13 @@ export type Database = {
             foreignKeyName: "quotation_revisions_quotation_id_fkey"
             columns: ["quotation_id"]
             isOneToOne: false
+            referencedRelation: "po_linkable_quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_revisions_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
             referencedRelation: "quotations"
             referencedColumns: ["id"]
           },
@@ -3151,6 +3168,13 @@ export type Database = {
             columns: ["query_id"]
             isOneToOne: false
             referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_orders_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "po_linkable_quotations"
             referencedColumns: ["id"]
           },
           {
@@ -4086,6 +4110,24 @@ export type Database = {
           },
         ]
       }
+      trusted_senders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+        }
+        Relationships: []
+      }
       unit_conversions: {
         Row: {
           factor: number
@@ -4118,24 +4160,6 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
-      }
-      trusted_senders: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          email: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          email: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          email?: string
-        }
-        Relationships: []
       }
       units: {
         Row: {
@@ -4428,6 +4452,16 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      po_linkable_quotations: {
+        Row: {
+          id: string | null
+          party_name: string | null
+          query_no: string | null
+          quotation_no: string | null
+          status: string | null
+        }
+        Relationships: []
       }
       reserved_stock: {
         Row: {

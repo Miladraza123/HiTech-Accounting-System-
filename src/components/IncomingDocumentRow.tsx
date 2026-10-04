@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { markIncomingDocumentReviewedAction, dismissIncomingDocumentAction, getIncomingAttachmentUrlAction, trustSenderAction } from "@/app/actions/incomingDocuments";
 import type { AgentData } from "@/lib/incomingAgent";
+import { PoQuotationPicker } from "@/components/PoQuotationPicker";
+import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 const STATUS_STYLE: Record<string, string> = {
   New: "bg-warn-soft text-warn",
@@ -32,9 +34,11 @@ export type IncomingDocumentData = {
 
 export function IncomingDocumentRow({ doc }: { doc: IncomingDocumentData }) {
   const router = useRouter();
+  const { isOnline } = useOfflineQueue();
   const [expanded, setExpanded] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [showItems, setShowItems] = useState(false);
+  const [showPoPicker, setShowPoPicker] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const ai = doc.ai_data ?? null;
@@ -181,11 +185,29 @@ export function IncomingDocumentRow({ doc }: { doc: IncomingDocumentData }) {
           <Link href={`/queries/new?from=${doc.id}`} className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition">
             Create Query from this
           </Link>
+          {isOnline ? (
+            <button
+              type="button"
+              onClick={() => setShowPoPicker((v) => !v)}
+              className="rounded-md border border-line bg-bg px-3 py-1.5 text-xs text-ink-soft hover:bg-surface-2"
+            >
+              PO Received — Link to Quotation
+            </button>
+          ) : (
+            <span
+              title="Linking a PO needs to be online — it carries this document's attachment over to the new Sales Order."
+              className="rounded-md border border-line bg-bg px-3 py-1.5 text-xs text-ink-faint opacity-60 cursor-not-allowed"
+            >
+              PO Received — Link to Quotation
+            </span>
+          )}
           <button type="button" onClick={dismiss} disabled={pending} className="rounded-md border border-bad text-bad bg-bg px-3 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-60">
             Dismiss
           </button>
         </div>
       )}
+
+      {showPoPicker && <PoQuotationPicker incomingDocumentId={doc.id} onClose={() => setShowPoPicker(false)} />}
     </div>
   );
 }
