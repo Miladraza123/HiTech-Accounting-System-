@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual, createHmac } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/database.types";
+import { parseAgentFields } from "@/lib/incomingAgent";
 
 /**
  * Inbound email intake (Phase 43, switched to Mailgun in Phase 43b). Mailgun
@@ -58,11 +60,56 @@ export async function POST(request: NextRequest) {
   const bodyText = String(form.get("body-plain") ?? "") || null;
 
   const admin = createAdminClient();
+
+  // Phase 44: the external Email Agent adds structured `agent_*` fields. A plain
+  // Mailgun delivery has none, so `agent` is null and everything below behaves
+  // exactly as before.
+  const agent = parseAgentFields(form);
+
+  // Idempotent: if the agent retries a delivery that had already gone through
+  // (e.g. the response was lost), return the existing row instead of a duplicate.
+  if (agent) {
+    const { data: existing } = await admin.from("incoming_documents").select("id").eq("agent_message_id", agent.messageId).maybeSingle();
+    if (existing) return NextResponse.json({ ok: true, id: existing.id, duplicate: true });
+  }
+
+  // Nothing is ever dropped: unknown senders are accepted too, just flagged.
+  let senderTrust: "trusted" | "untrusted" | "unknown" = "unknown";
+  if (agent) {
+    senderTrust = "untrusted";
+    if (agent.senderEmail) {
+      const { data: trusted } = await admin.from("trusted_senders").select("email").eq("email", agent.senderEmail).maybeSingle();
+      if (trusted) senderTrust = "trusted";
+    }
+  }
+
   const { data: doc, error } = await admin
     .from("incoming_documents")
-    .insert({ source: "email", from_address: fromAddress, subject, body_text: bodyText })
+    .insert({
+      source: "email",
+      from_address: fromAddress,
+      subject,
+      body_text: bodyText,
+      ...(agent
+        ? {
+            agent_message_id: agent.messageId,
+            sender_name: agent.senderName,
+            sender_email: agent.senderEmail,
+            doc_type: agent.docType,
+            ai_data: agent.data as unknown as Json | null,
+            ai_needs_review: agent.needsReview,
+            sender_trust: senderTrust,
+          }
+        : {}),
+    })
     .select("id")
     .single();
+
+  // Two deliveries of the same agent message racing each other: the unique index wins.
+  if (error && agent && error.code === "23505") {
+    const { data: existing } = await admin.from("incoming_documents").select("id").eq("agent_message_id", agent.messageId).maybeSingle();
+    if (existing) return NextResponse.json({ ok: true, id: existing.id, duplicate: true });
+  }
 
   if (error || !doc) return NextResponse.json({ error: error?.message ?? "Failed to record document" }, { status: 500 });
 

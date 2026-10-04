@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { IncomingDocumentRow, type IncomingDocumentData } from "@/components/IncomingDocumentRow";
+import type { AgentData } from "@/lib/incomingAgent";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 
@@ -29,6 +30,12 @@ export default async function IncomingDocumentsPage({ searchParams }: { searchPa
     status: d.status,
     received_at: d.received_at,
     attachments: (d.incoming_document_attachments ?? []) as unknown as { id: string; file_name: string; storage_path: string }[],
+    sender_name: d.sender_name,
+    sender_email: d.sender_email,
+    sender_trust: d.sender_trust,
+    doc_type: d.doc_type,
+    ai_needs_review: d.ai_needs_review,
+    ai_data: (d.ai_data ?? null) as unknown as AgentData | null,
   }));
 
   return (
