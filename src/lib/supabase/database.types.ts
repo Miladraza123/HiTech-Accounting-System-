@@ -1053,40 +1053,61 @@ export type Database = {
       }
       incoming_documents: {
         Row: {
+          agent_message_id: string | null
+          ai_data: Json | null
+          ai_needs_review: boolean
           body_text: string | null
           converted_query_id: string | null
           created_at: string
+          doc_type: string | null
           from_address: string | null
           id: string
           received_at: string
           reviewed_at: string | null
           reviewed_by: string | null
+          sender_email: string | null
+          sender_name: string | null
+          sender_trust: string
           source: string
           status: string
           subject: string | null
         }
         Insert: {
+          agent_message_id?: string | null
+          ai_data?: Json | null
+          ai_needs_review?: boolean
           body_text?: string | null
           converted_query_id?: string | null
           created_at?: string
+          doc_type?: string | null
           from_address?: string | null
           id?: string
           received_at?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_trust?: string
           source?: string
           status?: string
           subject?: string | null
         }
         Update: {
+          agent_message_id?: string | null
+          ai_data?: Json | null
+          ai_needs_review?: boolean
           body_text?: string | null
           converted_query_id?: string | null
           created_at?: string
+          doc_type?: string | null
           from_address?: string | null
           id?: string
           received_at?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_trust?: string
           source?: string
           status?: string
           subject?: string | null
@@ -4097,6 +4118,24 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
+      }
+      trusted_senders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+        }
+        Relationships: []
       }
       units: {
         Row: {
