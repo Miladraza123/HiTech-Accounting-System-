@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidEmail, parseAgentFields, sanitizeAgentData } from "./incomingAgent";
+import { isValidEmail, parseAgentFields, requirementFromAgentData, sanitizeAgentData } from "./incomingAgent";
 
 function form(fields: Record<string, string>): FormData {
   const f = new FormData();
@@ -84,5 +84,32 @@ describe("isValidEmail", () => {
     expect(isValidEmail("Name <a@b.co>")).toBe(false);
     expect(isValidEmail("a b@c.com")).toBe(false);
     expect(isValidEmail("nodomain@")).toBe(false);
+  });
+});
+
+describe("requirementFromAgentData", () => {
+  it("lists only the items: numbered, with quantity and unit, no party/date/count/prices", () => {
+    const r = requirementFromAgentData({
+      party_name: "ACME",
+      document_date: "2026-10-04",
+      total_amount: 900,
+      items: [
+        { description: "MS Plate 25mm 2000mm x 6000mm", quantity: 1, unit: "pc", unit_price: 50, amount: 50 },
+        { description: "MS Girder 12x5, 12 meter lengths", quantity: 10, unit: "pc" },
+      ],
+    });
+    expect(r).toBe("1. MS Plate 25mm 2000mm x 6000mm - 1 pc\n2. MS Girder 12x5, 12 meter lengths - 10 pc");
+  });
+
+  it("does not number a single item and omits a missing quantity", () => {
+    expect(requirementFromAgentData({ items: [{ description: "MS Girder 10x10", quantity: 25, unit: "pc" }] })).toBe("MS Girder 10x10 - 25 pc");
+    expect(requirementFromAgentData({ items: [{ description: "Binding wire" }] })).toBe("Binding wire");
+  });
+
+  it("returns null (so the email body is used) when there are no usable items", () => {
+    expect(requirementFromAgentData(null)).toBeNull();
+    expect(requirementFromAgentData({ party_name: "ACME" })).toBeNull();
+    expect(requirementFromAgentData({ items: [{ quantity: 3 }] })).toBeNull();
+    expect(requirementFromAgentData("junk")).toBeNull();
   });
 });

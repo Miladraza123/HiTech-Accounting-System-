@@ -148,3 +148,21 @@ export function parseAgentFields(form: FormData): AgentFields | null {
 
   return { messageId, docType, data, needsReview, senderName, senderEmail };
 }
+
+/**
+ * Plain-text list of the requested items, used to pre-fill a Query's "Requirement"
+ * from an Email Agent document — just the item lines, no party/date/count/prices,
+ * e.g. "1. MS Plate 25mm - 1 pc". Returns null when there are no usable items so the
+ * caller can fall back to the email body.
+ */
+export function requirementFromAgentData(raw: unknown): string | null {
+  const items = sanitizeAgentData(raw)?.items ?? [];
+  const lines = items
+    .filter((it) => it.description)
+    .map((it) => {
+      const qty = it.quantity !== undefined ? `${it.quantity}${it.unit ? ` ${it.unit}` : ""}` : "";
+      return qty ? `${it.description} - ${qty}` : (it.description as string);
+    });
+  if (!lines.length) return null;
+  return lines.length === 1 ? lines[0] : lines.map((l, i) => `${i + 1}. ${l}`).join("\n");
+}
