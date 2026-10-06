@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createInvoiceAction, type InvoiceLineInput } from "@/app/actions/invoices";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 type SoLine = {
   id: string;
@@ -19,7 +20,7 @@ type SoOption = { id: string; so_no: string; business_line: string; parties: { l
 export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   const router = useRouter();
   const [soId, setSoId] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(karachiToday());
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [rates, setRates] = useState<Record<string, string>>({});
   const [taxPcts, setTaxPcts] = useState<Record<string, string>>({});

@@ -8,6 +8,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
 import { attachPoRefs, type OutstandingDocWithPo } from "@/lib/outstandingPoRefs";
+import { karachiToday } from "@/lib/karachiTime";
 
 /** One outstanding document of the selected party, as fn_party_outstanding returns it, plus its PO reference (receipts only). */
 export type OutstandingDoc = OutstandingDocWithPo;
@@ -65,7 +66,7 @@ export function NewPaymentForm({
   const [direction, setDirection] = useState<"receipt" | "payment">(defaultDirection);
   const [partyId, setPartyId] = useState(defaultParty?.id ?? "");
   const [amount, setAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [paymentDate, setPaymentDate] = useState(karachiToday());
   const [method, setMethod] = useState("");
   const [source, setSource] = useState<"cash" | "bank" | "petty_cash">("cash");
   const [bankAccountId, setBankAccountId] = useState("");

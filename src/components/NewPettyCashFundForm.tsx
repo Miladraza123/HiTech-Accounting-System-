@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { createPettyCashFundAction } from "@/app/actions/cashBank";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 export function NewPettyCashFundForm({ profiles }: { profiles: Tables<"profiles">[] }) {
   const router = useRouter();
   const [fundName, setFundName] = useState("");
   const [custodianId, setCustodianId] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
-  const [openingDate, setOpeningDate] = useState(new Date().toISOString().slice(0, 10));
+  const [openingDate, setOpeningDate] = useState(karachiToday());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();

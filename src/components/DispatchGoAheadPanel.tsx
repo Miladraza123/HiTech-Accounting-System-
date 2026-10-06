@@ -8,6 +8,7 @@ const STATUS_STYLE: Record<string, string> = {
   Pending: "bg-warn-soft text-warn",
   Accepted: "bg-ledger-soft text-ledger",
   Completed: "bg-good-soft text-good",
+  Cancelled: "bg-surface-2 text-ink-faint",
 };
 
 export type GoAheadRow = { id: string; given_to: string; given_to_name: string; given_by_name: string; status: string; created_at: string };

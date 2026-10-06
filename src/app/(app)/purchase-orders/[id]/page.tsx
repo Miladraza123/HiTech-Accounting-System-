@@ -112,7 +112,12 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
                         {l.ordered_qty} {l.unit}
                       </td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">{l.received_qty}</td>
-                      <td className="px-3 py-2 text-right tabular text-ink-soft">{(l.ordered_qty - l.received_qty).toFixed(3)}</td>
+                      <td className="px-3 py-2 text-right tabular text-ink-soft">
+                        {/* Nothing is pending on a Closed/Cancelled PO, and an over-receipt never shows a negative pending. */}
+                        {["Closed", "Cancelled"].includes(po.status)
+                          ? "—"
+                          : Math.max(0, Number(l.ordered_qty) - Number(l.received_qty)).toFixed(3)}
+                      </td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">{l.rate}</td>
                       <td className="px-3 py-2 text-right tabular text-ink">{l.amount}</td>
                     </tr>

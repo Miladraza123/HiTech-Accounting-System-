@@ -14,8 +14,14 @@ export function ToggleBankAccountButton({ id, isActive }: { id: string; isActive
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            const res = await toggleBankAccountActiveAction(id, !isActive);
-            if (res.error) setError(res.error);
+            // A dropped connection makes the server action throw — show a
+            // message instead of letting it crash the page.
+            try {
+              const res = await toggleBankAccountActiveAction(id, !isActive);
+              if (res.error) setError(res.error);
+            } catch {
+              setError("Could not reach the server. Check your connection and try again.");
+            }
           })
         }
         className="text-xs text-accent-ink underline underline-offset-2 disabled:opacity-50"

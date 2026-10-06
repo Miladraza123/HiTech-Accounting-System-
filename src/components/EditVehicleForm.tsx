@@ -7,6 +7,7 @@ import { diffFields } from "@/lib/smartMerge";
 import { findPendingEdit } from "@/lib/offlineQueue";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import type { Tables } from "@/lib/supabase/database.types";
+import { karachiToday } from "@/lib/karachiTime";
 
 const STATUSES = ["Active", "UnderMaintenance", "Retired", "Unassigned"] as const;
 
@@ -38,7 +39,7 @@ export function EditVehicleForm({
     status: currentStatus,
   });
   const [assignedUserId, setAssignedUserId] = useState(currentAssignedUserId ?? "");
-  const [assignmentDate, setAssignmentDate] = useState(currentAssignmentDate ?? new Date().toISOString().slice(0, 10));
+  const [assignmentDate, setAssignmentDate] = useState(currentAssignmentDate ?? karachiToday());
   const [status, setStatus] = useState<(typeof STATUSES)[number]>(currentStatus as (typeof STATUSES)[number]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -58,7 +59,7 @@ export function EditVehicleForm({
       };
       setBase(newBase);
       setAssignedUserId((pendingChanges.assigned_user_id ?? newBase.assigned_user_id) ?? "");
-      setAssignmentDate((pendingChanges.assignment_date ?? newBase.assignment_date) ?? new Date().toISOString().slice(0, 10));
+      setAssignmentDate((pendingChanges.assignment_date ?? newBase.assignment_date) ?? karachiToday());
       setStatus((pendingChanges.status ?? newBase.status) as (typeof STATUSES)[number]);
       setQueuedOffline(true);
     });

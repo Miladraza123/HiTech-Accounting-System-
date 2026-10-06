@@ -8,6 +8,7 @@ import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offline
 import { SearchablePicker, PARTY_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
 import { useOfflineSubmitGuard } from "@/lib/useOfflineSubmitGuard";
 import type { Tables } from "@/lib/supabase/database.types";
+import { karachiToday } from "@/lib/karachiTime";
 
 const initialState: ActionResult = { error: null };
 
@@ -42,7 +43,7 @@ export function QueryForm({
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
   const [offlineError, setOfflineError] = useState<string | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = karachiToday();
   // Guards the offline branch below against a rapid double-click — see
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
