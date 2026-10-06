@@ -7,6 +7,7 @@ import { QuotationLineEditor, blankLine, type EditableLine , type LineItem} from
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 function fromQuotationLines(lines: Tables<"quotation_lines">[], defaultTaxPct: number): EditableLine[] {
   if (!lines.length) return [blankLine(defaultTaxPct, "init-0")];
@@ -69,7 +70,7 @@ export function NewSalesOrderForm({
   const router = useRouter();
   const [lines, setLines] = useState<EditableLine[]>(fromQuotationLines(quotationLines, defaultTaxPct));
   const [clientPoNumber, setClientPoNumber] = useState("");
-  const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
+  const [poDate, setPoDate] = useState(karachiToday());
   const [deliverySchedule, setDeliverySchedule] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(defaultPaymentTerms ?? "");
   const [businessLine, setBusinessLine] = useState<"material_supply" | "fabrication">("material_supply");

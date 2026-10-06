@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBankAccountAction } from "@/app/actions/cashBank";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 export function NewBankAccountForm() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export function NewBankAccountForm() {
   const [accountNumber, setAccountNumber] = useState("");
   const [branch, setBranch] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
-  const [openingDate, setOpeningDate] = useState(new Date().toISOString().slice(0, 10));
+  const [openingDate, setOpeningDate] = useState(karachiToday());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();

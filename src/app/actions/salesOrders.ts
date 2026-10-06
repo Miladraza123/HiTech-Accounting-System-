@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { convertIncomingDocument } from "@/lib/incomingConversion";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -59,32 +59,14 @@ export async function createSalesOrderAction(input: CreateSalesOrderInput): Prom
   // re-uploading, then mark it Converted so its own picker link can't be
   // reused on a second Sales Order. Best-effort, mirroring the same pattern
   // in createQueryAction — a copy failure must never lose the Sales Order
-  // that was just saved.
+  // that was just saved. See convertIncomingDocument for the checks.
   if (input.from_incoming_document_id) {
-    const admin = createAdminClient();
-    const { data: incomingAttachments } = await admin
-      .from("incoming_document_attachments")
-      .select("file_name, storage_path, content_type")
-      .eq("incoming_document_id", input.from_incoming_document_id);
-    for (const att of incomingAttachments ?? []) {
-      const safeName = att.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const newPath = `sales_orders/${soId}/${Date.now()}-${safeName}`;
-      const { error: copyError } = await admin.storage.from("attachments").copy(att.storage_path, newPath);
-      if (!copyError) {
-        await admin.from("attachments").insert({
-          owner_table: "sales_orders",
-          owner_id: soId,
-          file_path: newPath,
-          file_type: att.content_type,
-          label: null,
-          uploaded_by: user?.id,
-        });
-      }
-    }
-    await admin
-      .from("incoming_documents")
-      .update({ status: "Converted", converted_sales_order_id: soId })
-      .eq("id", input.from_incoming_document_id);
+    await convertIncomingDocument(supabase, {
+      incomingDocumentId: input.from_incoming_document_id,
+      ownerTable: "sales_orders",
+      ownerId: soId,
+      userId: user?.id,
+    });
   }
 
   return { error: null, id: soId };

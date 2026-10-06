@@ -46,6 +46,24 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Two-Factor Authentication: a password-only (aal1) session for a user who
+  // has a verified factor must finish /mfa-challenge before it reaches any
+  // page — the same check getCurrentUser() does in src/lib/auth.ts, enforced
+  // here too so pages/routes that never call getCurrentUser() are covered.
+  // Reads the aal claim already on the JWT, so no extra network call.
+  // /login, /signup, /auth and /mfa-challenge itself stay reachable, and
+  // /api/* routes do their own auth.
+  const isMfaExempt = isPublic || path.startsWith("/mfa-challenge") || path.startsWith("/api/");
+  if (user && !isMfaExempt) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/mfa-challenge";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (user && (path === "/login" || path === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";

@@ -51,7 +51,7 @@ export default async function VehicleDetailPage({
   if (!vehicle) notFound();
 
   const assignee = vehicle.profiles as unknown as { full_name: string } | null;
-  // Note: the view identifies fuel by the expense head's CODE ('FUEL'); this
+  // Note: the view identifies fuel by head code FUEL/FE or a name containing "fuel"; this
   // page previously matched on its NAME ('Fuel'). Both pick out the same head
   // today, but the code is the stable system field while the name is
   // owner-editable — so renaming the head no longer silently zeroes this

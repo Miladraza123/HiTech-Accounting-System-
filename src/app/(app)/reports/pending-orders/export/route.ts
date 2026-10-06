@@ -16,7 +16,9 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { data: pending } = await supabase.rpc("fn_pending_orders", { p_limit: EXPORT_ROW_CAP, p_offset: 0 });
+  const { data: pending, error } = await supabase.rpc("fn_pending_orders", { p_limit: EXPORT_ROW_CAP, p_offset: 0 });
+  // A failed query must not download as an empty-but-valid spreadsheet.
+  if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });
 
   const rows = (pending ?? []).map((r) => ({
     so_no: r.so_no,

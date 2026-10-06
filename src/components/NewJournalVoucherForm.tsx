@@ -6,6 +6,7 @@ import { createJournalVoucherAction, type JournalVoucherLineInput } from "@/app/
 import { JournalVoucherLineEditor, blankJvLine, decodeDimension, type EditableJvLine } from "@/components/JournalVoucherLineEditor";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 function serialize(lines: EditableJvLine[]): JournalVoucherLineInput[] {
   return lines
@@ -32,7 +33,7 @@ export function NewJournalVoucherForm({
   pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {
   const router = useRouter();
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [entryDate, setEntryDate] = useState(karachiToday());
   const [narration, setNarration] = useState("");
   const [lines, setLines] = useState<EditableJvLine[]>([blankJvLine("init-0"), blankJvLine("init-1")]);
   const [error, setError] = useState<string | null>(null);

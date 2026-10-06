@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createServiceInvoiceAction, type ServiceInvoiceLineInput } from "@/app/actions/serviceJobs";
+import { karachiToday } from "@/lib/karachiTime";
 
 type Line = ServiceInvoiceLineInput & { key: number };
 
@@ -15,7 +16,7 @@ function blankLine(): Line {
 export function NewServiceInvoiceForm({ serviceJobId }: { serviceJobId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(karachiToday());
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

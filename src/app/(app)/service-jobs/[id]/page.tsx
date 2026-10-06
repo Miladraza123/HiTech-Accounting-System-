@@ -93,7 +93,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                     </p>
                     {d.status === "Cancelled" && d.cancel_reason && <p className="text-xs text-bad">Reason: {d.cancel_reason}</p>}
                     {canManageDelivery && d.status !== "Cancelled" && (
-                      <CancelWithReasonButton label="Cancel this Delivery" onCancel={(reason) => cancelServiceDeliveryAction(d.id, id, reason)} />
+                      <CancelWithReasonButton label="Cancel this Delivery" onCancel={cancelServiceDeliveryAction.bind(null, d.id, id)} />
                     )}
                   </div>
                 ))}
@@ -126,7 +126,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                       <p className="text-xs text-ink-faint">{inv.invoice_date} · Total: {inv.grand_total.toLocaleString()}</p>
                       {inv.status === "Cancelled" && inv.cancel_reason && <p className="text-xs text-bad">Reason: {inv.cancel_reason}</p>}
                       {canManageInvoice && inv.status !== "Cancelled" && (
-                        <CancelWithReasonButton label="Cancel this Invoice" onCancel={(reason) => cancelServiceInvoiceAction(inv.id, id, reason)} />
+                        <CancelWithReasonButton label="Cancel this Invoice" onCancel={cancelServiceInvoiceAction.bind(null, inv.id, id)} />
                       )}
                     </div>
                   );
@@ -143,7 +143,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               {canComplete && <CompleteServiceJobButton serviceJobId={id} />}
-              {canCancelJob && <CancelWithReasonButton label="Cancel Service Job" onCancel={(reason) => cancelServiceJobAction(id, reason)} />}
+              {canCancelJob && <CancelWithReasonButton label="Cancel Service Job" onCancel={cancelServiceJobAction.bind(null, id)} />}
             </div>
           )}
         </div>

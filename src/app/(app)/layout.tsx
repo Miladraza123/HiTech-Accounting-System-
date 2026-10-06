@@ -4,6 +4,7 @@ import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
 import { signOutAction, dismissWeakPasswordWarningAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "@/components/MobileNav";
+import { LogoutButton } from "@/components/LogoutButton";
 import { PageFadeTransition } from "@/components/PageFadeTransition";
 import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
@@ -318,14 +319,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Change Password
                 </Link>
               </div>
-              <form action={signOutAction}>
-                <button
-                  type="submit"
-                  className="w-full rounded-md border border-line px-3 py-1.5 text-xs text-ink-soft hover:bg-surface-2 transition"
-                >
-                  Logout
-                </button>
-              </form>
+              <LogoutButton signOutAction={signOutAction} />
             </div>
           </aside>
 
