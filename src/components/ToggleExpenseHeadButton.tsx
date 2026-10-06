@@ -1,18 +1,28 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toggleExpenseHeadActiveAction } from "@/app/actions/cashBank";
 
 export function ToggleExpenseHeadButton({ id, isActive }: { id: string; isActive: boolean }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => startTransition(() => toggleExpenseHeadActiveAction(id, !isActive))}
-      className="text-xs text-accent-ink underline underline-offset-2 disabled:opacity-50"
-    >
-      {isActive ? "Deactivate" : "Activate"}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const res = await toggleExpenseHeadActiveAction(id, !isActive);
+            if (res.error) setError(res.error);
+          })
+        }
+        className="text-xs text-accent-ink underline underline-offset-2 disabled:opacity-50"
+      >
+        {isActive ? "Deactivate" : "Activate"}
+      </button>
+      {error && <span className="ml-2 text-xs text-bad">{error}</span>}
+    </>
   );
 }

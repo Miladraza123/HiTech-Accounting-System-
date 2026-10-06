@@ -2,12 +2,21 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hasRole, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
 
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
+
+// The setup tables' activate/deactivate toggles have no Permission Matrix
+// key, so they mirror the tables' own RLS update policies (bank accounts and
+// petty cash: Owner/Accounts; expense heads: Owner only). `.select("id")`
+// makes an RLS-filtered no-op update visible instead of silently "working".
+async function canManageFinanceSetup() {
+  const user = await getCurrentUser();
+  return isOwner(user) || hasRole(user, "accounts");
+}
 
 // ---- Bank Accounts ----
 
@@ -34,10 +43,14 @@ export async function createBankAccountAction(input: {
   return { error: null, id: data as string };
 }
 
-export async function toggleBankAccountActiveAction(id: string, isActive: boolean) {
+export async function toggleBankAccountActiveAction(id: string, isActive: boolean): Promise<ActionResult> {
+  if (!(await canManageFinanceSetup())) return NO_PERMISSION;
   const supabase = await createClient();
-  await supabase.from("bank_accounts").update({ is_active: isActive }).eq("id", id);
+  const { data, error } = await supabase.from("bank_accounts").update({ is_active: isActive }).eq("id", id).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return NO_PERMISSION;
   revalidatePath("/setup/bank-accounts");
+  return { error: null };
 }
 
 // ---- Petty Cash Funds ----
@@ -61,10 +74,14 @@ export async function createPettyCashFundAction(input: {
   return { error: null, id: data as string };
 }
 
-export async function togglePettyCashFundActiveAction(id: string, isActive: boolean) {
+export async function togglePettyCashFundActiveAction(id: string, isActive: boolean): Promise<ActionResult> {
+  if (!(await canManageFinanceSetup())) return NO_PERMISSION;
   const supabase = await createClient();
-  await supabase.from("petty_cash_funds").update({ is_active: isActive }).eq("id", id);
+  const { data, error } = await supabase.from("petty_cash_funds").update({ is_active: isActive }).eq("id", id).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return NO_PERMISSION;
   revalidatePath("/setup/petty-cash-funds");
+  return { error: null };
 }
 
 // ---- Expense Heads ----
@@ -80,10 +97,14 @@ export async function createExpenseHeadAction(name: string, code: string | null)
   return { error: null, id: data as string };
 }
 
-export async function toggleExpenseHeadActiveAction(id: string, isActive: boolean) {
+export async function toggleExpenseHeadActiveAction(id: string, isActive: boolean): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
   const supabase = await createClient();
-  await supabase.from("expense_heads").update({ is_active: isActive }).eq("id", id);
+  const { data, error } = await supabase.from("expense_heads").update({ is_active: isActive }).eq("id", id).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return NO_PERMISSION;
   revalidatePath("/setup/expense-heads");
+  return { error: null };
 }
 
 // ---- Expenses ----

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Papa from "papaparse";
 import {
   commitPartiesImportAction,
@@ -114,7 +114,14 @@ export function ImportWizard({ canImportParties }: { canImportParties: boolean }
     URL.revokeObjectURL(url);
   }
 
+  // A ref, not just the `committing` state: two fast clicks can both run
+  // before React re-renders the disabled button, and every commit posts
+  // real ledger entries.
+  const commitInFlight = useRef(false);
+
   async function handleCommit() {
+    if (commitInFlight.current) return;
+    commitInFlight.current = true;
     setCommitting(true);
     setResult(null);
     try {
@@ -159,6 +166,7 @@ export function ImportWizard({ canImportParties }: { canImportParties: boolean }
       setResult(res);
       if (res.importedCount > 0) setRows([]);
     } finally {
+      commitInFlight.current = false;
       setCommitting(false);
     }
   }

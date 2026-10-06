@@ -9,7 +9,9 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { data: rows } = await supabase.from("trial_balance").select("*").order("code");
+  const { data: rows, error } = await supabase.from("trial_balance").select("*").order("code");
+  // A failed query must not download as an empty-but-valid spreadsheet.
+  if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });
 
   const active = (rows ?? []).filter((r) => (r.total_debit ?? 0) !== 0 || (r.total_credit ?? 0) !== 0);
 

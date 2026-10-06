@@ -51,6 +51,19 @@ export function isValidEmail(value: string): boolean {
   return value.length <= 320 && EMAIL_RE.test(value);
 }
 
+/**
+ * Pulls a bare, lower-cased address out of a mail header value such as
+ * `"ACME <PO@acme.com>"` or `po@acme.com`. Returns null if there is none.
+ */
+export function extractEmailAddress(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const angle = trimmed.match(/<([^<>]+)>\s*$/);
+  const candidate = (angle ? angle[1] : trimmed).trim().toLowerCase();
+  return isValidEmail(candidate) ? candidate : null;
+}
+
 function str(v: unknown, max: number): string | undefined {
   if (typeof v !== "string") return undefined;
   const t = v.trim();

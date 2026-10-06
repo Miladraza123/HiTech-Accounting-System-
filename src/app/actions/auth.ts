@@ -123,6 +123,8 @@ export async function signUpAction(
   redirect("/bootstrap");
 }
 
+// Called from LogoutButton.tsx, which first clears the service worker's page
+// cache (signed-in HTML) on the client before this runs.
 export async function signOutAction() {
   const supabase = await createClient();
   const cookieStore = await cookies();

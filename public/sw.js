@@ -123,7 +123,16 @@
 // in. The client-triggered WARM_CACHE (OfflineQueueProvider.tsx) stays
 // in place too, as a second layer — refreshing dropdown data on every
 // reconnect and retrying whatever this pass didn't catch.
-const CACHE_VERSION = "v14";
+//
+// v14 -> v15: the cache holds rendered, signed-in HTML (networkFirst() and
+// WARM_CACHE both store whole pages), and nothing ever removed it at
+// logout — on a shared device the next person to open the app offline
+// could be served the previous user's pages. Logout now posts
+// CLEAR_CACHES (see LogoutButton.tsx), which wipes every cache and
+// re-precaches only the static, user-independent PRECACHE_URLS so the
+// offline fallback keeps working. The version bump itself also drops any
+// such pages already sitting on devices from before this fix.
+const CACHE_VERSION = "v15";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -230,6 +239,15 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
     return;
   }
+  if (event.data && event.data.type === "CLEAR_CACHES") {
+    const replyTo = event.source;
+    event.waitUntil(
+      clearAllCaches().then((ok) => {
+        replyTo?.postMessage({ type: "CACHES_CLEARED", ok });
+      })
+    );
+    return;
+  }
   if (event.data && event.data.type === "WARM_CACHE" && Array.isArray(event.data.urls)) {
     const replyTo = event.source;
     event.waitUntil(
@@ -245,6 +263,22 @@ self.addEventListener("message", (event) => {
     );
   }
 });
+
+// Sent at logout (see the v14 -> v15 comment above). Deletes every cache —
+// pages, the nav-debug record, everything — then puts back only the static
+// PRECACHE_URLS (offline.html, icons, manifest), which hold no user data.
+// The offline queue itself lives in IndexedDB, not here, so it is untouched.
+async function clearAllCaches() {
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(PRECACHE_URLS).catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Per-URL timeout so one slow/hanging request (a cold Vercel function, a
 // slow Supabase query) can never stall the rest of the batch — each URL

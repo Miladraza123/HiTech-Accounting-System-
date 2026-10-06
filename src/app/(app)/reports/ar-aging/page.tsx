@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { asAgingRows } from "@/lib/aging";
 
 export default async function ArAgingPage() {
   const user = await getCurrentUser();
@@ -16,7 +17,8 @@ export default async function ArAgingPage() {
   // boundary against the real JS implementation).
   const { data: aged } = await supabase.rpc("fn_ar_aging");
 
-  const rows = (aged ?? []).map((r) => ({
+  // phase46_02: the RPC also returns opening_balance / unapplied / net.
+  const rows = asAgingRows(aged).map((r) => ({
     partyId: r.party_id,
     name: r.name ?? "—",
     current: r.bucket_current,
@@ -25,6 +27,9 @@ export default async function ArAgingPage() {
     d61_90: r.bucket_61_90,
     d90_plus: r.bucket_90_plus,
     total: r.total,
+    opening: r.opening_balance,
+    unapplied: r.unapplied,
+    net: r.net,
   }));
 
   const grand = rows.reduce(
@@ -35,8 +40,11 @@ export default async function ArAgingPage() {
       d61_90: acc.d61_90 + r.d61_90,
       d90_plus: acc.d90_plus + r.d90_plus,
       total: acc.total + r.total,
+      opening: acc.opening + r.opening,
+      unapplied: acc.unapplied + r.unapplied,
+      net: acc.net + r.net,
     }),
-    { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0 }
+    { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0, opening: 0, unapplied: 0, net: 0 }
   );
 
   return (
@@ -65,6 +73,9 @@ export default async function ArAgingPage() {
                 <th className="text-right px-3 py-2">61-90</th>
                 <th className="text-right px-3 py-2">90+</th>
                 <th className="text-right px-3 py-2">Total</th>
+                <th className="text-right px-3 py-2" title="Opening balances and manual journal adjustments on the party">Opening / Adj.</th>
+                <th className="text-right px-3 py-2" title="Payments received/made on account, not yet allocated to a document">Unapplied</th>
+                <th className="text-right px-3 py-2" title="Total + Opening / Adj. − Unapplied — ties to the ledger balance">Net</th>
               </tr>
             </thead>
             <tbody>
@@ -81,12 +92,15 @@ export default async function ArAgingPage() {
                   <td className={`px-3 py-2 text-right tabular ${r.d61_90 > 0 ? "text-warn" : "text-ink-soft"}`}>{r.d61_90.toLocaleString()}</td>
                   <td className={`px-3 py-2 text-right tabular ${r.d90_plus > 0 ? "text-bad font-medium" : "text-ink-soft"}`}>{r.d90_plus.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular text-ink font-medium">{r.total.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right tabular text-ink-soft">{r.opening.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right tabular text-ink-soft">{r.unapplied.toLocaleString()}</td>
+                  <td className={`px-3 py-2 text-right tabular font-medium ${r.net < 0 ? "text-good" : "text-ink"}`}>{r.net.toLocaleString()}</td>
                 </tr>
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-ink-faint">
-                    No outstanding invoices.
+                  <td colSpan={10} className="px-4 py-6 text-center text-ink-faint">
+                    No outstanding balances.
                   </td>
                 </tr>
               )}
@@ -101,6 +115,9 @@ export default async function ArAgingPage() {
                   <td className="px-3 py-2 text-right tabular">{grand.d61_90.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular">{grand.d90_plus.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right tabular">{grand.total.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right tabular">{grand.opening.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right tabular">{grand.unapplied.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right tabular">{grand.net.toLocaleString()}</td>
                 </tr>
               </tfoot>
             )}

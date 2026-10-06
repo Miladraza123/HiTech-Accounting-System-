@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { convertIncomingDocument } from "@/lib/incomingConversion";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -73,43 +73,17 @@ export async function createQueryAction(
     }
   }
 
-  // Converting an Incoming Document (email RFQ/PR/PO — see
-  // src/app/api/inbound-email/route.ts): carry its attachment(s) over by
-  // copying the actual storage object, not re-uploading, then mark it
-  // Converted so its own `?from=` link can't be reused on a second Query.
-  // Best-effort, same as the attachment above — a copy failure must never
-  // lose the Query that was just saved.
+  // Converting an Incoming Document: copy its attachment(s) over and mark
+  // it Converted so its own `?from=` link can't be reused on a second Query.
+  // See convertIncomingDocument for the ownership/visibility checks.
   const fromIncomingDocumentId = String(formData.get("from_incoming_document_id") ?? "") || null;
   if (fromIncomingDocumentId) {
-    // The admin client, not the signed-in one: the source object lives
-    // under "incoming/..." — a prefix the attachments bucket's own RLS
-    // (fn_can_access_doc_type) was never taught to recognize, since it's
-    // an unauthenticated webhook's own storage area, not a document type
-    // any signed-in role already had read access to.
-    const admin = createAdminClient();
-    const { data: incomingAttachments } = await admin
-      .from("incoming_document_attachments")
-      .select("file_name, storage_path, content_type")
-      .eq("incoming_document_id", fromIncomingDocumentId);
-    for (const att of incomingAttachments ?? []) {
-      const safeName = att.file_name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const newPath = `queries/${inserted.id}/${Date.now()}-${safeName}`;
-      const { error: copyError } = await admin.storage.from("attachments").copy(att.storage_path, newPath);
-      if (!copyError) {
-        await admin.from("attachments").insert({
-          owner_table: "queries",
-          owner_id: inserted.id,
-          file_path: newPath,
-          file_type: att.content_type,
-          label: null,
-          uploaded_by: user?.id,
-        });
-      }
-    }
-    await admin
-      .from("incoming_documents")
-      .update({ status: "Converted", converted_query_id: inserted.id })
-      .eq("id", fromIncomingDocumentId);
+    await convertIncomingDocument(supabase, {
+      incomingDocumentId: fromIncomingDocumentId,
+      ownerTable: "queries",
+      ownerId: inserted.id,
+      userId: user?.id,
+    });
   }
 
   redirect(`/queries/${inserted.id}`);

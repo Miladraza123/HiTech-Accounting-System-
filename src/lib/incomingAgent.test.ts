@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidEmail, parseAgentFields, requirementFromAgentData, sanitizeAgentData } from "./incomingAgent";
+import { extractEmailAddress, isValidEmail, parseAgentFields, requirementFromAgentData, sanitizeAgentData } from "./incomingAgent";
 
 function form(fields: Record<string, string>): FormData {
   const f = new FormData();
@@ -111,5 +111,17 @@ describe("requirementFromAgentData", () => {
     expect(requirementFromAgentData({ party_name: "ACME" })).toBeNull();
     expect(requirementFromAgentData({ items: [{ quantity: 3 }] })).toBeNull();
     expect(requirementFromAgentData("junk")).toBeNull();
+  });
+});
+
+describe("extractEmailAddress", () => {
+  it("reads a bare address or the <...> part of a display name", () => {
+    expect(extractEmailAddress("PO@Acme.com")).toBe("po@acme.com");
+    expect(extractEmailAddress('"ACME Ltd" <PO@acme.com>')).toBe("po@acme.com");
+  });
+  it("returns null for junk or non-strings", () => {
+    expect(extractEmailAddress("x")).toBeNull();
+    expect(extractEmailAddress("")).toBeNull();
+    expect(extractEmailAddress(null)).toBeNull();
   });
 });

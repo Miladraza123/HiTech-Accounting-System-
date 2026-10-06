@@ -6,6 +6,27 @@ import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/sma
 
 export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string };
 
+// Turns the two Postgres errors a normal user can actually trigger from the
+// party forms into plain language; anything else is passed through as-is.
+function friendlyPartyError(error: { code?: string; message: string }): string {
+  if (error.code === "23505" && error.message.includes("idx_parties_legal_name_unique")) {
+    return "A client/supplier with this name already exists.";
+  }
+  if (error.code === "22003") return "Amount is too large.";
+  return error.message;
+}
+
+// Blank means 0; anything else must be a finite, non-negative number.
+function parseNonNegative(raw: FormDataEntryValue | null, label: string, integer = false): { value: number; error: string | null } {
+  const text = String(raw ?? "").trim();
+  if (!text) return { value: 0, error: null };
+  const value = Number(text);
+  if (!Number.isFinite(value)) return { value: 0, error: `${label} must be a number.` };
+  if (value < 0) return { value: 0, error: `${label} cannot be negative.` };
+  if (integer && !Number.isInteger(value)) return { value: 0, error: `${label} must be a whole number of days.` };
+  return { value, error: null };
+}
+
 export async function createPartyAction(
   _prev: ActionResult,
   formData: FormData
@@ -19,6 +40,11 @@ export async function createPartyAction(
   const party_type = String(formData.get("party_type") ?? "client");
   if (!legal_name) return { error: "Name is required." };
 
+  const creditLimit = parseNonNegative(formData.get("credit_limit"), "Credit limit");
+  if (creditLimit.error) return { error: creditLimit.error };
+  const creditDays = parseNonNegative(formData.get("credit_days"), "Credit days", true);
+  if (creditDays.error) return { error: creditDays.error };
+
   const { data: party, error } = await supabase
     .from("parties")
     .insert({
@@ -29,14 +55,14 @@ export async function createPartyAction(
       cnic: String(formData.get("cnic") ?? "").trim() || null,
       billing_address: String(formData.get("billing_address") ?? "").trim() || null,
       province: String(formData.get("province") ?? "").trim() || null,
-      credit_limit: Number(formData.get("credit_limit") ?? 0),
-      credit_days: Number(formData.get("credit_days") ?? 0),
+      credit_limit: creditLimit.value,
+      credit_days: creditDays.value,
       created_by: user?.id,
     })
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyPartyError(error) };
 
   // Optional opening balance at creation, posted via the same
   // fn_post_journal_entry RPC and account pair (1200/1900 receivable,
@@ -102,7 +128,7 @@ export async function adjustPartyBalanceAction(
     p_new_balance: newBalance,
     p_narration: narration || "Opening balance adjustment",
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyPartyError(error) };
 
   revalidatePath(`/clients/${partyId}`);
   return { error: null, success: true };
@@ -132,7 +158,9 @@ export async function updateCreditTermsAction(
   base: { creditLimit: number; creditDays: number },
   next: { creditLimit: number; creditDays: number }
 ): Promise<ActionResult> {
+  if (!Number.isFinite(next.creditLimit) || !Number.isFinite(next.creditDays)) return { error: "Value must be a number." };
   if (next.creditLimit < 0 || next.creditDays < 0) return { error: "Value cannot be negative." };
+  if (!Number.isInteger(next.creditDays)) return { error: "Credit days must be a whole number of days." };
 
   const supabase = await createClient();
   const changes = diffFields(
@@ -146,7 +174,7 @@ export async function updateCreditTermsAction(
     { credit_limit: base.creditLimit, credit_days: base.creditDays },
     changes
   );
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyPartyError(error) };
   if (result && result.conflicts.length > 0) {
     return { error: null, conflicts: result.conflicts };
   }

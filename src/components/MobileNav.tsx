@@ -8,6 +8,7 @@ import { NavLink, type NavCategory } from "@/components/SidebarNav";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { NotificationItem } from "@/lib/notifications";
 
 export function MobileNav({
@@ -117,14 +118,7 @@ export function MobileNav({
                   Change Password
                 </Link>
               </div>
-              <form action={signOutAction}>
-                <button
-                  type="submit"
-                  className="w-full rounded-md border border-line px-3 py-1.5 text-xs text-ink-soft hover:bg-surface-2 transition"
-                >
-                  Logout
-                </button>
-              </form>
+              <LogoutButton signOutAction={signOutAction} />
             </div>
           </div>
         </div>
