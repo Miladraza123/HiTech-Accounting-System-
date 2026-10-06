@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -162,4 +162,46 @@ export async function cancelJobAction(jobId: string, reason: string): Promise<Ac
   revalidatePath(`/jobs/${jobId}`);
   revalidatePath("/jobs");
   return { error: error?.message ?? null };
+}
+
+export type JobCancelDispositionInput = {
+  jobId: string;
+  mode: "convert" | "restock";
+  reason: string;
+  /** convert: an existing stocked item… */
+  itemId?: string | null;
+  /** …or a new one created by the cancel itself. */
+  newItem?: { item_code: string; description: string; base_unit: string } | null;
+  warehouseId?: string | null;
+  qty?: number | null;
+  includeExpenses?: boolean;
+};
+
+/**
+ * Owner-only cancel of a Job that holds issued material (incl. Ready for
+ * Dispatch): its cost becomes a finished stock item, or its materials go back
+ * to stock. All in one database function — fn_cancel_job_with_disposition.
+ */
+export async function cancelJobWithDispositionAction(input: JobCancelDispositionInput): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!isOwner(user) || !(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
+  if (!input.reason.trim()) return { error: "A reason for cancelling is required." };
+
+  const convert = input.mode === "convert";
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_cancel_job_with_disposition", {
+    p_job_id: input.jobId,
+    p_mode: input.mode,
+    p_reason: input.reason.trim(),
+    p_item_id: (convert && input.itemId) || undefined,
+    p_new_item: (convert && input.newItem) || undefined,
+    p_warehouse_id: (convert && input.warehouseId) || undefined,
+    p_qty: convert ? (input.qty ?? undefined) : undefined,
+    p_include_expenses: convert && !!input.includeExpenses,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/jobs/${input.jobId}`);
+  revalidatePath("/jobs");
+  revalidatePath("/inventory");
+  return { error: null, id: (data as string | null) ?? undefined };
 }

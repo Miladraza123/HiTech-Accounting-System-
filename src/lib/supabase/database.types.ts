@@ -4769,6 +4769,19 @@ export type Database = {
         Args: { p_job_id: string; p_reason: string }
         Returns: undefined
       }
+      fn_cancel_job_with_disposition: {
+        Args: {
+          p_include_expenses?: boolean
+          p_item_id?: string
+          p_job_id: string
+          p_mode: string
+          p_new_item?: Json
+          p_qty?: number
+          p_reason: string
+          p_warehouse_id?: string
+        }
+        Returns: string
+      }
       fn_cancel_payment: {
         Args: { p_payment_id: string; p_reason: string }
         Returns: undefined

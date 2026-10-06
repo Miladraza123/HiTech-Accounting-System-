@@ -261,7 +261,7 @@ export function JobMaterialPanel({
                 <div key={r.id} className="rounded-lg border border-line bg-bg p-3 space-y-2">
                   <p className="text-xs font-medium text-ink">{r.item ? `${r.item.item_code} — ${r.item.description}` : "—"}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {shortfall > 0 && (
+                    {canIssue && shortfall > 0 && (
                       <div className="flex gap-1.5">
                         <input
                           type="number"

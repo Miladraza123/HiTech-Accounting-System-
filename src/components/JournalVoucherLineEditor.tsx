@@ -102,13 +102,15 @@ export function JournalVoucherLineEditor({
   return (
     <div className="rounded-xl border border-line bg-surface overflow-hidden">
       <div className="overflow-x-auto">
-        {/* min-width keeps the columns usable on a phone; the wrapper scrolls sideways. */}
-        <table className="w-full min-w-[720px] text-sm">
+        {/* min-width keeps the columns usable on a phone; the wrapper scrolls sideways.
+            14rem + 14rem + 12rem (Memo) + 7rem + 7rem + 2rem = 56rem, so no column (Memo
+            used to collapse to ~37px) gets squeezed below its minimum. */}
+        <table className="w-full min-w-[920px] text-sm">
           <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
             <tr>
-              <th className="text-left px-3 py-2 w-56">Account</th>
-              <th className="text-left px-3 py-2 w-56">Party / Bank / Petty Cash</th>
-              <th className="text-left px-3 py-2">Memo</th>
+              <th className="text-left px-3 py-2 w-56 min-w-[14rem]">Account</th>
+              <th className="text-left px-3 py-2 w-56 min-w-[14rem]">Party / Bank / Petty Cash</th>
+              <th className="text-left px-3 py-2 min-w-[12rem]">Memo</th>
               <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Debit</th>
               <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Credit</th>
               <th className="w-8" />
