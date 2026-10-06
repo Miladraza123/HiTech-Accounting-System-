@@ -172,28 +172,33 @@ export function JobCancelDispositionDialog({
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="input !py-1 text-xs" aria-label="Warehouse">
-              {data.warehouses.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              step="0.001"
-              min="0"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              placeholder="Qty"
-              className="input !py-1 text-xs"
-              aria-label="Finished qty"
-            />
+            <label className="block space-y-1">
+              <span className="text-[11px] text-ink-soft">Warehouse</span>
+              <select value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="input !py-1 text-xs w-full">
+                {data.warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-[11px] text-ink-soft">Finished qty</span>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                placeholder="Qty"
+                className="input !py-1 text-xs w-full"
+              />
+            </label>
           </div>
 
           <label className="flex items-start gap-1.5 text-xs text-ink-soft">
             <input type="checkbox" checked={includeExpenses} onChange={(e) => setIncludeExpenses(e.target.checked)} className="mt-0.5" />
-            <span>Include labour/other expenses booked on this job ({fmt(data.jobExpenses)}) — moves them from expense into the item&apos;s cost</span>
+            <span>Include labour/other expenses booked on this job ({fmt(data.jobExpenses)}) — moves them from expense into the item&apos;s cost. Once capitalised, these expenses can no longer be cancelled.</span>
           </label>
 
           <p className="text-xs text-ink tabular">

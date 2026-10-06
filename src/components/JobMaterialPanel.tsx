@@ -230,7 +230,9 @@ export function JobMaterialPanel({
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.returned_qty}</td>
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.free_qty}</td>
                     <td className="px-3 py-2">
-                      {shortfall > 0.001 ? (
+                      {jobStatus === "Cancelled" || jobStatus === "Delivered" ? (
+                        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-faint whitespace-nowrap">—</span>
+                      ) : shortfall > 0.001 ? (
                         <span className="rounded-full bg-bad-soft px-2 py-0.5 text-xs text-bad whitespace-nowrap">
                           Purchase Required ({shortfall.toFixed(3)})
                         </span>
