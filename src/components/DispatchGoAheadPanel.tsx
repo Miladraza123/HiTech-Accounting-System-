@@ -84,7 +84,7 @@ export function DispatchGoAheadPanel({
       ))}
       {!goAheads.length && <p className="text-xs text-ink-faint">No Go-Ahead sent yet.</p>}
 
-      {canRequest && (
+      {canRequest && !goAheads.some((g) => g.status === "Pending") && (
         <div className="space-y-2 border-t border-line pt-3">
           <select value={givenTo} onChange={(e) => setGivenTo(e.target.value)} className="input !py-1.5 text-xs">
             <option value="">— Select Dispatch person —</option>
