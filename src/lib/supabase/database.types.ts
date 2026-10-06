@@ -977,6 +977,253 @@ export type Database = {
           },
         ]
       }
+      hr_employee_terms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          employee_id: string
+          employee_type: string
+          id: string
+          monthly_salary: number | null
+          policy_group_id: string
+          reason: string | null
+          rule_overrides: Json
+          wage_basis: string | null
+          wage_rate: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          employee_id: string
+          employee_type: string
+          id?: string
+          monthly_salary?: number | null
+          policy_group_id: string
+          reason?: string | null
+          rule_overrides?: Json
+          wage_basis?: string | null
+          wage_rate?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          employee_id?: string
+          employee_type?: string
+          id?: string
+          monthly_salary?: number | null
+          policy_group_id?: string
+          reason?: string | null
+          rule_overrides?: Json
+          wage_basis?: string | null
+          wage_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employee_terms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employee_terms_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_employee_terms_policy_group_id_fkey"
+            columns: ["policy_group_id"]
+            isOneToOne: false
+            referencedRelation: "hr_policy_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_employees: {
+        Row: {
+          address: string | null
+          cnic: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          department: string | null
+          designation: string | null
+          father_name: string | null
+          full_name: string
+          id: string
+          join_date: string
+          leave_date: string | null
+          notes: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          cnic?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          designation?: string | null
+          father_name?: string | null
+          full_name: string
+          id?: string
+          join_date: string
+          leave_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          cnic?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          designation?: string | null
+          father_name?: string | null
+          full_name?: string
+          id?: string
+          join_date?: string
+          leave_date?: string | null
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_policy_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_policy_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_policy_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          group_id: string
+          id: string
+          reason: string | null
+          rules: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          group_id: string
+          id?: string
+          reason?: string | null
+          rules: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          group_id?: string
+          id?: string
+          reason?: string | null
+          rules?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_policy_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_policy_versions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "hr_policy_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_settings: {
+        Row: {
+          id: string
+          salary_journal_enabled: boolean
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          salary_journal_enabled?: boolean
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          salary_journal_enabled?: boolean
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_batches: {
         Row: {
           committed_at: string | null
@@ -4379,6 +4626,37 @@ export type Database = {
           },
         ]
       }
+      hr_employees_current: {
+        Row: {
+          address: string | null
+          cnic: string | null
+          code: string | null
+          created_at: string | null
+          created_by: string | null
+          department: string | null
+          designation: string | null
+          employee_type: string | null
+          father_name: string | null
+          full_name: string | null
+          has_overrides: boolean | null
+          id: string | null
+          join_date: string | null
+          leave_date: string | null
+          monthly_salary: number | null
+          next_change_from: string | null
+          notes: string | null
+          phone: string | null
+          policy_group_id: string | null
+          policy_group_name: string | null
+          status: string | null
+          terms_from: string | null
+          terms_id: string | null
+          updated_at: string | null
+          wage_basis: string | null
+          wage_rate: number | null
+        }
+        Relationships: []
+      }
       invoice_outstanding: {
         Row: {
           allocated_amount: number | null
@@ -4587,6 +4865,18 @@ export type Database = {
     }
     Functions: {
       _fn_cron_generate_daily_snapshot: { Args: never; Returns: undefined }
+      _fn_hr_clean_terms: {
+        Args: {
+          p_effective_from: string
+          p_employee_type: string
+          p_monthly_salary: number
+          p_policy_group_id: string
+          p_rule_overrides: Json
+          p_wage_basis: string
+          p_wage_rate: number
+        }
+        Returns: unknown
+      }
       _fn_insert_quotation_lines: {
         Args: { p_lines: Json; p_revision_id: string }
         Returns: {
@@ -5457,6 +5747,107 @@ export type Database = {
       fn_health_label: {
         Args: { p_promised: string; p_updated: string }
         Returns: string
+      }
+      fn_hr_can_manage: {
+        Args: never
+        Returns: boolean
+      }
+      fn_hr_can_read: {
+        Args: never
+        Returns: boolean
+      }
+      fn_hr_check_rule_set: {
+        Args: { p_rules: Json }
+        Returns: undefined
+      }
+      fn_hr_create_employee: {
+        Args: { p: Json }
+        Returns: string
+      }
+      fn_hr_create_policy_group: {
+        Args: { p_description: string; p_effective_from: string; p_name: string; p_rules: Json }
+        Returns: string
+      }
+      fn_hr_default_rules: {
+        Args: never
+        Returns: Json
+      }
+      fn_hr_delete_employee_terms: {
+        Args: { p_terms_id: string }
+        Returns: undefined
+      }
+      fn_hr_delete_policy_version: {
+        Args: { p_version_id: string }
+        Returns: undefined
+      }
+      fn_hr_group_rules_on: {
+        Args: { p_date: string; p_group_id: string }
+        Returns: Json
+      }
+      fn_hr_rules_for: {
+        Args: { p_date: string; p_employee_id: string }
+        Returns: Json
+      }
+      fn_hr_set_employee_status: {
+        Args: { p_employee_id: string; p_leave_date: string; p_status: string }
+        Returns: undefined
+      }
+      fn_hr_set_employee_terms: {
+        Args: {
+          p_effective_from: string
+          p_employee_id: string
+          p_employee_type: string
+          p_monthly_salary: number
+          p_policy_group_id: string
+          p_reason: string
+          p_rule_overrides: Json
+          p_wage_basis: string
+          p_wage_rate: number
+        }
+        Returns: string
+      }
+      fn_hr_set_policy_version: {
+        Args: { p_effective_from: string; p_group_id: string; p_reason: string; p_rules: Json }
+        Returns: string
+      }
+      fn_hr_terms_on: {
+        Args: { p_date: string; p_employee_id: string }
+        Returns: {
+          created_at: string | null
+          created_by: string | null
+          effective_from: string | null
+          employee_id: string | null
+          employee_type: string | null
+          id: string | null
+          monthly_salary: number | null
+          policy_group_id: string | null
+          reason: string | null
+          rule_overrides: Json | null
+          wage_basis: string | null
+          wage_rate: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "hr_employee_terms"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_hr_update_employee: {
+        Args: { p: Json; p_employee_id: string }
+        Returns: undefined
+      }
+      fn_hr_update_policy_group: {
+        Args: { p_description: string; p_group_id: string; p_is_active: boolean; p_name: string }
+        Returns: undefined
+      }
+      fn_hr_update_settings: {
+        Args: { p_salary_journal_enabled: boolean }
+        Returns: undefined
+      }
+      fn_hr_validate_rules: {
+        Args: { p_full: boolean; p_rules: Json }
+        Returns: Json
       }
       fn_import_opening_stock: {
         Args: {

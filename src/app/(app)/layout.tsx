@@ -10,6 +10,7 @@ import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
+import { canReadHr } from "@/lib/hrAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { EnablePushButton } from "@/components/EnablePushButton";
@@ -59,6 +60,9 @@ import {
   BarChart3,
   Hammer,
   Mail,
+  IdCard,
+  CalendarClock,
+  Settings2,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -74,6 +78,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const owner = isOwner(user);
+  const hrReader = canReadHr(user);
 
   const supabase = await createClient();
   const [{ data: ownerExists }, { count: dueTaskCount }, notifications, { data: companyBranding }] = await Promise.all([
@@ -196,6 +201,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
           icon: <BookOpen size={ICON_SIZE} />,
         },
+      ],
+    },
+    {
+      label: "HR / Attendance",
+      items: [
+        { href: "/hr/employees", label: "Employees", show: hrReader, icon: <IdCard size={ICON_SIZE} /> },
+        { href: "/hr/policies", label: "Attendance Policies", show: hrReader, icon: <CalendarClock size={ICON_SIZE} /> },
+        { href: "/hr/settings", label: "HR Settings", show: owner, icon: <Settings2 size={ICON_SIZE} /> },
       ],
     },
     {
