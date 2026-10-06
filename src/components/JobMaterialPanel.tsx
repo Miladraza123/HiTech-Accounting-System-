@@ -230,7 +230,9 @@ export function JobMaterialPanel({
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.returned_qty}</td>
                     <td className="px-3 py-2 text-right tabular text-ink-soft">{r.free_qty}</td>
                     <td className="px-3 py-2">
-                      {shortfall > 0.001 ? (
+                      {jobStatus === "Cancelled" || jobStatus === "Delivered" ? (
+                        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-faint whitespace-nowrap">—</span>
+                      ) : shortfall > 0.001 ? (
                         <span className="rounded-full bg-bad-soft px-2 py-0.5 text-xs text-bad whitespace-nowrap">
                           Purchase Required ({shortfall.toFixed(3)})
                         </span>
@@ -261,7 +263,7 @@ export function JobMaterialPanel({
                 <div key={r.id} className="rounded-lg border border-line bg-bg p-3 space-y-2">
                   <p className="text-xs font-medium text-ink">{r.item ? `${r.item.item_code} — ${r.item.description}` : "—"}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {shortfall > 0 && (
+                    {canIssue && shortfall > 0 && (
                       <div className="flex gap-1.5">
                         <input
                           type="number"
