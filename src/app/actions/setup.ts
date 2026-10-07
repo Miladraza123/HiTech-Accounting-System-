@@ -178,8 +178,10 @@ export async function assignRoleAction(userId: string, roleId: string) {
 
 export async function revokeRoleAction(userId: string, roleId: string) {
   const supabase = await createClient();
-  await supabase.from("user_roles").delete().eq("user_id", userId).eq("role_id", roleId);
+  const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role_id", roleId);
   revalidatePath("/setup/users");
+  if (error) return { error: error.message };
+  return { error: null };
 }
 
 // ---------- New User (invite) ----------
