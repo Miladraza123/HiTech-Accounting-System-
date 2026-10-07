@@ -6534,6 +6534,21 @@ export type Database = {
         Args: { p_sheet_id: string }
         Returns: undefined
       }
+      fn_hr_register: {
+        Args: { p_month: string }
+        Returns: {
+          absent: number
+          codes: string[]
+          employee_id: string
+          half_days: number
+          lates: number
+          leave: number
+          not_entered: number
+          ot_minutes: number
+          present: number
+          worked_minutes: number
+        }[]
+      }
       fn_hr_rules_for: {
         Args: { p_date: string; p_employee_id: string }
         Returns: Json

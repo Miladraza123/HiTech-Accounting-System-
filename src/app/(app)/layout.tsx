@@ -215,6 +215,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/hr/policies", label: "Attendance Policies", show: hrReader, icon: <CalendarClock size={ICON_SIZE} /> },
         { href: "/hr/salary", label: "Salary Sheets", show: hrReader, icon: <Banknote size={ICON_SIZE} /> },
         { href: "/hr/advances", label: "Advances & Loans", show: hrReader, icon: <HandCoins size={ICON_SIZE} /> },
+        { href: "/hr/reports/register", label: "Attendance Register", show: hrReader, icon: <BarChart3 size={ICON_SIZE} /> },
+        { href: "/hr/reports/leave-balance", label: "Leave Balance", show: hrReader, icon: <BarChart3 size={ICON_SIZE} /> },
         { href: "/hr/holidays", label: "Holidays & Leave Types", show: hrReader, icon: <CalendarDays size={ICON_SIZE} /> },
         { href: "/hr/settings", label: "HR Settings", show: owner, icon: <Settings2 size={ICON_SIZE} /> },
       ],
