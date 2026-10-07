@@ -18,6 +18,9 @@ export const RESTORE_TABLE_ORDER = [
   "purchase_order_lines", "sales_returns", "expenses", "grn_lines", "job_cost_ledger",
   "job_material_requirements", "sales_return_lines", "stock_reservations", "supplier_bills",
   "payment_allocations", "purchase_returns", "supplier_bill_lines", "purchase_return_lines",
+  // Phase 47: HR / Attendance (parents before children).
+  "hr_settings", "hr_policy_groups", "hr_policy_versions", "hr_employees", "hr_employee_terms", "hr_holidays", "hr_leave_types",
+  "hr_attendance", "hr_advances", "hr_salary_sheets", "hr_salary_lines", "hr_salary_days", "hr_advance_recoveries",
 ] as const;
 
 export type RestoreTableName = (typeof RESTORE_TABLE_ORDER)[number];

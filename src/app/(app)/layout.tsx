@@ -10,6 +10,7 @@ import { SidebarNav, type NavCategory } from "@/components/SidebarNav";
 import { OfflineQueueProvider } from "@/components/OfflineQueueProvider";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
+import { canReadHr } from "@/lib/hrAccess";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { EnablePushButton } from "@/components/EnablePushButton";
@@ -59,6 +60,13 @@ import {
   BarChart3,
   Hammer,
   Mail,
+  IdCard,
+  CalendarClock,
+  Settings2,
+  ClipboardCheck,
+  CalendarDays,
+  Banknote,
+  HandCoins,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -74,6 +82,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const owner = isOwner(user);
+  const hrReader = canReadHr(user);
 
   const supabase = await createClient();
   const [{ data: ownerExists }, { count: dueTaskCount }, notifications, { data: companyBranding }] = await Promise.all([
@@ -196,6 +205,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           show: owner || user.roles.includes("accounts") || user.roles.includes("auditor"),
           icon: <BookOpen size={ICON_SIZE} />,
         },
+      ],
+    },
+    {
+      label: "HR / Attendance",
+      items: [
+        { href: "/hr/attendance", label: "Daily Attendance", show: hrReader, icon: <ClipboardCheck size={ICON_SIZE} /> },
+        { href: "/hr/employees", label: "Employees", show: hrReader, icon: <IdCard size={ICON_SIZE} /> },
+        { href: "/hr/policies", label: "Attendance Policies", show: hrReader, icon: <CalendarClock size={ICON_SIZE} /> },
+        { href: "/hr/salary", label: "Salary Sheets", show: hrReader, icon: <Banknote size={ICON_SIZE} /> },
+        { href: "/hr/advances", label: "Advances & Loans", show: hrReader, icon: <HandCoins size={ICON_SIZE} /> },
+        { href: "/hr/reports/register", label: "Attendance Register", show: hrReader, icon: <BarChart3 size={ICON_SIZE} /> },
+        { href: "/hr/reports/leave-balance", label: "Leave Balance", show: hrReader, icon: <BarChart3 size={ICON_SIZE} /> },
+        { href: "/hr/holidays", label: "Holidays & Leave Types", show: hrReader, icon: <CalendarDays size={ICON_SIZE} /> },
+        { href: "/hr/settings", label: "HR Settings", show: owner, icon: <Settings2 size={ICON_SIZE} /> },
       ],
     },
     {
