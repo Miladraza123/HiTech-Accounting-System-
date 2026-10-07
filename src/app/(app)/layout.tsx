@@ -65,6 +65,8 @@ import {
   Settings2,
   ClipboardCheck,
   CalendarDays,
+  Banknote,
+  HandCoins,
 } from "lucide-react";
 
 const ICON_SIZE = 15;
@@ -211,6 +213,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/hr/attendance", label: "Daily Attendance", show: hrReader, icon: <ClipboardCheck size={ICON_SIZE} /> },
         { href: "/hr/employees", label: "Employees", show: hrReader, icon: <IdCard size={ICON_SIZE} /> },
         { href: "/hr/policies", label: "Attendance Policies", show: hrReader, icon: <CalendarClock size={ICON_SIZE} /> },
+        { href: "/hr/salary", label: "Salary Sheets", show: hrReader, icon: <Banknote size={ICON_SIZE} /> },
+        { href: "/hr/advances", label: "Advances & Loans", show: hrReader, icon: <HandCoins size={ICON_SIZE} /> },
         { href: "/hr/holidays", label: "Holidays & Leave Types", show: hrReader, icon: <CalendarDays size={ICON_SIZE} /> },
         { href: "/hr/settings", label: "HR Settings", show: owner, icon: <Settings2 size={ICON_SIZE} /> },
       ],

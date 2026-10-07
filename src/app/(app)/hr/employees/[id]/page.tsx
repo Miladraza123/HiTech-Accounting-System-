@@ -28,7 +28,13 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
 
   const today = karachiToday();
   const asOf = today < emp.join_date ? emp.join_date : emp.leave_date && today > emp.leave_date ? emp.leave_date : today;
-  const { data: rulesNow } = await supabase.rpc("fn_hr_rules_for", { p_employee_id: id, p_date: asOf });
+  const [{ data: rulesNow }, { data: leaveBal }, { data: advBal }] = await Promise.all([
+    supabase.rpc("fn_hr_rules_for", { p_employee_id: id, p_date: asOf }),
+    supabase.rpc("fn_hr_leave_balance", { p_year: Number(asOf.slice(0, 4)), p_employee_ids: [id] }),
+    supabase.from("hr_advance_balances").select("outstanding").eq("employee_id", id),
+  ]);
+  const leave = leaveBal?.[0];
+  const advanceOwed = (advBal ?? []).reduce((t, b) => t + Number(b.outstanding ?? 0), 0);
   const current = (terms ?? []).find((t) => t.effective_from <= asOf) ?? null;
   const latest = (terms ?? [])[0] ?? null;
   const overridesNow = asOverrides(current?.rule_overrides);
@@ -99,6 +105,15 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         ) : (
           <p className="text-sm text-ink-faint">No terms.</p>
         )}
+        <p className="text-sm text-ink-soft">
+          {current?.employee_type === "permanent" && leave && (
+            <>
+              Paid leave {asOf.slice(0, 4)}: {Number(leave.used)} of {Number(leave.quota)} used, {Number(leave.remaining)} left
+              {Number(leave.unpaid_extra) > 0 && ` (${Number(leave.unpaid_extra)} extra day(s) unpaid)`} ·{" "}
+            </>
+          )}
+          Advance owed: Rs {advanceOwed.toLocaleString()}
+        </p>
         {rulesNow && (
           <div>
             <p className="text-xs text-ink-faint mb-1">Rules that apply (group + this employee&apos;s own rules)</p>

@@ -493,6 +493,33 @@ left join public.hr_policy_groups g on g.id = t.policy_group_id;
 revoke all on public.hr_employees_current from anon, authenticated;
 grant select on public.hr_employees_current to authenticated;
 
+-- Lock hooks: raise when a finalised salary sheet already covers a day the
+-- change would affect. Phase 47.03 gives them their real bodies; until
+-- salary sheets exist nothing is locked.
+create or replace function public._fn_hr_assert_terms_open(p_employee_id uuid, p_from date)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return;
+end;
+$$;
+
+create or replace function public._fn_hr_assert_group_open(p_group_id uuid, p_from date)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return;
+end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- 5. Policy groups
 -- ---------------------------------------------------------------------------
@@ -608,6 +635,7 @@ begin
     raise exception 'Policy group not found.';
   end if;
 
+  perform public._fn_hr_assert_group_open(p_group_id, p_effective_from);
   v_rules := public.fn_hr_validate_rules(coalesce(p_rules, '{}'::jsonb), true);
 
   -- Every employee whose own overrides apply on top of this group must
@@ -652,6 +680,7 @@ begin
   ) then
     raise exception 'The first version of a policy cannot be removed. Change it with a new version instead.';
   end if;
+  perform public._fn_hr_assert_group_open(v.group_id, v.effective_from);
   delete from public.hr_policy_versions where id = p_version_id;
 end;
 $$;
@@ -803,6 +832,7 @@ begin
 
   v_join := coalesce(v_join, v_emp.join_date);
   if v_join <> v_emp.join_date then
+    perform public._fn_hr_assert_terms_open(p_employee_id, least(v_join, v_emp.join_date));
     -- Moving the joining date moves the first terms with it, as long as
     -- that does not jump past a later terms change.
     select min(effective_from) into v_first from public.hr_employee_terms
@@ -876,6 +906,7 @@ begin
     raise exception 'Terms cannot start after the leaving date (%).', to_char(v_emp.leave_date, 'DD-Mon-YYYY');
   end if;
 
+  perform public._fn_hr_assert_terms_open(p_employee_id, p_effective_from);
   select * into v_terms from public._fn_hr_clean_terms(
     p_policy_group_id, p_employee_type, p_monthly_salary, p_wage_basis, p_wage_rate, p_rule_overrides, p_effective_from);
 
@@ -918,6 +949,7 @@ begin
   if v.effective_from <= v_join then
     raise exception 'The joining-date terms cannot be removed. Add a new change instead.';
   end if;
+  perform public._fn_hr_assert_terms_open(v.employee_id, v.effective_from);
   delete from public.hr_employee_terms where id = p_terms_id;
 end;
 $$;
@@ -945,6 +977,7 @@ begin
     if p_leave_date < v_emp.join_date then
       raise exception 'Leaving date cannot be before the joining date.';
     end if;
+    perform public._fn_hr_assert_terms_open(p_employee_id, p_leave_date + 1);
     if exists (select 1 from public.hr_employee_terms where employee_id = p_employee_id and effective_from > p_leave_date) then
       raise exception 'A terms change is scheduled after this leaving date. Remove it first.';
     end if;
@@ -998,6 +1031,8 @@ revoke execute on function public.fn_hr_create_policy_group(text, text, jsonb, d
 revoke execute on function public.fn_hr_update_policy_group(uuid, text, text, boolean) from public, anon;
 revoke execute on function public.fn_hr_set_policy_version(uuid, date, jsonb, text) from public, anon;
 revoke execute on function public.fn_hr_delete_policy_version(uuid) from public, anon;
+revoke execute on function public._fn_hr_assert_terms_open(uuid, date) from public, anon, authenticated;
+revoke execute on function public._fn_hr_assert_group_open(uuid, date) from public, anon, authenticated;
 revoke execute on function public._fn_hr_clean_terms(uuid, text, numeric, text, numeric, jsonb, date) from public, anon, authenticated;
 revoke execute on function public.fn_hr_create_employee(jsonb) from public, anon;
 revoke execute on function public.fn_hr_update_employee(uuid, jsonb) from public, anon;

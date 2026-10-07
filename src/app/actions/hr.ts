@@ -275,3 +275,157 @@ export async function saveLeaveTypeAction(input: { id: string | null; name: stri
   revalidatePath("/hr/holidays");
   return { error: null, id: data as string };
 }
+
+// ---------------------------------------------------------------------------
+// Salary sheets and advances
+// ---------------------------------------------------------------------------
+async function canPrepareSalary(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return isOwner(user) || hasRole(user, "hr") || hasRole(user, "accounts");
+}
+
+async function canPay(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return isOwner(user) || hasRole(user, "accounts");
+}
+
+const NO_SALARY_PERMISSION: ActionResult = { error: "Only the Owner, HR or Accounts can prepare salary." };
+const NO_PAY_PERMISSION: ActionResult = { error: "Only the Owner or Accounts can do this." };
+
+function revalidateSalary(sheetId?: string) {
+  revalidatePath("/hr/salary");
+  if (sheetId) revalidatePath(`/hr/salary/${sheetId}`);
+  revalidatePath("/hr/advances");
+}
+
+export async function generateSalarySheetAction(input: {
+  kind: "monthly" | "wager";
+  wager_cycle: "weekly" | "fortnightly" | "monthly" | null;
+  from: string;
+  to: string;
+  note: string;
+}): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_hr_generate_salary_sheet", {
+    p_kind: input.kind,
+    p_wager_cycle: input.wager_cycle as string,
+    p_from: input.from,
+    p_to: input.to,
+    p_note: input.note.trim() as string,
+  });
+  if (error) return { error: error.message };
+  revalidateSalary();
+  return { error: null, id: data as string };
+}
+
+export async function recalculateSalarySheetAction(sheetId: string): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_recalculate_salary_sheet", { p_sheet_id: sheetId });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  return { error: null };
+}
+
+export async function setSalaryAdjustmentAction(
+  sheetId: string,
+  lineId: string,
+  input: { bonus: number; other_deduction: number; advance_recovery: number; note: string }
+): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_set_salary_adjustment", {
+    p_line_id: lineId,
+    p_bonus: input.bonus,
+    p_other_deduction: input.other_deduction,
+    p_advance_recovery: input.advance_recovery,
+    p_note: input.note.trim() as string,
+  });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  return { error: null };
+}
+
+export async function finalizeSalarySheetAction(sheetId: string): Promise<ActionResult> {
+  if (!(await canPay())) return NO_PAY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_finalize_salary_sheet", { p_sheet_id: sheetId });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  revalidatePath("/hr/attendance");
+  return { error: null };
+}
+
+export async function cancelSalarySheetAction(sheetId: string, reason: string): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_cancel_salary_sheet", { p_sheet_id: sheetId, p_reason: reason });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  revalidatePath("/hr/attendance");
+  return { error: null };
+}
+
+export async function paySalarySheetAction(
+  sheetId: string,
+  input: { paid_on: string; payment_source: "cash" | "bank" | "petty_cash"; bank_account_id: string | null; petty_cash_fund_id: string | null }
+): Promise<ActionResult> {
+  if (!(await canPay())) return NO_PAY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_pay_salary_sheet", {
+    p_sheet_id: sheetId,
+    p_paid_on: input.paid_on,
+    p_payment_source: input.payment_source,
+    p_bank_account_id: input.bank_account_id as string,
+    p_petty_cash_fund_id: input.petty_cash_fund_id as string,
+  });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  return { error: null };
+}
+
+export async function cancelSalaryPaymentAction(sheetId: string, reason: string): Promise<ActionResult> {
+  if (!(await canPay())) return NO_PAY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_cancel_salary_payment", { p_sheet_id: sheetId, p_reason: reason });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  return { error: null };
+}
+
+export async function createAdvanceAction(input: {
+  employee_id: string;
+  advance_date: string;
+  amount: number;
+  installment: number;
+  payment_source: "cash" | "bank" | "petty_cash";
+  bank_account_id: string | null;
+  petty_cash_fund_id: string | null;
+  note: string;
+}): Promise<ActionResult> {
+  if (!(await canPay())) return NO_PAY_PERMISSION;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_hr_create_advance", {
+    p_employee_id: input.employee_id,
+    p_advance_date: input.advance_date,
+    p_amount: input.amount,
+    p_installment: input.installment,
+    p_payment_source: input.payment_source,
+    p_bank_account_id: input.bank_account_id as string,
+    p_petty_cash_fund_id: input.petty_cash_fund_id as string,
+    p_note: input.note.trim() as string,
+  });
+  if (error) return { error: error.message };
+  revalidateSalary();
+  return { error: null, id: data as string };
+}
+
+export async function cancelAdvanceAction(advanceId: string, reason: string): Promise<ActionResult> {
+  if (!(await canPay())) return NO_PAY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_cancel_advance", { p_advance_id: advanceId, p_reason: reason });
+  if (error) return { error: error.message };
+  revalidateSalary();
+  return { error: null };
+}
