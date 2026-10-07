@@ -6,7 +6,7 @@ export const SHEET_STATUS_STYLE: Record<string, string> = {
 };
 
 export function money(n: number | string | null | undefined): string {
-  return `Rs ${Number(n ?? 0).toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `Rs\u00a0${Number(n ?? 0).toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function days(n: number | string | null | undefined): string {

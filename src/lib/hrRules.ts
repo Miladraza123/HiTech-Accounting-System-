@@ -227,11 +227,11 @@ export function formatPay(t: {
   wage_basis: string | null;
   wage_rate: number | null;
 }): string {
-  if (t.employee_type === "permanent") return `Rs ${Number(t.monthly_salary ?? 0).toLocaleString()} / month`;
+  if (t.employee_type === "permanent") return `Rs\u00a0${Number(t.monthly_salary ?? 0).toLocaleString()} / month`;
   if (t.employee_type === "daily_wager") {
     return t.wage_basis === "per_minute"
-      ? `Rs ${Number(t.wage_rate ?? 0).toLocaleString()} / minute`
-      : `Rs ${Number(t.wage_rate ?? 0).toLocaleString()} / day`;
+      ? `Rs\u00a0${Number(t.wage_rate ?? 0).toLocaleString()} / minute`
+      : `Rs\u00a0${Number(t.wage_rate ?? 0).toLocaleString()} / day`;
   }
   return "—";
 }
