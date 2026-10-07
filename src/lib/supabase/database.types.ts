@@ -6636,6 +6636,17 @@ export type Database = {
         Args: { p_full: boolean; p_rules: Json }
         Returns: Json
       }
+      fn_import_opening_balance: {
+        Args: {
+          p_amount: number
+          p_as_of_date: string
+          p_batch_id: string
+          p_kind: string
+          p_narration: string
+          p_party_name: string
+        }
+        Returns: string
+      }
       fn_import_opening_stock: {
         Args: {
           p_as_of_date: string

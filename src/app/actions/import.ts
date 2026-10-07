@@ -289,7 +289,6 @@ export async function commitOpeningBalancesImportAction(
   }
 
   const isReceivable = entityType === "opening_receivables";
-  const partyType = isReceivable ? "client" : "supplier";
   const rowErrors: { row: number; message: string }[] = [];
   let importedCount = 0;
 
@@ -300,51 +299,17 @@ export async function commitOpeningBalancesImportAction(
       continue;
     }
 
-    // find or create the party
-    let partyId: string | null = null;
-    const { data: existing } = await supabase
-      .from("parties")
-      .select("id")
-      .ilike("legal_name", r.party_name.trim())
-      .limit(1)
-      .maybeSingle();
-
-    if (existing) {
-      partyId = existing.id;
-    } else {
-      const { data: created, error: createErr } = await supabase
-        .from("parties")
-        .insert({ legal_name: r.party_name.trim(), party_type: partyType, created_by: user?.id })
-        .select("id")
-        .single();
-      if (createErr || !created) {
-        // 42501 = blocked by RLS: only Owner/Sales/Store may create parties.
-        const message =
-          createErr?.code === "42501"
-            ? `"${r.party_name.trim()}" is not in Clients & Suppliers yet, and your role can't add it — ask the Owner, Sales or Store to add it first.`
-            : (createErr?.message ?? "Failed to create party.");
-        rowErrors.push({ row: i + 1, message });
-        continue;
-      }
-      partyId = created.id;
-    }
-
-    const lines = isReceivable
-      ? [
-          { account_code: "1200", party_id: partyId, debit: r.amount, credit: 0, memo: "Opening balance" },
-          { account_code: "1900", party_id: null, debit: 0, credit: r.amount, memo: "Opening balance" },
-        ]
-      : [
-          { account_code: "1900", party_id: null, debit: r.amount, credit: 0, memo: "Opening balance" },
-          { account_code: "2100", party_id: partyId, debit: 0, credit: r.amount, memo: "Opening balance" },
-        ];
-
-    const { error: jeError } = await supabase.rpc("fn_post_journal_entry", {
-      p_entry_date: r.as_of_date,
-      p_narration: r.narration || `Opening balance — ${r.party_name.trim()}`,
-      p_source_table: "import_batches",
-      p_source_id: batch.id,
-      p_lines: lines,
+    // One database call per row: exact name match (no ILIKE wildcards),
+    // party-type check, creates the party if allowed, refuses a second
+    // opening balance for the same party, and links the entry to this
+    // batch (phase 47.05).
+    const { error: jeError } = await supabase.rpc("fn_import_opening_balance", {
+      p_kind: isReceivable ? "receivable" : "payable",
+      p_party_name: r.party_name.trim(),
+      p_amount: r.amount,
+      p_as_of_date: r.as_of_date,
+      p_narration: r.narration as string,
+      p_batch_id: batch.id,
     });
 
     if (jeError) {
