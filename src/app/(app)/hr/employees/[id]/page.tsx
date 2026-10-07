@@ -64,6 +64,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href={`/hr/attendance/employee/${emp.id}`} className="text-xs text-accent-ink underline underline-offset-2">
+            Attendance by month
+          </Link>
           <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${emp.status === "Active" ? "bg-good-soft text-good" : "bg-surface-2 text-ink-faint"}`}>
             {emp.status}
           </span>

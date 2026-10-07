@@ -977,6 +977,86 @@ export type Database = {
           },
         ]
       }
+      hr_attendance: {
+        Row: {
+          check_in: unknown | null
+          check_out: unknown | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          extra_pairs: Json
+          id: string
+          leave_fraction: number | null
+          leave_type_id: string | null
+          mark: string
+          note: string | null
+          updated_at: string
+          updated_by: string | null
+          work_date: string
+        }
+        Insert: {
+          check_in?: unknown | null
+          check_out?: unknown | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          extra_pairs?: Json
+          id?: string
+          leave_fraction?: number | null
+          leave_type_id?: string | null
+          mark: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          work_date: string
+        }
+        Update: {
+          check_in?: unknown | null
+          check_out?: unknown | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          extra_pairs?: Json
+          id?: string
+          leave_fraction?: number | null
+          leave_type_id?: string | null
+          mark?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_attendance_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_attendance_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hr_employee_terms: {
         Row: {
           created_at: string
@@ -1102,6 +1182,76 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hr_employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_holidays: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          holiday_date: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_holidays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_types: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_paid: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_paid: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_paid?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_types_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4877,6 +5027,22 @@ export type Database = {
         }
         Returns: unknown
       }
+      _fn_hr_day_kind: {
+        Args: { p_date: string; p_rules: Json }
+        Returns: string
+      }
+      _fn_hr_day_locked: {
+        Args: { p_date: string; p_employee_id: string }
+        Returns: boolean
+      }
+      _fn_hr_entry_pairs: {
+        Args: { a: unknown }
+        Returns: Json
+      }
+      _fn_hr_rules_on: {
+        Args: { p_date: string; p_employee_id: string }
+        Returns: Json
+      }
       _fn_insert_quotation_lines: {
         Args: { p_lines: Json; p_revision_id: string }
         Returns: {
@@ -5748,6 +5914,20 @@ export type Database = {
         Args: { p_promised: string; p_updated: string }
         Returns: string
       }
+      fn_hr_add_holiday: {
+        Args: { p_date: string; p_name: string }
+        Returns: string
+      }
+      fn_hr_calc_day: {
+        Args: {
+          p_day_kind: string
+          p_leave_fraction: number
+          p_mark: string
+          p_pairs: Json
+          p_rules: Json
+        }
+        Returns: Json
+      }
       fn_hr_can_manage: {
         Args: never
         Returns: boolean
@@ -5768,12 +5948,40 @@ export type Database = {
         Args: { p_description: string; p_effective_from: string; p_name: string; p_rules: Json }
         Returns: string
       }
+      fn_hr_day_results: {
+        Args: { p_employee_ids?: string[]; p_from: string; p_to: string }
+        Returns: {
+          attendance_id: string
+          calc: Json
+          check_in: string
+          check_out: string
+          day_kind: string
+          employee_id: string
+          employee_type: string
+          extra_pairs: Json
+          leave_fraction: number
+          leave_paid: boolean
+          leave_type_id: string
+          mark: string
+          monthly_salary: number
+          note: string
+          policy_group_id: string
+          rules: Json
+          wage_basis: string
+          wage_rate: number
+          work_date: string
+        }[]
+      }
       fn_hr_default_rules: {
         Args: never
         Returns: Json
       }
       fn_hr_delete_employee_terms: {
         Args: { p_terms_id: string }
+        Returns: undefined
+      }
+      fn_hr_delete_holiday: {
+        Args: { p_holiday_id: string }
         Returns: undefined
       }
       fn_hr_delete_policy_version: {
@@ -5784,9 +5992,21 @@ export type Database = {
         Args: { p_date: string; p_group_id: string }
         Returns: Json
       }
+      fn_hr_locked_employees: {
+        Args: { p_date: string }
+        Returns: string[]
+      }
       fn_hr_rules_for: {
         Args: { p_date: string; p_employee_id: string }
         Returns: Json
+      }
+      fn_hr_save_attendance: {
+        Args: { p_date: string; p_rows: Json }
+        Returns: number
+      }
+      fn_hr_save_leave_type: {
+        Args: { p_id: string; p_is_active: boolean; p_is_paid: boolean; p_name: string }
+        Returns: string
       }
       fn_hr_set_employee_status: {
         Args: { p_employee_id: string; p_leave_date: string; p_status: string }
@@ -5844,6 +6064,10 @@ export type Database = {
       fn_hr_update_settings: {
         Args: { p_salary_journal_enabled: boolean }
         Returns: undefined
+      }
+      fn_hr_used_leave_types: {
+        Args: never
+        Returns: string[]
       }
       fn_hr_validate_rules: {
         Args: { p_full: boolean; p_rules: Json }

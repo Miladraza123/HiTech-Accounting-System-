@@ -213,3 +213,65 @@ export async function updateHrSettingsAction(salaryJournalEnabled: boolean): Pro
   revalidatePath("/hr/settings");
   return { error: null };
 }
+
+// ---------------------------------------------------------------------------
+// Daily attendance
+// ---------------------------------------------------------------------------
+export type AttendanceRowInput = {
+  employee_id: string;
+  mark: "present" | "absent" | "leave" | null;
+  check_in: string | null;
+  check_out: string | null;
+  extra_pairs: { in: string; out: string }[];
+  leave_type_id: string | null;
+  leave_fraction: number | null;
+  note: string | null;
+};
+
+export async function saveAttendanceAction(date: string, rows: AttendanceRowInput[]): Promise<ActionResult & { saved?: number }> {
+  if (!(await canManage())) return NO_PERMISSION;
+  if (!date) return { error: "Date is required." };
+  if (!rows.length) return { error: null, saved: 0 };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_hr_save_attendance", { p_date: date, p_rows: rows as unknown as Json });
+  if (error) return { error: error.message };
+  revalidatePath("/hr/attendance");
+  return { error: null, saved: data as number };
+}
+
+// ---------------------------------------------------------------------------
+// Holidays and leave types
+// ---------------------------------------------------------------------------
+export async function addHolidayAction(date: string, name: string): Promise<ActionResult> {
+  if (!(await canManage())) return NO_PERMISSION;
+  if (!date || !name.trim()) return { error: "Date and name are required." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_hr_add_holiday", { p_date: date, p_name: name.trim() });
+  if (error) return { error: error.message };
+  revalidatePath("/hr/holidays");
+  return { error: null, id: data as string };
+}
+
+export async function deleteHolidayAction(id: string): Promise<ActionResult> {
+  if (!(await canManage())) return NO_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_delete_holiday", { p_holiday_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/hr/holidays");
+  return { error: null };
+}
+
+export async function saveLeaveTypeAction(input: { id: string | null; name: string; is_paid: boolean; is_active: boolean }): Promise<ActionResult> {
+  if (!(await canManage())) return NO_PERMISSION;
+  if (!input.name.trim()) return { error: "Name is required." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_hr_save_leave_type", {
+    p_id: input.id as string,
+    p_name: input.name.trim(),
+    p_is_paid: input.is_paid,
+    p_is_active: input.is_active,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/hr/holidays");
+  return { error: null, id: data as string };
+}
