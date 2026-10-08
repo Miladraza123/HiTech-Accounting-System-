@@ -163,6 +163,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                   <tr>
                     <th className="text-left px-3 py-2">Description</th>
+                    <th className="text-left px-3 py-2">HS Code</th>
                     <th className="text-right px-3 py-2">Qty</th>
                     <th className="text-right px-3 py-2">Rate</th>
                     <th className="text-right px-3 py-2">Tax %</th>
@@ -173,6 +174,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                   {(lines ?? []).map((l) => (
                     <tr key={l.id} className="border-t border-line">
                       <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-3 py-2 text-ink-soft">{l.hs_code || "—"}</td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">
                         {l.qty} {l.unit}
                       </td>

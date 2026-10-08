@@ -14,6 +14,7 @@ export type InvoiceLineInput = {
   qty: number;
   rate: number;
   tax_pct: number;
+  hs_code?: string;
 };
 
 export async function createInvoiceAction(input: {

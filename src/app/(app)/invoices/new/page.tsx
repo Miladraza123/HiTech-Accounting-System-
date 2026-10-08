@@ -38,7 +38,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   const { data: salesOrders } = ids.length
     ? await supabase
         .from("sales_orders")
-        .select("*, parties(legal_name), sales_order_lines(*)")
+        .select("*, parties(legal_name), sales_order_lines(*, items(hs_code))")
         .in("id", ids)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -100,7 +100,10 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
               unit: string | null;
               rate: number;
               tax_pct: number;
-            }[]).filter((l) => l.invoiced_qty < l.delivered_qty),
+              items: { hs_code: string | null } | null;
+            }[])
+              .filter((l) => l.invoiced_qty < l.delivered_qty)
+              .map((l) => ({ ...l, hs_code: l.items?.hs_code ?? null })),
           }))}
         />
       )}

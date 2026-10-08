@@ -13,6 +13,7 @@ type SoLine = {
   unit: string | null;
   rate: number;
   tax_pct: number;
+  hs_code: string | null;
 };
 type SoOption = { id: string; so_no: string; business_line: string; parties: { legal_name: string } | null; lines: SoLine[] };
 
@@ -23,6 +24,9 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [rates, setRates] = useState<Record<string, string>>({});
   const [taxPcts, setTaxPcts] = useState<Record<string, string>>({});
+  // Pre-filled from the Item's own hs_code (see src/app/(app)/invoices/new/page.tsx),
+  // always editable here — the Item master's value is only a starting point.
+  const [hsCodes, setHsCodes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
@@ -35,6 +39,9 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   }
   function taxPctFor(l: SoLine) {
     return taxPcts[l.id] ?? String(l.tax_pct);
+  }
+  function hsCodeFor(l: SoLine) {
+    return hsCodes[l.id] ?? l.hs_code ?? "";
   }
 
   const subtotal = (so?.lines ?? []).reduce((s, l) => {
@@ -61,6 +68,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         qty: Number(qtys[l.id] ?? 0),
         rate: Number(rateFor(l)),
         tax_pct: Number(taxPctFor(l)),
+        hs_code: hsCodeFor(l).trim() || undefined,
       }))
       .filter((l) => l.qty > 0);
     if (!lines.length) {
@@ -131,6 +139,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
               <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                 <tr>
                   <th className="text-left px-3 py-2">Description</th>
+                  <th className="text-left px-3 py-2 w-28 min-w-[7rem]">HS Code</th>
                   <th className="text-right px-3 py-2">Deliverable</th>
                   <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Qty</th>
                   <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Rate</th>
@@ -146,6 +155,15 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
                   return (
                     <tr key={l.id} className="border-t border-line">
                       <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="text"
+                          value={hsCodeFor(l)}
+                          onChange={(e) => setHsCodes((h2) => ({ ...h2, [l.id]: e.target.value }))}
+                          placeholder="—"
+                          className="input !py-1 text-xs"
+                        />
+                      </td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">
                         {pending.toFixed(3)} {l.unit}
                       </td>
