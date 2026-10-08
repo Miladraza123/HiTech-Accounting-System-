@@ -481,6 +481,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <ReportLink href="/reports/grn-report" title="GRN / Receiving Report" desc="GRNs for the date range, with short/excess." />
           <ReportLink href="/reports/payment-collection" title="Payment Collection Report" desc="Collections for the date range, by method and top clients." />
           <ReportLink href="/reports/customer-business" title="Customer-wise Business Report" desc="Order value, invoiced amount, and outstanding for each client — all in one place." />
+          <ReportLink href="/reports/company-orders" title="Company-wise Order List" desc="Every Sales Order, grouped under its Company, with status — filter Pending only or All." />
           <ReportLink href="/reports/order-status" title="Order-wise Status" desc="The complete journey of a Sales Order — from Query to Payment." />
           <ReportLink href="/reports/order-health" title="Order Health &amp; Stage Aging" desc="Health flag (On Track/At Risk/Delayed/Stalled) and days in current stage for every open SO/PO/Job." />
           <ReportLink href="/reports/daily-snapshot" title="Daily Snapshot" desc="Daily Cash/Bank/Stock/AR/AP position — generated automatically at night, and can also be generated manually." />
