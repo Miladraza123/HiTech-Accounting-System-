@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { computeHealth, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
 import { toExclusiveUpperBound } from "@/lib/dashboardHelpers";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
@@ -32,6 +34,9 @@ export default async function SalesOrdersPage({
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
+  const user = await getCurrentUser();
+  const canCreate = await hasPermission(user, "sales_order.manage");
+
   const supabase = await createClient();
   let query = supabase
     .from("sales_orders")
@@ -43,20 +48,31 @@ export default async function SalesOrdersPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-ink">Sales Orders</h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          A Sales Order is created here from a Quotation once the Client PO is confirmed.
-          {from && to && (
-            <>
-              {" "}
-              — from <span className="text-ink">{from}</span> to <span className="text-ink">{to}</span>{" "}
-              <Link href="/sales-orders" className="text-accent-ink underline underline-offset-2">
-                (view all)
-              </Link>
-            </>
-          )}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-ink">Sales Orders</h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            A Sales Order is usually created from a Quotation once the Client PO is confirmed.
+            {from && to && (
+              <>
+                {" "}
+                — from <span className="text-ink">{from}</span> to <span className="text-ink">{to}</span>{" "}
+                <Link href="/sales-orders" className="text-accent-ink underline underline-offset-2">
+                  (view all)
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+        {canCreate && (
+          <Link
+            href="/sales-orders/new-direct"
+            title="For a PO that arrived without a prior RFQ/Quotation — e.g. by WhatsApp or phone"
+            className="shrink-0 rounded-md border border-line-strong bg-bg px-3 py-2 text-xs font-medium text-ink hover:bg-surface-2 transition whitespace-nowrap"
+          >
+            + Direct Sales Order
+          </Link>
+        )}
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">

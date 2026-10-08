@@ -72,6 +72,43 @@ export async function createSalesOrderAction(input: CreateSalesOrderInput): Prom
   return { error: null, id: soId };
 }
 
+export type CreateDirectSalesOrderInput = {
+  party_id: string;
+  client_po_number: string;
+  po_date: string;
+  delivery_schedule: string | null;
+  payment_terms: string | null;
+  business_line: string;
+  lines: SalesOrderLineInput[];
+  confirm_duplicate?: boolean;
+};
+
+// For a client PO that arrives with no prior RFQ/Quotation at all (e.g. by
+// WhatsApp or phone) — fn_create_direct_sales_order generates the Query +
+// Quotation automatically so the Document Trail and the NOT NULL
+// query_id/quotation_id on sales_orders stay intact, then creates the
+// Sales Order exactly like the normal flow (same DUPLICATE_PO handling).
+export async function createDirectSalesOrderAction(input: CreateDirectSalesOrderInput): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "sales_order.manage"))) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_create_direct_sales_order", {
+    p_party_id: input.party_id,
+    p_client_po_number: input.client_po_number,
+    p_po_date: input.po_date,
+    p_delivery_schedule: input.delivery_schedule as string,
+    p_payment_terms: input.payment_terms as string,
+    p_business_line: input.business_line,
+    p_lines: input.lines,
+    p_confirm_duplicate: input.confirm_duplicate ?? false,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/sales-orders");
+  return { error: null, id: data as string };
+}
+
 export async function amendSalesOrderAction(
   salesOrderId: string,
   reason: string,

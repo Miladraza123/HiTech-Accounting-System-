@@ -6068,6 +6068,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_direct_sales_order: {
+        Args: {
+          p_business_line: string
+          p_client_po_number: string
+          p_confirm_duplicate?: boolean
+          p_delivery_schedule: string
+          p_lines: Json
+          p_party_id: string
+          p_payment_terms: string
+          p_po_date: string
+        }
+        Returns: string
+      }
       fn_create_dispatch_go_ahead: {
         Args: { p_delivery_challan_id: string; p_given_to: string }
         Returns: string
