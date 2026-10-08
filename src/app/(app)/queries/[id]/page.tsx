@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { QueryStatusActions } from "@/components/QueryStatusActions";
+import { QueryAssignmentPanel, type QueryAssignmentRow } from "@/components/QueryAssignmentPanel";
 import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -21,19 +22,30 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ id
   const user = await getCurrentUser();
   const canEdit = await hasPermission(user, "query.manage");
 
+  const canAssign = isOwner(user) || hasRole(user, "sales");
+
   const supabase = await createClient();
-  const [{ data: query }, { data: events }, { data: attachments }, { data: quotations }, { data: profiles }] =
+  const [{ data: query }, { data: events }, { data: attachments }, { data: quotations }, { data: profiles }, { data: assignments }] =
     await Promise.all([
       supabase.from("queries").select("*, parties(legal_name, billing_address), query_sources(name)").eq("id", id).maybeSingle(),
       supabase.from("activity_timeline").select("*").eq("owner_table", "queries").eq("owner_id", id).order("at", { ascending: false }),
       supabase.from("attachments").select("*").eq("owner_table", "queries").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("quotations").select("id, quotation_no, status, created_at").eq("query_id", id).order("created_at", { ascending: false }),
       supabase.from("profiles").select("id, full_name"),
+      supabase.from("query_assignments").select("*").eq("query_id", id).order("created_at", { ascending: false }),
     ]);
 
   if (!query) notFound();
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+  const assignmentRows: QueryAssignmentRow[] = (assignments ?? []).map((a) => ({
+    id: a.id,
+    assigned_to: a.assigned_to,
+    assigned_to_name: nameById.get(a.assigned_to) ?? "—",
+    assigned_by_name: nameById.get(a.assigned_by) ?? "—",
+    status: a.status,
+    created_at: a.created_at,
+  }));
   const eventsWithNames = (events ?? []).map((e) => ({
     id: e.id,
     event_type: e.event_type,
@@ -90,6 +102,14 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ id
               <QueryStatusActions queryId={id} currentStatus={query.status} />
             </div>
           )}
+
+          <QueryAssignmentPanel
+            queryId={id}
+            assignments={assignmentRows}
+            currentUserId={user?.id ?? ""}
+            canAssign={canAssign}
+            profiles={profiles ?? []}
+          />
 
           {quotations && quotations.length > 0 && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">

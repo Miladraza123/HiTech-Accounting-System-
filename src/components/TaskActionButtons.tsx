@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { completeTaskAction, reopenTaskAction, cancelTaskAction } from "@/app/actions/tasks";
+import { acceptTaskAction, completeTaskAction, reopenTaskAction, cancelTaskAction } from "@/app/actions/tasks";
 
-/** Shared Complete / Reopen / Cancel buttons for a task — used on the /tasks list, the /tasks/[id] detail page, and the contextual TasksPanel. */
+/** Shared Accept / Complete / Reopen / Cancel buttons for a task — used on the /tasks list, the /tasks/[id] detail page, and the contextual TasksPanel. */
 export function TaskActionButtons({
   taskId,
   status,
+  canAccept,
   canAct,
   canCancel,
   revalidateTo,
@@ -15,6 +16,8 @@ export function TaskActionButtons({
 }: {
   taskId: string;
   status: string;
+  /** Only the assignee or Owner — mirrors Dispatch Go-Ahead's own Accept gate. */
+  canAccept: boolean;
   canAct: boolean;
   canCancel: boolean;
   revalidateTo: string;
@@ -70,7 +73,17 @@ export function TaskActionButtons({
 
   return (
     <div className="flex flex-wrap gap-1.5">
-      {status === "Open" && canAct && (
+      {status === "Open" && canAccept && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(() => acceptTaskAction(taskId, revalidateTo))}
+          className={`rounded-md bg-accent text-white hover:opacity-90 transition disabled:opacity-60 ${pad}`}
+        >
+          Accept
+        </button>
+      )}
+      {status === "Accepted" && canAct && (
         <button
           type="button"
           disabled={pending}

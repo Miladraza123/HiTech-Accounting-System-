@@ -3697,6 +3697,47 @@ export type Database = {
           },
         ]
       }
+      query_assignments: {
+        Row: {
+          accepted_at: string | null
+          assigned_by: string
+          assigned_to: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          query_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          assigned_by: string
+          assigned_to: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          query_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          assigned_by?: string
+          assigned_to?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          query_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "query_assignments_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       query_sources: {
         Row: {
           code: string
@@ -4998,6 +5039,8 @@ export type Database = {
       }
       tasks: {
         Row: {
+          accepted_at: string | null
+          accepted_by: string | null
           assigned_to: string
           cancel_reason: string | null
           completed_at: string | null
@@ -5016,6 +5059,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
           assigned_to: string
           cancel_reason?: string | null
           completed_at?: string | null
@@ -5034,6 +5079,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
           assigned_to?: string
           cancel_reason?: string | null
           completed_at?: string | null
@@ -5805,6 +5852,11 @@ export type Database = {
         Args: { p_go_ahead_id: string }
         Returns: undefined
       }
+      fn_accept_query_assignment: {
+        Args: { p_assignment_id: string }
+        Returns: undefined
+      }
+      fn_accept_task: { Args: { p_task_id: string }; Returns: undefined }
       fn_account_ledger: {
         Args: { p_account_id: string; p_limit: number; p_offset: number }
         Returns: {
@@ -5999,6 +6051,10 @@ export type Database = {
       }
       fn_complete_dispatch_go_ahead: {
         Args: { p_go_ahead_id: string }
+        Returns: undefined
+      }
+      fn_complete_query_assignment: {
+        Args: { p_assignment_id: string }
         Returns: undefined
       }
       fn_complete_service_job: {
@@ -6350,6 +6406,10 @@ export type Database = {
           p_supplier_bill_id: string
           p_warehouse_id: string
         }
+        Returns: string
+      }
+      fn_create_query_assignment: {
+        Args: { p_assigned_to: string; p_query_id: string }
         Returns: string
       }
       fn_create_query_idempotent: {

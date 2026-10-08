@@ -8,6 +8,7 @@ import { relatedEntityLink } from "@/lib/taskLinks";
 
 const STATUS_STYLE: Record<string, string> = {
   Open: "bg-ledger-soft text-ledger",
+  Accepted: "bg-warn-soft text-warn",
   Done: "bg-good-soft text-good",
   Cancelled: "bg-surface-2 text-ink-faint",
 };
@@ -31,6 +32,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
   const completedByName = task.completed_by ? nameById.get(task.completed_by) ?? "—" : null;
   const link = relatedEntityLink(task.related_table, task.related_id);
 
+  const canAccept = isOwner(user) || user.id === task.assigned_to;
   const canAct = isOwner(user) || user.id === task.assigned_to || user.id === task.created_by;
   const canCancel = isOwner(user) || user.id === task.created_by;
   const canEdit = task.status === "Open" && (isOwner(user) || user.id === task.created_by);
@@ -84,8 +86,8 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         <div className="space-y-6">
           <div className="rounded-xl border border-line bg-surface p-4">
             <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
-            <TaskActionButtons taskId={id} status={task.status} canAct={canAct} canCancel={canCancel} revalidateTo={`/tasks/${id}`} size="md" />
-            {!canAct && task.status === "Open" && <p className="mt-2 text-xs text-ink-faint">Only the assignee, the task creator, or the Owner can act on this task.</p>}
+            <TaskActionButtons taskId={id} status={task.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} revalidateTo={`/tasks/${id}`} size="md" />
+            {!canAct && (task.status === "Open" || task.status === "Accepted") && <p className="mt-2 text-xs text-ink-faint">Only the assignee, the task creator, or the Owner can act on this task.</p>}
           </div>
         </div>
       </div>

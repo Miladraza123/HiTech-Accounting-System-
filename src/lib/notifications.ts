@@ -3,7 +3,7 @@ import { isOwner, hasRole, type CurrentUser } from "@/lib/auth";
 
 export type NotificationItem = {
   id: string;
-  type: "task_due" | "credit_limit" | "low_stock" | "dispatch_go_ahead";
+  type: "task_due" | "credit_limit" | "low_stock" | "activity";
   tone: "bad" | "warn";
   title: string;
   description: string;
@@ -119,21 +119,24 @@ export async function getNotifications(supabase: ServerSupabase, user: CurrentUs
     }
   }
 
-  // 4. Dispatch Go-Ahead events (received/accepted/completed) — the one
-  // persisted, actionable type. Unlike the three above, these are real
-  // one-time events (not a standing condition to re-derive), so they live
-  // in an actual `notifications` table until marked read.
-  const { data: dispatchNotifications } = await supabase
+  // 4. Persisted, actionable one-time events — Dispatch Go-Ahead, Task
+  // assignment/accept/complete, Query assignment/accept/complete, and any
+  // future type that writes into this same table. Unlike the three above,
+  // these are real one-time events (not a standing condition to
+  // re-derive), so they live in an actual `notifications` table until
+  // marked read — grouped here under one generic "activity" bell category
+  // rather than a type-specific one, since more types keep landing here.
+  const { data: activityNotifications } = await supabase
     .from("notifications")
     .select("id, title, description, href")
     .eq("recipient_user_id", user.id)
     .eq("is_read", false)
     .order("created_at", { ascending: false })
     .limit(MAX_PER_TYPE);
-  for (const n of dispatchNotifications ?? []) {
+  for (const n of activityNotifications ?? []) {
     notifications.push({
       id: `notif:${n.id}`,
-      type: "dispatch_go_ahead",
+      type: "activity",
       tone: "warn",
       title: n.title,
       description: n.description ?? "",

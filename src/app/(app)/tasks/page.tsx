@@ -21,6 +21,7 @@ const FILTER_LABEL: Record<Filter, string> = {
 
 const STATUS_STYLE: Record<string, string> = {
   Open: "bg-ledger-soft text-ledger",
+  Accepted: "bg-warn-soft text-warn",
   Done: "bg-good-soft text-good",
   Cancelled: "bg-surface-2 text-ink-faint",
 };
@@ -49,25 +50,30 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   // in SQL now — with pagination, filtering a single fetched page would
   // silently drop matches that live on other pages. `.lt`/`.gt` on due_date
   // also exclude NULLs by themselves, matching the old `!!r.due_date` guards.
+  // "Accepted" counts as still-active (not yet Done) everywhere "Open" used
+  // to be the only active status — otherwise a task would vanish from every
+  // active view, and get mislabeled into "Completed / Cancelled", the
+  // moment its assignee accepted it.
+  const ACTIVE_STATUSES = ["Open", "Accepted"];
   let query = supabase.from("tasks").select("*, profiles(full_name)", { count: "exact" });
   switch (activeFilter) {
     case "mine":
-      query = query.eq("status", "Open").eq("assigned_to", user.id);
+      query = query.in("status", ACTIVE_STATUSES).eq("assigned_to", user.id);
       break;
     case "all":
-      query = query.eq("status", "Open");
+      query = query.in("status", ACTIVE_STATUSES);
       break;
     case "overdue":
-      query = query.eq("status", "Open").lt("due_date", today);
+      query = query.in("status", ACTIVE_STATUSES).lt("due_date", today);
       break;
     case "today":
-      query = query.eq("status", "Open").eq("due_date", today);
+      query = query.in("status", ACTIVE_STATUSES).eq("due_date", today);
       break;
     case "upcoming":
-      query = query.eq("status", "Open").gt("due_date", today);
+      query = query.in("status", ACTIVE_STATUSES).gt("due_date", today);
       break;
     case "done":
-      query = query.neq("status", "Open");
+      query = query.in("status", ["Done", "Cancelled"]);
       break;
   }
 
@@ -76,8 +82,8 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const [{ data: tasks, count }, { data: profiles }, { count: myOpenCount }, { count: overdueCount }] = await Promise.all([
     query.order("due_date", { ascending: true, nullsFirst: false }).range(rangeFrom, rangeTo),
     supabase.from("profiles").select("id, full_name"),
-    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "Open").eq("assigned_to", user.id),
-    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "Open").lt("due_date", today),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).in("status", ACTIVE_STATUSES).eq("assigned_to", user.id),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).in("status", ACTIVE_STATUSES).lt("due_date", today),
   ]);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -94,8 +100,8 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
     assignee_name: (t.profiles as unknown as { full_name: string } | null)?.full_name ?? "—",
     creator_name: t.created_by ? nameById.get(t.created_by) ?? "—" : "—",
     link: relatedEntityLink(t.related_table, t.related_id),
-    isOverdue: t.status === "Open" && !!t.due_date && t.due_date < today,
-    isDueToday: t.status === "Open" && t.due_date === today,
+    isOverdue: (t.status === "Open" || t.status === "Accepted") && !!t.due_date && t.due_date < today,
+    isDueToday: (t.status === "Open" || t.status === "Accepted") && t.due_date === today,
   }));
 
   return (
@@ -151,6 +157,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
             </thead>
             <tbody>
               {filtered.map((t) => {
+                const canAccept = isOwner(user) || user.id === t.assigned_to;
                 const canAct = isOwner(user) || user.id === t.assigned_to || user.id === t.created_by;
                 const canCancel = isOwner(user) || user.id === t.created_by;
                 return (
@@ -177,7 +184,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end">
-                        <TaskActionButtons taskId={t.id} status={t.status} canAct={canAct} canCancel={canCancel} revalidateTo="/tasks" />
+                        <TaskActionButtons taskId={t.id} status={t.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} revalidateTo="/tasks" />
                       </div>
                     </td>
                   </tr>

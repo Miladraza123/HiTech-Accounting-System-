@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, ListChecks, Landmark, Boxes, Truck } from "lucide-react";
+import { Bell, ListChecks, Landmark, Boxes, Inbox } from "lucide-react";
 import type { NotificationItem } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,14 +11,14 @@ const TYPE_ICON: Record<NotificationItem["type"], React.ReactNode> = {
   task_due: <ListChecks size={13} />,
   credit_limit: <Landmark size={13} />,
   low_stock: <Boxes size={13} />,
-  dispatch_go_ahead: <Truck size={13} />,
+  activity: <Inbox size={13} />,
 };
 
 const TYPE_LABEL: Record<NotificationItem["type"], string> = {
   task_due: "Tasks due",
   credit_limit: "Credit limit",
   low_stock: "Low stock",
-  dispatch_go_ahead: "Dispatch",
+  activity: "Updates",
 };
 
 /**
@@ -77,7 +77,7 @@ export function NotificationBell({
   }, [userId, router]);
 
   const hasUrgent = notifications.some((n) => n.tone === "bad");
-  const grouped: NotificationItem["type"][] = ["task_due", "credit_limit", "low_stock", "dispatch_go_ahead"];
+  const grouped: NotificationItem["type"][] = ["task_due", "credit_limit", "low_stock", "activity"];
 
   return (
     <div ref={ref} className="relative">

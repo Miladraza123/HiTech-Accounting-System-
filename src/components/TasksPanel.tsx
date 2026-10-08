@@ -18,6 +18,7 @@ export type TaskRow = {
 
 const STATUS_STYLE: Record<string, string> = {
   Open: "bg-ledger-soft text-ledger",
+  Accepted: "bg-warn-soft text-warn",
   Done: "bg-good-soft text-good",
   Cancelled: "bg-surface-2 text-ink-faint",
 };
@@ -29,7 +30,7 @@ const PRIORITY_STYLE: Record<string, string> = {
 };
 
 function isOverdue(dueDate: string | null, status: string): boolean {
-  if (!dueDate || status !== "Open") return false;
+  if (!dueDate || (status !== "Open" && status !== "Accepted")) return false;
   return new Date(dueDate).getTime() < new Date(new Date().toISOString().slice(0, 10)).getTime();
 }
 
@@ -98,6 +99,7 @@ export function TasksPanel({
     <div className="space-y-3">
       <ul className="space-y-2">
         {tasks.map((t) => {
+          const canAccept = isOwnerUser || currentUserId === t.assigned_to;
           const canAct = isOwnerUser || currentUserId === t.assigned_to || currentUserId === t.created_by;
           const canCancel = isOwnerUser || currentUserId === t.created_by;
           const overdue = isOverdue(t.due_date, t.status);
@@ -116,7 +118,7 @@ export function TasksPanel({
                   </div>
                 </div>
                 <div className="shrink-0">
-                  <TaskActionButtons taskId={t.id} status={t.status} canAct={canAct} canCancel={canCancel} revalidateTo={revalidateTo} />
+                  <TaskActionButtons taskId={t.id} status={t.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} revalidateTo={revalidateTo} />
                 </div>
               </div>
             </li>

@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { convertIncomingDocument } from "@/lib/incomingConversion";
+import { sendPushToUser } from "@/lib/webPush";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -127,4 +129,58 @@ export async function setQueryStatusAction(queryId: string, status: string, note
   revalidatePath(`/queries/${queryId}`);
   revalidatePath("/queries");
   return { error: error?.message ?? null };
+}
+
+// Office -> Engineer/Rider costing hand-off (Phase 46.05) — mirrors
+// Dispatch Go-Ahead's exact Accept/Complete + notification shape. Each RPC
+// inserts exactly one notifications row per call; fetching it back here
+// (with the admin client, since the row belongs to the RECIPIENT and
+// notifications' own RLS hides it from the sender) is what lets the push
+// payload and the in-app bell always say the same thing. Push is
+// best-effort — a missing service-role key, or any push failure, never
+// fails the action, since the in-app notification row already landed.
+async function pushLatestQueryNotification(queryId: string, type: string) {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("notifications")
+      .select("recipient_user_id, title, description, href")
+      .eq("related_table", "queries")
+      .eq("related_id", queryId)
+      .eq("type", type)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return;
+    await sendPushToUser(data.recipient_user_id, { title: data.title, body: data.description ?? "", href: data.href ?? "/" });
+  } catch {
+    // The in-app notification row already landed; push is an enhancement.
+  }
+}
+
+export async function createQueryAssignmentAction(queryId: string, assignedTo: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_create_query_assignment", { p_query_id: queryId, p_assigned_to: assignedTo });
+  if (error) return { error: error.message };
+  await pushLatestQueryNotification(queryId, "query_assigned");
+  revalidatePath(`/queries/${queryId}`);
+  return { error: null };
+}
+
+export async function acceptQueryAssignmentAction(assignmentId: string, queryId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_accept_query_assignment", { p_assignment_id: assignmentId });
+  if (error) return { error: error.message };
+  await pushLatestQueryNotification(queryId, "query_assignment_accepted");
+  revalidatePath(`/queries/${queryId}`);
+  return { error: null };
+}
+
+export async function completeQueryAssignmentAction(assignmentId: string, queryId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_complete_query_assignment", { p_assignment_id: assignmentId });
+  if (error) return { error: error.message };
+  await pushLatestQueryNotification(queryId, "query_assignment_completed");
+  revalidatePath(`/queries/${queryId}`);
+  return { error: null };
 }
