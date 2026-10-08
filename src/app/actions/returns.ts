@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -39,7 +39,7 @@ export async function createSalesReturnAction(input: {
 
 export async function cancelSalesReturnAction(returnId: string, invoiceId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "sales_return.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_sales_return", { p_return_id: returnId, p_reason: reason });
@@ -78,7 +78,7 @@ export async function createPurchaseReturnAction(input: {
 
 export async function cancelPurchaseReturnAction(returnId: string, supplierBillId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "purchase_return.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_purchase_return", { p_return_id: returnId, p_reason: reason });

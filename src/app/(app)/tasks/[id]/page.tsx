@@ -34,7 +34,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
 
   const canAccept = isOwner(user) || user.id === task.assigned_to;
   const canAct = isOwner(user) || user.id === task.assigned_to || user.id === task.created_by;
-  const canCancel = isOwner(user) || user.id === task.created_by;
+  const canCancel = isOwner(user);
   const canEdit = task.status === "Open" && (isOwner(user) || user.id === task.created_by);
 
   return (
@@ -86,7 +86,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
         <div className="space-y-6">
           <div className="rounded-xl border border-line bg-surface p-4">
             <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
-            <TaskActionButtons taskId={id} status={task.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} revalidateTo={`/tasks/${id}`} size="md" />
+            <TaskActionButtons taskId={id} status={task.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} canDelete={isOwner(user)} revalidateTo={`/tasks/${id}`} size="md" />
             {!canAct && (task.status === "Open" || task.status === "Accepted") && <p className="mt-2 text-xs text-ink-faint">Only the assignee, the task creator, or the Owner can act on this task.</p>}
           </div>
         </div>

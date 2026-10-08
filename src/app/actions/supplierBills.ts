@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -30,7 +30,7 @@ export async function createSupplierBillAction(input: {
 
 export async function cancelSupplierBillAction(billId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "supplier_bill.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_supplier_bill", { p_supplier_bill_id: billId, p_reason: reason });

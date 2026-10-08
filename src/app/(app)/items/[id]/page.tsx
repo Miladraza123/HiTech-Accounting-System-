@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ItemAltUnitsPanel } from "@/components/ItemAltUnitsPanel";
 import { ItemToggle } from "@/components/ItemToggle";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteItemAction } from "@/app/actions/items";
 import { ItemReorderLevelField } from "@/components/ItemReorderLevelField";
 import { EditItemForm } from "@/components/EditItemForm";
 
@@ -105,7 +107,10 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
       {canManage && (
         <div className="rounded-xl border border-line bg-surface p-4 flex items-center justify-between">
           <span className="text-sm text-ink-soft">Item Status</span>
-          <ItemToggle id={item.id} isActive={item.is_active} />
+          <div className="flex items-center gap-3">
+            <ItemToggle id={item.id} isActive={item.is_active} />
+            {isOwner(user) && <DeleteMasterRowButton onDelete={deleteItemAction.bind(null, item.id)} />}
+          </div>
         </div>
       )}
 

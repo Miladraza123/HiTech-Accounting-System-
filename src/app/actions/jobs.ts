@@ -155,7 +155,7 @@ export async function markJobReadyForDispatchAction(jobId: string): Promise<Acti
 
 export async function cancelJobAction(jobId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_job", { p_job_id: jobId, p_reason: reason });

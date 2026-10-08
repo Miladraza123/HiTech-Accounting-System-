@@ -135,6 +135,7 @@ export default async function QueryDetailPage({ params }: { params: Promise<{ id
               revalidateTo={`/queries/${id}`}
               attachments={attachments ?? []}
               canManage={canEdit}
+              canDelete={isOwner(user)}
             />
           </div>
         </div>

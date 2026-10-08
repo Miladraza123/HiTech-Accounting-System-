@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchLineItems } from "@/lib/itemOptions";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { DraftQuotationEditor } from "@/components/DraftQuotationEditor";
 import { CreateRevisionPanel } from "@/components/CreateRevisionPanel";
 import { QuotationRevisionView } from "@/components/QuotationRevisionView";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteQuotationRevisionAction } from "@/app/actions/quotations";
 import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -151,18 +153,22 @@ export default async function QuotationDetailPage({
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Revision History</h2>
             {revisions.map((r) => (
-              <Link
-                key={r.id}
-                href={r.is_current ? `/quotations/${id}` : `/quotations/${id}?rev=${r.rev_no}`}
-                className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm transition ${
-                  r.id === selectedRevision.id ? "border-accent bg-accent-soft/30" : "border-line hover:bg-surface-2"
-                }`}
-              >
-                <span className="font-mono text-xs">
-                  Rev-{r.rev_no} {r.is_current && <span className="text-ink-faint">(current)</span>}
-                </span>
-                <span className="text-xs text-ink-soft tabular">{r.grand_total}</span>
-              </Link>
+              <div key={r.id} className="flex items-center gap-2">
+                <Link
+                  href={r.is_current ? `/quotations/${id}` : `/quotations/${id}?rev=${r.rev_no}`}
+                  className={`flex flex-1 items-center justify-between rounded-md border px-3 py-2 text-sm transition ${
+                    r.id === selectedRevision.id ? "border-accent bg-accent-soft/30" : "border-line hover:bg-surface-2"
+                  }`}
+                >
+                  <span className="font-mono text-xs">
+                    Rev-{r.rev_no} {r.is_current && <span className="text-ink-faint">(current)</span>}
+                  </span>
+                  <span className="text-xs text-ink-soft tabular">{r.grand_total}</span>
+                </Link>
+                {!r.is_current && isOwner(user) && (
+                  <DeleteMasterRowButton label="Delete" onDelete={deleteQuotationRevisionAction.bind(null, r.id, id)} />
+                )}
+              </div>
             ))}
           </div>
 
@@ -174,6 +180,7 @@ export default async function QuotationDetailPage({
               revalidateTo={`/quotations/${id}`}
               attachments={attachments ?? []}
               canManage={canEdit}
+              canDelete={isOwner(user)}
             />
           </div>
         </div>

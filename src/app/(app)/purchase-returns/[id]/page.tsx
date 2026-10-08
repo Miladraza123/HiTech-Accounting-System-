@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, hasRole } from "@/lib/auth";
+import { getCurrentUser, hasRole, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
 
@@ -101,7 +101,7 @@ export default async function PurchaseReturnDetailPage({ params }: { params: Pro
         </div>
 
         <div className="space-y-6">
-          {canManage && ret.status === "Posted" && (
+          {isOwner(user) && ret.status === "Posted" && (
             <div className="rounded-xl border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               <CancelPurchaseReturnButton returnId={id} supplierBillId={ret.supplier_bill_id} />

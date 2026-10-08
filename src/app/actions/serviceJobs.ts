@@ -1,9 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export type ActionResult = { error: string | null; id?: string; success?: boolean };
+
+const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 export type ServiceInvoiceLineInput = { description: string; qty: number; rate: number; tax_pct: number };
 
@@ -37,6 +40,7 @@ export async function completeServiceJobAction(serviceJobId: string): Promise<Ac
 }
 
 export async function cancelServiceJobAction(serviceJobId: string, reason: string): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_service_job", { p_service_job_id: serviceJobId, p_reason: reason });
   if (error) return { error: error.message };
@@ -66,6 +70,7 @@ export async function createServiceDeliveryAction(input: {
 }
 
 export async function cancelServiceDeliveryAction(serviceDeliveryId: string, serviceJobId: string, reason: string): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_service_delivery", { p_service_delivery_id: serviceDeliveryId, p_reason: reason });
   if (error) return { error: error.message };
@@ -90,6 +95,7 @@ export async function createServiceInvoiceAction(
 }
 
 export async function cancelServiceInvoiceAction(serviceInvoiceId: string, serviceJobId: string, reason: string): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_service_invoice", { p_service_invoice_id: serviceInvoiceId, p_reason: reason });
   if (error) return { error: error.message };

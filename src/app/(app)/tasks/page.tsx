@@ -159,7 +159,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               {filtered.map((t) => {
                 const canAccept = isOwner(user) || user.id === t.assigned_to;
                 const canAct = isOwner(user) || user.id === t.assigned_to || user.id === t.created_by;
-                const canCancel = isOwner(user) || user.id === t.created_by;
+                const canCancel = isOwner(user);
                 return (
                   <tr key={t.id} className="border-t border-line">
                     <td className="px-3 py-2 text-ink">
@@ -184,7 +184,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end">
-                        <TaskActionButtons taskId={t.id} status={t.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} revalidateTo="/tasks" />
+                        <TaskActionButtons taskId={t.id} status={t.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} canDelete={isOwner(user)} revalidateTo="/tasks" />
                       </div>
                     </td>
                   </tr>

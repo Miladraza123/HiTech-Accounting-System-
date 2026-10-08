@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -41,7 +41,7 @@ export async function createStockTransferAction(input: {
 
 export async function cancelStockTransferAction(transferId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "stock_transfer.create"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_stock_transfer", { p_transfer_id: transferId, p_reason: reason });

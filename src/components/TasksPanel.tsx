@@ -101,7 +101,7 @@ export function TasksPanel({
         {tasks.map((t) => {
           const canAccept = isOwnerUser || currentUserId === t.assigned_to;
           const canAct = isOwnerUser || currentUserId === t.assigned_to || currentUserId === t.created_by;
-          const canCancel = isOwnerUser || currentUserId === t.created_by;
+          const canCancel = isOwnerUser;
           const overdue = isOverdue(t.due_date, t.status);
           return (
             <li key={t.id} className="rounded-lg border border-line bg-surface px-3 py-2 text-sm space-y-1.5">
@@ -118,7 +118,7 @@ export function TasksPanel({
                   </div>
                 </div>
                 <div className="shrink-0">
-                  <TaskActionButtons taskId={t.id} status={t.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} revalidateTo={revalidateTo} />
+                  <TaskActionButtons taskId={t.id} status={t.status} canAccept={canAccept} canAct={canAct} canCancel={canCancel} canDelete={isOwnerUser} revalidateTo={revalidateTo} />
                 </div>
               </div>
             </li>

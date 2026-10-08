@@ -6671,6 +6671,10 @@ export type Database = {
         }[]
       }
       fn_days_since: { Args: { p_date: string }; Returns: number }
+      fn_delete_master_row: {
+        Args: { p_id: string; p_table: string }
+        Returns: undefined
+      }
       fn_deliverable_sales_order_ids: {
         Args: never
         Returns: {

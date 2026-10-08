@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -75,7 +75,7 @@ export async function recordDisputeAction(dcId: string, note: string): Promise<A
 
 export async function cancelDeliveryChallanAction(dcId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "delivery_challan.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_delivery_challan", { p_dc_id: dcId, p_reason: reason });

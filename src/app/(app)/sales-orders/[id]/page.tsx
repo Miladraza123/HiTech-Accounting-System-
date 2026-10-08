@@ -202,6 +202,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
               revalidateTo={`/sales-orders/${id}`}
               attachments={attachments ?? []}
               canManage={canEdit}
+              canDelete={isOwner(user)}
             />
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
@@ -140,10 +141,24 @@ export async function getPartyJournalBalanceAction(partyId: string, direction: "
   return data ?? 0;
 }
 
-export async function togglePartyActiveAction(id: string, isActive: boolean) {
+export async function togglePartyActiveAction(id: string, isActive: boolean): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return { error: "Only Owner can activate/deactivate a client/supplier." };
   const supabase = await createClient();
-  await supabase.from("parties").update({ is_active: isActive }).eq("id", id);
+  const { error } = await supabase.from("parties").update({ is_active: isActive }).eq("id", id);
   revalidatePath("/clients");
+  return { error: error?.message ?? null };
+}
+
+// Owner-only, and only once fn_delete_master_row confirms nothing already
+// references this party (queries, quotations, orders, invoices, etc.) —
+// the Clients/Suppliers list falls back to Deactivate for anything still
+// in use.
+export async function deletePartyAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_master_row", { p_table: "parties", p_id: id });
+  if (error) return { error: friendlyPartyError(error) };
+  revalidatePath("/clients");
+  return { error: null, success: true };
 }
 
 // Smart Merge: `base` is the credit_limit/credit_days this browser tab

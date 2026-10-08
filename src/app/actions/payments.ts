@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -62,7 +62,7 @@ export async function allocatePaymentAction(paymentId: string, allocations: Paym
 
 export async function cancelPaymentAction(paymentId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "payment.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_payment", { p_payment_id: paymentId, p_reason: reason });

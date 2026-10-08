@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
@@ -157,11 +158,23 @@ export async function updateItemAction(
 }
 
 export async function toggleItemActiveAction(id: string, isActive: boolean): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return { error: "Only Owner can activate/deactivate an item." };
   const supabase = await createClient();
   // `.select("id")` so an RLS-filtered no-op update reports instead of looking like a success.
   const { data, error } = await supabase.from("items").update({ is_active: isActive }).eq("id", id).select("id");
   if (error) return { error: error.message };
   if (!data?.length) return { error: "You don't have permission to perform this action." };
+  revalidatePath("/items");
+  return { error: null, success: true };
+}
+
+// Owner-only, and only once fn_delete_master_row confirms nothing already
+// references this item (stock movements, document lines, etc.) — the
+// Items list falls back to Deactivate for anything still in use.
+export async function deleteItemAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_master_row", { p_table: "items", p_id: id });
+  if (error) return { error: error.message };
   revalidatePath("/items");
   return { error: null, success: true };
 }

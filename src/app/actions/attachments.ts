@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function uploadAttachmentAction(
@@ -50,9 +51,13 @@ export async function getAttachmentUrlAction(path: string): Promise<string | nul
   return data.signedUrl;
 }
 
-export async function deleteAttachmentAction(id: string, path: string, revalidateTo: string) {
+export async function deleteAttachmentAction(id: string, path: string, revalidateTo: string): Promise<{ error: string | null }> {
+  if (!isOwner(await getCurrentUser())) return { error: "Only Owner can remove an attachment." };
   const supabase = await createClient();
   await supabase.storage.from("attachments").remove([path]);
-  await supabase.from("attachments").delete().eq("id", id);
+  const { data, error } = await supabase.from("attachments").delete().eq("id", id).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "Only Owner can remove an attachment." };
   revalidatePath(revalidateTo);
+  return { error: null };
 }

@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { NewExpenseHeadForm } from "@/components/NewExpenseHeadForm";
 import { ToggleExpenseHeadButton } from "@/components/ToggleExpenseHeadButton";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteExpenseHeadAction } from "@/app/actions/cashBank";
 
 export default async function ExpenseHeadsPage() {
   const user = await getCurrentUser();
@@ -42,8 +44,9 @@ export default async function ExpenseHeadsPage() {
                     {h.is_active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-right">
+                <td className="px-4 py-2.5 text-right space-x-2">
                   <ToggleExpenseHeadButton id={h.id} isActive={h.is_active} />
+                  <DeleteMasterRowButton onDelete={deleteExpenseHeadAction.bind(null, h.id)} />
                 </td>
               </tr>
             ))}

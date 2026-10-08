@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { canSeeSupplierBills } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton";
@@ -40,7 +40,7 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
   const party = bill.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const grn = bill.grns as unknown as { grn_no: string; received_date: string; warehouse_id: string | null } | null;
   const outstanding = outstandingRow?.outstanding_amount ?? 0;
-  const canCancel = canManage && bill.status === "Posted";
+  const canCancel = isOwner(user) && bill.status === "Posted";
   const canReturn = (await hasPermission(user, "purchase_return.manage")) && bill.status === "Posted";
 
   return (
@@ -191,7 +191,7 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
             </div>
           )}
 
-          {!!returns?.filter((r) => r.status === "Posted").length && canReturn && (
+          {!!returns?.filter((r) => r.status === "Posted").length && isOwner(user) && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
               <h2 className="text-sm font-semibold text-ink mb-1">Purchase Return Actions</h2>
               {returns

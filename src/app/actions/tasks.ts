@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { sendPushToUser } from "@/lib/webPush";
 import { revalidatePath } from "next/cache";
 
@@ -115,9 +116,24 @@ export async function reopenTaskAction(taskId: string, revalidateTo: string): Pr
 }
 
 export async function cancelTaskAction(taskId: string, reason: string | null, revalidateTo: string): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return { error: "Only Owner can cancel a Task." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_task", { p_task_id: taskId, p_reason: reason as string });
   if (error) return { error: error.message };
+  revalidatePath(revalidateTo);
+  revalidatePath("/tasks");
+  return { error: null };
+}
+
+// Owner-only real Delete (RLS p_delete on tasks is Owner-only — see
+// Phase 46.07), alongside the existing Cancel. Tasks have no referencing
+// FK anywhere, so a plain delete is safe without the fn_delete_master_row
+// FK-violation dance other master data needs.
+export async function deleteTaskAction(taskId: string, revalidateTo: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("tasks").delete().eq("id", taskId).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "Only Owner can delete a Task." };
   revalidatePath(revalidateTo);
   revalidatePath("/tasks");
   return { error: null };

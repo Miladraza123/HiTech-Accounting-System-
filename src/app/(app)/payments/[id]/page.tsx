@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { AllocatePaymentPanel } from "@/components/AllocatePaymentPanel";
@@ -32,7 +32,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const bank = payment.bank_accounts as unknown as { account_name: string } | null;
   const fund = payment.petty_cash_funds as unknown as { fund_name: string } | null;
   const sourceLabel = bank?.account_name ?? fund?.fund_name ?? "Cash in Hand";
-  const canCancel = canManage && payment.status === "Posted";
+  const canCancel = isOwner(user) && payment.status === "Posted";
 
   let allocRows: { key: string; label: string; date: string; outstanding: number; poNo?: string | null }[] = [];
   const invoiceIds = (allocations ?? []).map((a) => a.invoice_id).filter(Boolean) as string[];

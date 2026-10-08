@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser, hasRole, isOwner } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export type ActionResult = { error: string | null; id?: string };
@@ -10,12 +10,15 @@ export type ActionResult = { error: string | null; id?: string };
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 // The setup tables' activate/deactivate toggles have no Permission Matrix
-// key, so they mirror the tables' own RLS update policies (bank accounts and
-// petty cash: Owner/Accounts; expense heads: Owner only). `.select("id")`
-// makes an RLS-filtered no-op update visible instead of silently "working".
+// key. Deactivating used to mirror each table's own RLS update policy
+// (bank accounts and petty cash: Owner/Accounts), but per the Owner-only
+// Delete/Deactivate redesign every is_active toggle is now Owner-only —
+// a DB trigger (fn_guard_is_active_owner_only) enforces the same floor,
+// so this is defense in depth, not the only gate. `.select("id")` makes
+// an RLS/trigger-filtered no-op update visible instead of silently
+// "working".
 async function canManageFinanceSetup() {
-  const user = await getCurrentUser();
-  return isOwner(user) || hasRole(user, "accounts");
+  return isOwner(await getCurrentUser());
 }
 
 // ---- Bank Accounts ----
@@ -49,6 +52,17 @@ export async function toggleBankAccountActiveAction(id: string, isActive: boolea
   const { data, error } = await supabase.from("bank_accounts").update({ is_active: isActive }).eq("id", id).select("id");
   if (error) return { error: error.message };
   if (!data?.length) return NO_PERMISSION;
+  revalidatePath("/setup/bank-accounts");
+  return { error: null };
+}
+
+// Owner-only, and only once fn_delete_master_row confirms nothing already
+// references this bank account (payments, expenses, contra transfers,
+// etc.) — the Bank Accounts list falls back to Deactivate otherwise.
+export async function deleteBankAccountAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_master_row", { p_table: "bank_accounts", p_id: id });
+  if (error) return { error: error.message };
   revalidatePath("/setup/bank-accounts");
   return { error: null };
 }
@@ -107,6 +121,17 @@ export async function toggleExpenseHeadActiveAction(id: string, isActive: boolea
   return { error: null };
 }
 
+// Owner-only, and only once fn_delete_master_row confirms nothing already
+// references this expense head (posted Expenses) — the Expense Heads
+// list falls back to Deactivate otherwise.
+export async function deleteExpenseHeadAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_master_row", { p_table: "expense_heads", p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/setup/expense-heads");
+  return { error: null };
+}
+
 // ---- Expenses ----
 
 export async function createExpenseAction(input: {
@@ -155,7 +180,7 @@ export async function createExpenseAction(input: {
 
 export async function cancelExpenseAction(expenseId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "expense.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_expense", { p_expense_id: expenseId, p_reason: reason });
@@ -203,7 +228,7 @@ export async function createContraEntryAction(input: {
 
 export async function cancelContraEntryAction(transferId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "fund_transfer.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_contra_entry", { p_transfer_id: transferId, p_reason: reason });

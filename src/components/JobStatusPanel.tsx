@@ -12,12 +12,15 @@ export function JobStatusPanel({
   status,
   progressPct,
   canManage,
+  canCancel,
   disposition = null,
 }: {
   jobId: string;
   status: string;
   progressPct: number;
   canManage: boolean;
+  /** Owner-only (fn_cancel_job/fn_cancel_job_with_disposition are both Owner-only now). */
+  canCancel: boolean;
   /**
    * Owner only, and only for a job that holds issued material or is Ready for
    * Dispatch — the cancel then has to decide where the job's cost goes
@@ -124,7 +127,8 @@ export function JobStatusPanel({
         </button>
       )}
 
-      {dispositionCancel &&
+      {canCancel &&
+        dispositionCancel &&
         disposition &&
         (cancelOpen ? (
           <JobCancelDispositionDialog jobId={jobId} data={disposition} onClose={() => setCancelOpen(false)} />
@@ -138,7 +142,8 @@ export function JobStatusPanel({
           </button>
         ))}
 
-      {!terminal &&
+      {canCancel &&
+        !terminal &&
         !dispositionCancel &&
         (cancelOpen ? (
           <div className="space-y-2 rounded-md border border-bad bg-bad-soft p-3">

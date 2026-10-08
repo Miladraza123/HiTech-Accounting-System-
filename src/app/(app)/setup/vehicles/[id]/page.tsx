@@ -179,7 +179,7 @@ export default async function VehicleDetailPage({
           )}
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Documents</h2>
-            <AttachmentsPanel ownerTable="vehicles" ownerId={id} revalidateTo={`/setup/vehicles/${id}`} attachments={attachments ?? []} canManage={canManage} />
+            <AttachmentsPanel ownerTable="vehicles" ownerId={id} revalidateTo={`/setup/vehicles/${id}`} attachments={attachments ?? []} canManage={canManage} canDelete={isOwner(user)} />
           </div>
         </div>
       </div>

@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { NewVehicleForm } from "@/components/NewVehicleForm";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteVehicleAction } from "@/app/actions/vehicles";
 
 const STATUS_STYLE: Record<string, string> = {
   Active: "bg-good-soft text-good",
@@ -41,6 +43,7 @@ export default async function VehiclesPage() {
                 <th className="text-left px-4 py-2.5">Assigned To</th>
                 <th className="text-right px-4 py-2.5">Meter Reading</th>
                 <th className="text-left px-4 py-2.5">Status</th>
+                {isOwner(user) && <th className="px-4 py-2.5" />}
               </tr>
             </thead>
             <tbody>
@@ -61,12 +64,17 @@ export default async function VehiclesPage() {
                     <td className="px-4 py-2.5">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[v.status] ?? ""}`}>{v.status}</span>
                     </td>
+                    {isOwner(user) && (
+                      <td className="px-4 py-2.5 text-right">
+                        <DeleteMasterRowButton onDelete={deleteVehicleAction.bind(null, v.id)} />
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {!vehicles?.length && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
+                  <td colSpan={isOwner(user) ? 6 : 5} className="px-4 py-6 text-center text-ink-faint">
                     No vehicle has been created yet.
                   </td>
                 </tr>

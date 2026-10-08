@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { ItemForm } from "@/components/ItemForm";
 import { ItemToggle } from "@/components/ItemToggle";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteItemAction } from "@/app/actions/items";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 
@@ -78,8 +80,9 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
                     </span>
                   </td>
                   {canManage && (
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right space-x-2">
                       <ItemToggle id={it.id} isActive={it.is_active} />
+                      {isOwner(user) && <DeleteMasterRowButton onDelete={deleteItemAction.bind(null, it.id)} />}
                     </td>
                   )}
                 </tr>

@@ -63,3 +63,15 @@ export async function updateVehicleAction(
   revalidatePath(`/setup/vehicles/${id}`);
   return { error: null, success: true };
 }
+
+// Owner-only, and only once fn_delete_master_row confirms nothing already
+// references this vehicle (fuel/maintenance Expenses) — there's no
+// "deactivate" concept for a vehicle today (status is derived from
+// assigned_user_id), so this is its only real removal path.
+export async function deleteVehicleAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_master_row", { p_table: "vehicles", p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/setup/vehicles");
+  return { error: null, success: true };
+}

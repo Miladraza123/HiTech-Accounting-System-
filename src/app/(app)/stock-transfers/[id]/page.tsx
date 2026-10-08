@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { CancelStockTransferButton } from "@/components/CancelStockTransferButton";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -13,7 +12,6 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function StockTransferDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const canManage = await hasPermission(user, "stock_transfer.create");
 
   const supabase = await createClient();
   const [{ data: transfer }, { data: lines }] = await Promise.all([
@@ -86,7 +84,7 @@ export default async function StockTransferDetailPage({ params }: { params: Prom
         </div>
 
         <div className="space-y-6">
-          {canManage && transfer.status === "Posted" && (
+          {isOwner(user) && transfer.status === "Posted" && (
             <div className="rounded-xl border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               <CancelStockTransferButton transferId={id} />

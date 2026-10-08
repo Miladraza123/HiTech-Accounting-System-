@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
@@ -45,7 +45,7 @@ export async function createPurchaseOrderAction(input: {
 
 export async function cancelPurchaseOrderAction(purchaseOrderId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_purchase_order", {
@@ -64,7 +64,7 @@ export async function cancelPurchaseOrderAction(purchaseOrderId: string, reason:
 // Pending Report) forever.
 export async function closePurchaseOrderAction(purchaseOrderId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+  if (!isOwner(user)) return NO_PERMISSION;
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_close_purchase_order", {

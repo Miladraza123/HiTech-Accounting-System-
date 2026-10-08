@@ -4,6 +4,8 @@ import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { WarehouseForm } from "@/components/WarehouseForm";
 import { ToggleWarehouseButton } from "@/components/ToggleWarehouseButton";
 import { EditWarehouseForm } from "@/components/EditWarehouseForm";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteWarehouseAction } from "@/app/actions/setup";
 
 export default async function WarehousesPage() {
   const user = await getCurrentUser();
@@ -54,6 +56,7 @@ export default async function WarehousesPage() {
                   <div className="flex items-start justify-end gap-2">
                     <EditWarehouseForm warehouseId={w.id} code={w.code} name={w.name} address={w.address} />
                     <ToggleWarehouseButton id={w.id} isActive={w.is_active} />
+                    {isOwner(user) && <DeleteMasterRowButton onDelete={deleteWarehouseAction.bind(null, w.id)} />}
                   </div>
                 </td>
               </tr>

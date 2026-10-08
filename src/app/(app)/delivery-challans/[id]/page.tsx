@@ -185,7 +185,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Attachments</h2>
-            <AttachmentsPanel ownerTable="delivery_challans" ownerId={id} revalidateTo={`/delivery-challans/${id}`} attachments={attachments ?? []} canManage={canManage} />
+            <AttachmentsPanel ownerTable="delivery_challans" ownerId={id} revalidateTo={`/delivery-challans/${id}`} attachments={attachments ?? []} canManage={canManage} canDelete={isOwner(user)} />
           </div>
         </div>
       </div>

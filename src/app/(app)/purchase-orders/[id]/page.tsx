@@ -51,8 +51,8 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const party = po.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const linkedSo = po.sales_orders as unknown as { so_no: string } | null;
   const canReceive = canEdit && !["Cancelled", "Closed"].includes(po.status);
-  const canCancel = canEdit && po.status === "Confirmed" && !grns?.length;
-  const canClose = canEdit && po.status === "PartiallyReceived";
+  const canCancel = isOwner(user) && po.status === "Confirmed" && !grns?.length;
+  const canClose = isOwner(user) && po.status === "PartiallyReceived";
 
   return (
     <div className="space-y-6">
@@ -224,6 +224,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
               revalidateTo={`/purchase-orders/${id}`}
               attachments={attachments ?? []}
               canManage={canEdit}
+              canDelete={isOwner(user)}
             />
           </div>
         </div>

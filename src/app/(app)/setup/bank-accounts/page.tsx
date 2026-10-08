@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { NewBankAccountForm } from "@/components/NewBankAccountForm";
 import { ToggleBankAccountButton } from "@/components/ToggleBankAccountButton";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deleteBankAccountAction } from "@/app/actions/cashBank";
 
 export default async function BankAccountsPage() {
   const user = await getCurrentUser();
@@ -49,8 +51,9 @@ export default async function BankAccountsPage() {
                     {a.is_active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-right">
+                <td className="px-4 py-2.5 text-right space-x-2">
                   <ToggleBankAccountButton id={a.id} isActive={a.is_active} />
+                  {isOwner(user) && <DeleteMasterRowButton onDelete={deleteBankAccountAction.bind(null, a.id)} />}
                 </td>
               </tr>
             ))}

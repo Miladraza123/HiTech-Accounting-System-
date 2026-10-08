@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
@@ -120,4 +120,22 @@ export async function createQuotationRevisionAction(
   });
   revalidatePath(`/quotations/${quotationId}`);
   return { error: error?.message ?? null };
+}
+
+// Owner-only, and only for an old, never-current (superseded) revision —
+// the current one is what the quotation actually is right now, so it's
+// never eligible. The RLS p_delete on quotation_revisions was already
+// Owner-only before this phase; it just had no action calling it.
+export async function deleteQuotationRevisionAction(revisionId: string, quotationId: string): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { data: revision } = await supabase.from("quotation_revisions").select("is_current").eq("id", revisionId).maybeSingle();
+  if (!revision) return { error: "Revision not found." };
+  if (revision.is_current) return { error: "Cannot delete the current revision." };
+
+  const { error } = await supabase.from("quotation_revisions").delete().eq("id", revisionId);
+  if (error) return { error: error.message };
+  revalidatePath(`/quotations/${quotationId}`);
+  return { error: null };
 }

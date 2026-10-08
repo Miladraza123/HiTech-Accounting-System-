@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { CompleteServiceJobButton } from "@/components/CompleteServiceJobButton";
 import { CancelWithReasonButton } from "@/components/CancelWithReasonButton";
@@ -34,7 +34,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
 
   const party = job.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const canComplete = canManageJob && job.status === "Received";
-  const canCancelJob = canManageJob && job.status !== "Cancelled" && !deliveries?.some((d) => d.status !== "Cancelled") && !invoices?.some((i) => i.status !== "Cancelled");
+  const canCancelJob = isOwner(user) && job.status !== "Cancelled" && !deliveries?.some((d) => d.status !== "Cancelled") && !invoices?.some((i) => i.status !== "Cancelled");
   const canDeliver = canManageDelivery && job.status === "Completed";
   const canInvoice = canManageInvoice && job.status !== "Cancelled";
 
@@ -92,7 +92,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                       {d.delivery_date} {d.vehicle_no && `· ${d.vehicle_no}`} {d.driver_name && `· ${d.driver_name}`}
                     </p>
                     {d.status === "Cancelled" && d.cancel_reason && <p className="text-xs text-bad">Reason: {d.cancel_reason}</p>}
-                    {canManageDelivery && d.status !== "Cancelled" && (
+                    {isOwner(user) && d.status !== "Cancelled" && (
                       <CancelWithReasonButton label="Cancel this Delivery" onCancel={cancelServiceDeliveryAction.bind(null, d.id, id)} />
                     )}
                   </div>
@@ -125,7 +125,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                       </ul>
                       <p className="text-xs text-ink-faint">{inv.invoice_date} · Total: {inv.grand_total.toLocaleString()}</p>
                       {inv.status === "Cancelled" && inv.cancel_reason && <p className="text-xs text-bad">Reason: {inv.cancel_reason}</p>}
-                      {canManageInvoice && inv.status !== "Cancelled" && (
+                      {isOwner(user) && inv.status !== "Cancelled" && (
                         <CancelWithReasonButton label="Cancel this Invoice" onCancel={cancelServiceInvoiceAction.bind(null, inv.id, id)} />
                       )}
                     </div>

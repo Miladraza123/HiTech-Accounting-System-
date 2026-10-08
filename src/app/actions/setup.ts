@@ -118,10 +118,23 @@ export async function updateWarehouseAction(
   return { error: null, success: true };
 }
 
-export async function toggleWarehouseAction(id: string, isActive: boolean) {
+export async function toggleWarehouseAction(id: string, isActive: boolean): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return { error: "Only Owner can activate/deactivate a warehouse." };
   const supabase = await createClient();
-  await supabase.from("warehouses").update({ is_active: isActive }).eq("id", id);
+  const { error } = await supabase.from("warehouses").update({ is_active: isActive }).eq("id", id);
   revalidatePath("/setup/warehouses");
+  return { error: error?.message ?? null };
+}
+
+// Owner-only, and only once fn_delete_master_row confirms nothing already
+// references this warehouse (stock ledger, POs, GRNs, jobs, etc.) — the
+// Warehouses list falls back to Deactivate for anything still in use.
+export async function deleteWarehouseAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_master_row", { p_table: "warehouses", p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/setup/warehouses");
+  return { error: null, success: true };
 }
 
 // ---------- Chart of Accounts ----------

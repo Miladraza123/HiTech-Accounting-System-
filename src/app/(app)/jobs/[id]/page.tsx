@@ -250,7 +250,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         <div className="space-y-6">
-          <JobStatusPanel jobId={id} status={job.status} progressPct={job.progress_pct} canManage={canManageJob} disposition={disposition} />
+          <JobStatusPanel jobId={id} status={job.status} progressPct={job.progress_pct} canManage={canManageJob} canCancel={isOwner(user)} disposition={disposition} />
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>
@@ -277,7 +277,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Attachments</h2>
-            <AttachmentsPanel ownerTable="jobs" ownerId={id} revalidateTo={`/jobs/${id}`} attachments={attachments ?? []} canManage={canManageJob} />
+            <AttachmentsPanel ownerTable="jobs" ownerId={id} revalidateTo={`/jobs/${id}`} attachments={attachments ?? []} canManage={canManageJob} canDelete={isOwner(user)} />
           </div>
         </div>
       </div>

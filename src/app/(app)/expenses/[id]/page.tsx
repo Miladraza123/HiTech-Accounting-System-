@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isOwner } from "@/lib/auth";
 import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { CancelExpenseButton } from "@/components/CancelExpenseButton";
@@ -43,7 +43,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
   const job = expense.jobs as unknown as { job_no: string; description: string } | null;
   const responsible = expense.profiles as unknown as { full_name: string } | null;
   const vehicle = expense.vehicles as unknown as { vehicle_no: string; make_model: string | null } | null;
-  const canCancel = canManage && expense.status === "Posted";
+  const canCancel = isOwner(user) && expense.status === "Posted";
 
   return (
     <div className="space-y-6">
@@ -132,7 +132,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Receipts / Attachments</h2>
-            <AttachmentsPanel ownerTable="expenses" ownerId={id} revalidateTo={`/expenses/${id}`} attachments={attachments ?? []} canManage={canManage} />
+            <AttachmentsPanel ownerTable="expenses" ownerId={id} revalidateTo={`/expenses/${id}`} attachments={attachments ?? []} canManage={canManage} canDelete={isOwner(user)} />
           </div>
         </div>
 

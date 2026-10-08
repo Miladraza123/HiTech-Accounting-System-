@@ -14,15 +14,20 @@ export function AttachmentsPanel({
   revalidateTo,
   attachments,
   canManage,
+  canDelete = false,
 }: {
   ownerTable: string;
   ownerId: string;
   revalidateTo: string;
   attachments: Tables<"attachments">[];
+  /** Gates Upload only. */
   canManage: boolean;
+  /** Gates Remove — Owner-only (see Phase 46.07), independent of canManage. */
+  canDelete?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -32,6 +37,14 @@ export function AttachmentsPanel({
       const res = await uploadAttachmentAction(ownerTable, ownerId, revalidateTo, formData);
       if (res.error) setError(res.error);
       else formRef.current?.reset();
+    });
+  }
+
+  function handleDelete(id: string, path: string) {
+    setDeleteError(null);
+    startTransition(async () => {
+      const res = await deleteAttachmentAction(id, path, revalidateTo);
+      if (res?.error) setDeleteError(res.error);
     });
   }
 
@@ -58,6 +71,7 @@ export function AttachmentsPanel({
         </form>
       )}
       {error && <p className="text-xs text-bad">{error}</p>}
+      {deleteError && <p className="text-xs text-bad">{deleteError}</p>}
 
       <ul className="space-y-1.5">
         {attachments.map((a) => (
@@ -70,12 +84,8 @@ export function AttachmentsPanel({
             >
               {openingId === a.id ? "…" : a.label || a.file_path.split("/").pop()}
             </button>
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => startTransition(() => deleteAttachmentAction(a.id, a.file_path, revalidateTo))}
-                className="text-xs text-bad shrink-0"
-              >
+            {canDelete && (
+              <button type="button" onClick={() => handleDelete(a.id, a.file_path)} className="text-xs text-bad shrink-0">
                 Remove
               </button>
             )}

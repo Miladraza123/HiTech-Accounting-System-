@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { PartyForm } from "@/components/PartyForm";
 import { PartyToggle } from "@/components/PartyToggle";
+import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
+import { deletePartyAction } from "@/app/actions/parties";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 
@@ -71,8 +73,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                     </span>
                   </td>
                   {canManage && (
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right space-x-2">
                       <PartyToggle id={p.id} isActive={p.is_active} />
+                      {isOwner(user) && <DeleteMasterRowButton onDelete={deletePartyAction.bind(null, p.id)} />}
                     </td>
                   )}
                 </tr>
