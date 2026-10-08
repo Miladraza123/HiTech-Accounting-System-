@@ -137,6 +137,38 @@ export async function commitRestoreAction(fileText: string, mode: "merge" | "rep
   return { error: anyFailed ? "Some tables could not be restored — see the report below." : null, outcomes };
 }
 
+// A single select("*") is silently capped by PostgREST's max-rows (1000 on
+// Supabase by default), so the safety snapshot would quietly miss rows of
+// any larger table. Same paging as backup/backup.js's fetchTable(): ordered
+// by the primary key (paging without an order can repeat/skip rows), each
+// page starting where the rows so far end, until an empty page arrives.
+const SNAPSHOT_PAGE_SIZE = 1000;
+const SNAPSHOT_PRIMARY_KEY: Record<string, string[]> = {
+  provinces: ["code"],
+  query_sources: ["code"],
+  units: ["code"],
+  role_permissions: ["permission_key"],
+  unit_conversions: ["from_unit", "to_unit"],
+  user_roles: ["user_id", "role_id"],
+};
+
+async function fetchAllRows(
+  genericFrom: (table: string) => ReturnType<Awaited<ReturnType<typeof createClient>>["from"]>,
+  table: string
+): Promise<{ rows: unknown[]; error: string | null }> {
+  const keyColumns = SNAPSHOT_PRIMARY_KEY[table] ?? ["id"];
+  const rows: unknown[] = [];
+  for (;;) {
+    let query = genericFrom(table).select("*");
+    for (const column of keyColumns) query = query.order(column);
+    const { data, error } = await query.range(rows.length, rows.length + SNAPSHOT_PAGE_SIZE - 1);
+    if (error) return { rows, error: error.message };
+    const page = data ?? [];
+    if (!page.length) return { rows, error: null };
+    rows.push(...page);
+  }
+}
+
 /** Full current-state export, in the exact same "hitech-restore" shape backup.js produces — used as the
  * automatic safety snapshot downloaded client-side right before a restore actually commits. */
 export async function getSafetySnapshotAction(): Promise<ActionResult & { json?: string }> {
@@ -150,12 +182,12 @@ export async function getSafetySnapshotAction(): Promise<ActionResult & { json?:
   const tables: Record<string, unknown[]> = {};
   const missed: string[] = [];
   for (const table of RESTORE_TABLE_ORDER) {
-    const { data, error } = await genericFrom(table).select("*");
+    const { rows, error } = await fetchAllRows(genericFrom, table);
     if (error) {
       tables[table] = [];
       missed.push(table);
     } else {
-      tables[table] = data ?? [];
+      tables[table] = rows;
     }
   }
   const counts: Record<string, number> = {};

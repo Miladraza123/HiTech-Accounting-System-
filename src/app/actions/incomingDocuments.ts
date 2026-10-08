@@ -72,10 +72,31 @@ export async function trustSenderAction(email: string): Promise<ActionResult> {
 // one of them, and extending that function is out of scope for this
 // phase. The admin client sidesteps that for exactly this one path
 // prefix; the page calling this is itself already gated to Owner/Sales.
+// The admin client will sign ANY path it is handed, so `path` (which comes
+// from the browser) must first be proven to be a real incoming-document
+// attachment the caller can see — checked with the caller's own RLS client.
+const INCOMING_PATH_RE = /^incoming\/[0-9a-f-]{36}\/[^/]+$/i;
+
 export async function getIncomingAttachmentUrlAction(path: string): Promise<string | null> {
   if (!(await canReview())) return null;
-  const admin = createAdminClient();
-  const { data, error } = await admin.storage.from("attachments").createSignedUrl(path, 60 * 10);
+  const clean = String(path ?? "");
+  if (!INCOMING_PATH_RE.test(clean) || clean.includes("..")) return null;
+
+  const supabase = await createClient();
+  const { data: row, error: lookupError } = await supabase
+    .from("incoming_document_attachments")
+    .select("id")
+    .eq("storage_path", clean)
+    .maybeSingle();
+  if (lookupError || !row) return null;
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return null;
+  }
+  const { data, error } = await admin.storage.from("attachments").createSignedUrl(clean, 60 * 10);
   if (error) return null;
   return data.signedUrl;
 }

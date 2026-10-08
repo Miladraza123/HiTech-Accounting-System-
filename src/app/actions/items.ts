@@ -99,6 +99,24 @@ export async function updateItemAction(
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const changes = diffFields(base, next);
+
+  // Once stock has moved, every stock_ledger row's qty/avg_cost is in the old
+  // base_unit, and is_stocked decides whether the ledger applies at all —
+  // changing either would silently reinterpret the item's whole history.
+  if ("base_unit" in changes || "is_stocked" in changes) {
+    const { count, error: ledgerError } = await supabase
+      .from("stock_ledger")
+      .select("id", { count: "exact", head: true })
+      .eq("item_id", id);
+    if (ledgerError) return { error: ledgerError.message };
+    if ((count ?? 0) > 0) {
+      return {
+        error:
+          "This item already has stock movements, so its unit and \"stocked\" setting can't be changed. Create a new item instead (and deactivate this one).",
+      };
+    }
+  }
+
   const { result, error } = await smartMergeUpdate(supabase, "items", id, base, changes);
   if (error) return { error: error.message };
   if (result && result.conflicts.length > 0) {
@@ -110,10 +128,14 @@ export async function updateItemAction(
   return { error: null, success: true };
 }
 
-export async function toggleItemActiveAction(id: string, isActive: boolean) {
+export async function toggleItemActiveAction(id: string, isActive: boolean): Promise<ActionResult> {
   const supabase = await createClient();
-  await supabase.from("items").update({ is_active: isActive }).eq("id", id);
+  // `.select("id")` so an RLS-filtered no-op update reports instead of looking like a success.
+  const { data, error } = await supabase.from("items").update({ is_active: isActive }).eq("id", id).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "You don't have permission to perform this action." };
   revalidatePath("/items");
+  return { error: null, success: true };
 }
 
 // Low-stock notifications only fire for an item once someone deliberately

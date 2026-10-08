@@ -69,6 +69,11 @@ type SyncMeta = {
   /** ISO timestamp; a retryable failure isn't attempted again before this. */
   nextRetryAt: string | null;
   dependsOn: DependencyRef[];
+  /** auth user id of whoever queued this write. The IndexedDB queue outlives
+   * a logout, so a write is only ever replayed (or shown / merged into) for
+   * this same user. Absent on items queued before this field existed — those
+   * are treated as the current user's (see belongsToUser). */
+  userId?: string | null;
 };
 
 export type QueuedEdit = SyncMeta & {
@@ -141,7 +146,7 @@ export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omi
  * the one exception a future dependent-create caller can set explicitly. */
 export type QueuedWriteInput = DistributiveOmit<
   QueuedWrite,
-  "id" | "createdAt" | "status" | "retryCount" | "lastError" | "nextRetryAt" | "dependsOn"
+  "id" | "createdAt" | "status" | "retryCount" | "lastError" | "nextRetryAt" | "dependsOn" | "userId"
 > & { dependsOn?: DependencyRef[] };
 
 export type SyncedConflict = QueuedEdit & { conflicts: SmartMergeConflict[] };
@@ -556,12 +561,43 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
 
 const DEFAULT_SYNC_META: SyncMeta = { status: "pending", retryCount: 0, lastError: null, nextRetryAt: null, dependsOn: [] };
 
+/** The signed-in user's id from the locally stored session (no network
+ * call, so it also works offline), or null when signed out. */
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const { data } = await createClient().auth.getSession();
+    return data.session?.user.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether `write` may be replayed / shown for `userId`. A write without a
+ * userId predates per-user tagging and is adopted by whoever is signed in. */
+export function belongsToUser(write: Pick<SyncMeta, "userId">, userId: string | null): boolean {
+  if (!userId) return false;
+  return !write.userId || write.userId === userId;
+}
+
+/** Queued writes split into the signed-in user's own and everyone else's. */
+export async function countQueuedWrites(): Promise<{ mine: number; otherUsers: number }> {
+  const [all, userId] = await Promise.all([listQueuedWrites(), getCurrentUserId()]);
+  const mine = all.filter((w) => belongsToUser(w, userId)).length;
+  return { mine, otherUsers: all.length - mine };
+}
+
+/** The signed-in user's queued writes only. */
+async function listMyQueuedWrites(): Promise<QueuedWrite[]> {
+  const [all, userId] = await Promise.all([listQueuedWrites(), getCurrentUserId()]);
+  return all.filter((w) => belongsToUser(w, userId));
+}
+
 /** Finds an existing PENDING (not yet synced) queued edit for the same
  * row, if any. Used so a second offline edit to the same record merges
  * into the first instead of creating a confusing second queue entry with
  * a stale `base` — see enqueueWrite's own comment. */
 export async function findPendingEdit(table: QueuedEdit["table"], rowId: string): Promise<QueuedEdit | null> {
-  const all = await listQueuedWrites();
+  const all = await listMyQueuedWrites();
   const match = all.find((w): w is QueuedEdit => w.kind === "edit" && w.table === table && w.rowId === rowId);
   return match ?? null;
 }
@@ -645,7 +681,7 @@ export async function getCachedMasterData<T = Record<string, unknown>>(table: Ca
 export type PendingCreateOption = { id: string; queuedId: string; label: string; payload: Record<string, unknown> };
 
 export async function getPendingCreateOptions(table: QueuedCreate["table"]): Promise<PendingCreateOption[]> {
-  const all = await listQueuedWrites();
+  const all = await listMyQueuedWrites();
   return all
     .filter((w): w is QueuedCreate => w.kind === "create" && w.table === table)
     .map((w) => ({ id: w.recordId, queuedId: w.id, label: w.label, payload: w.payload }));
@@ -668,11 +704,15 @@ export async function getPendingCreateOptions(table: QueuedCreate["table"]): Pro
  * the pending-sync UI would confusingly show two entries for one record.
  */
 export async function enqueueWrite(entry: QueuedWriteInput): Promise<QueuedWrite> {
+  const userId = await getCurrentUserId();
   if (entry.kind === "edit") {
+    // findPendingEdit only sees this user's own writes, so an edit never
+    // merges into another user's queued change.
     const existing = await findPendingEdit(entry.table, entry.rowId);
     if (existing) {
       const merged: QueuedEdit = {
         ...existing,
+        userId,
         changes: { ...existing.changes, ...entry.changes },
         // A merge is still a fresh "please retry from scratch" — clear
         // any prior failure state rather than leaving a stale backoff
@@ -690,6 +730,7 @@ export async function enqueueWrite(entry: QueuedWriteInput): Promise<QueuedWrite
     createdAt: new Date().toISOString(),
     ...DEFAULT_SYNC_META,
     dependsOn: entry.dependsOn ?? [],
+    userId,
   } as QueuedWrite;
   await withStore("readwrite", (store) => store.put(write));
   return write;
@@ -831,13 +872,25 @@ async function runWithSyncLock<T>(fn: () => Promise<T>): Promise<T | null> {
  * confirmed via a real test: a create and a dependent edit queued with the
  * edit landing first in getAll() order both sync in one flushQueue() call.
  */
-export async function flushQueue(): Promise<{ synced: QueuedWrite[]; conflicts: SyncedConflict[]; failed: QueuedWrite[] }> {
+export async function flushQueue(): Promise<{
+  synced: QueuedWrite[];
+  conflicts: SyncedConflict[];
+  failed: QueuedWrite[];
+  /** Writes queued by a different user on this device — left untouched until they sign in. */
+  otherUsersWaiting: number;
+}> {
   const outcome = await runWithSyncLock(async () => {
-    const queued = await listQueuedWrites();
+    // Only the signed-in user's own writes are replayed: the queue survives
+    // logout, and replaying user A's writes under user B's session would
+    // post them as B (or with B's permissions).
+    const all = await listQueuedWrites();
+    const userId = await getCurrentUserId();
+    const queued = all.filter((w) => belongsToUser(w, userId));
+    const otherUsersWaiting = all.length - queued.length;
     const synced: QueuedWrite[] = [];
     const conflicts: SyncedConflict[] = [];
     const failed: QueuedWrite[] = [];
-    if (queued.length === 0) return { synced, conflicts, failed };
+    if (queued.length === 0) return { synced, conflicts, failed, otherUsersWaiting };
 
     const supabase = createClient();
     const stillQueuedIds = new Set(queued.map((w) => w.id));
@@ -948,8 +1001,8 @@ export async function flushQueue(): Promise<{ synced: QueuedWrite[]; conflicts: 
       await updateQueuedWrite(write, { status: "blocked" });
     }
 
-    return { synced, conflicts, failed };
+    return { synced, conflicts, failed, otherUsersWaiting };
   });
 
-  return outcome ?? { synced: [], conflicts: [], failed: [] };
+  return outcome ?? { synced: [], conflicts: [], failed: [], otherUsersWaiting: 0 };
 }

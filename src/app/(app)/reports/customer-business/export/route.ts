@@ -12,7 +12,9 @@ export async function GET() {
   // Shares fn_customer_business with the screen, so the export cannot drift
   // from what the report shows and neither pulls the order/invoice tables in
   // full — see the page for the full reasoning.
-  const { data: business } = await supabase.rpc("fn_customer_business");
+  const { data: business, error } = await supabase.rpc("fn_customer_business");
+  // A failed query must not download as an empty-but-valid spreadsheet.
+  if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });
 
   const rows = (business ?? []).map((r) => ({
     client: r.name,

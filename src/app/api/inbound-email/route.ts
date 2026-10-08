@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual, createHmac } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { parseAgentFields } from "@/lib/incomingAgent";
+import { extractEmailAddress, parseAgentFields } from "@/lib/incomingAgent";
 
 /**
  * Inbound email intake (Phase 43, switched to Mailgun in Phase 43b). Mailgun
@@ -22,11 +22,21 @@ import { parseAgentFields } from "@/lib/incomingAgent";
  * MAILGUN_WEBHOOK_SIGNING_KEY is configured — Mailgun's own HMAC-SHA256
  * signature (timestamp+token, keyed by the signing key, timing-safe
  * compared), which is optional but recommended since it also rules out a
- * stale/replayed delivery.
+ * stale/replayed delivery. When the key is set, the signature fields are
+ * required and the timestamp must be within the last 5 minutes.
  */
-function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
-  const signingKey = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
-  if (!signingKey) return true; // Not configured — the ?token= secret is the only gate, same as any other provider.
+const SIGNATURE_MAX_AGE_SECONDS = 5 * 60;
+const SIGNATURE_MAX_FUTURE_SECONDS = 60;
+const MAX_ATTACHMENTS = 10;
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+
+function verifyMailgunSignature(signingKey: string, timestamp: string, token: string, signature: string): boolean {
+  // Mailgun's timestamp is Unix seconds; anything outside the window is a
+  // stale or replayed delivery even if the HMAC itself is genuine.
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return false;
+  const now = Date.now() / 1000;
+  if (ts < now - SIGNATURE_MAX_AGE_SECONDS || ts > now + SIGNATURE_MAX_FUTURE_SECONDS) return false;
   const expected = createHmac("sha256", signingKey).update(timestamp + token).digest("hex");
   const expectedBuf = Buffer.from(expected, "hex");
   const givenBuf = Buffer.from(signature, "hex");
@@ -34,10 +44,18 @@ function verifyMailgunSignature(timestamp: string, token: string, signature: str
   return timingSafeEqual(expectedBuf, givenBuf);
 }
 
+/** Constant-time string compare that never throws on a length mismatch. */
+function safeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  if (aBuf.length !== bBuf.length) return false;
+  return timingSafeEqual(aBuf, bBuf);
+}
+
 export async function POST(request: NextRequest) {
   const secret = process.env.INBOUND_EMAIL_WEBHOOK_SECRET;
   const token = request.nextUrl.searchParams.get("token");
-  if (!secret || token !== secret) {
+  if (!secret || !token || !safeEqual(token, secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,11 +66,16 @@ export async function POST(request: NextRequest) {
 
   const form = await request.formData();
 
-  const mgTimestamp = String(form.get("timestamp") ?? "");
-  const mgToken = String(form.get("token") ?? "");
-  const mgSignature = String(form.get("signature") ?? "");
-  if (mgTimestamp && mgToken && mgSignature && !verifyMailgunSignature(mgTimestamp, mgToken, mgSignature)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  // Once a signing key is configured the signature is mandatory — a POST
+  // that simply leaves the three fields out must not skip the check.
+  const signingKey = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
+  if (signingKey) {
+    const mgTimestamp = String(form.get("timestamp") ?? "");
+    const mgToken = String(form.get("token") ?? "");
+    const mgSignature = String(form.get("signature") ?? "");
+    if (!mgTimestamp || !mgToken || !mgSignature || !verifyMailgunSignature(signingKey, mgTimestamp, mgToken, mgSignature)) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
   }
 
   const fromAddress = String(form.get("sender") ?? form.get("from") ?? "") || null;
@@ -74,11 +97,15 @@ export async function POST(request: NextRequest) {
   }
 
   // Nothing is ever dropped: unknown senders are accepted too, just flagged.
+  // Trust is decided from Mailgun's own `sender`/`from` field, never from the
+  // agent-supplied `agent_sender_email` — that one is free text the agent (or
+  // anyone holding the webhook token) could set to a trusted address.
+  const envelopeEmail = extractEmailAddress(form.get("sender")) ?? extractEmailAddress(form.get("from"));
   let senderTrust: "trusted" | "untrusted" | "unknown" = "unknown";
   if (agent) {
     senderTrust = "untrusted";
-    if (agent.senderEmail) {
-      const { data: trusted } = await admin.from("trusted_senders").select("email").eq("email", agent.senderEmail).maybeSingle();
+    if (envelopeEmail) {
+      const { data: trusted } = await admin.from("trusted_senders").select("email").eq("email", envelopeEmail).maybeSingle();
       if (trusted) senderTrust = "trusted";
     }
   }
@@ -94,7 +121,7 @@ export async function POST(request: NextRequest) {
         ? {
             agent_message_id: agent.messageId,
             sender_name: agent.senderName,
-            sender_email: agent.senderEmail,
+            sender_email: envelopeEmail ?? agent.senderEmail,
             doc_type: agent.docType,
             ai_data: agent.data as unknown as Json | null,
             ai_needs_review: agent.needsReview,
@@ -113,10 +140,14 @@ export async function POST(request: NextRequest) {
 
   if (error || !doc) return NextResponse.json({ error: error?.message ?? "Failed to record document" }, { status: 500 });
 
-  const attachmentCount = Number(form.get("attachment-count") ?? 0);
+  // Capped so one oversized delivery can't fill the storage bucket; anything
+  // beyond the cap is skipped (the email itself is still recorded).
+  const rawCount = Number(form.get("attachment-count") ?? 0);
+  const attachmentCount = Number.isFinite(rawCount) ? Math.min(Math.max(0, Math.floor(rawCount)), MAX_ATTACHMENTS) : 0;
   for (let i = 1; i <= attachmentCount; i++) {
     const file = form.get(`attachment-${i}`);
     if (!(file instanceof File)) continue;
+    if (file.size > MAX_ATTACHMENT_BYTES) continue;
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `incoming/${doc.id}/${Date.now()}-${safeName}`;

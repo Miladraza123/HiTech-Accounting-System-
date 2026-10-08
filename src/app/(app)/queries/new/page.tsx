@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { QueryForm } from "@/components/QueryForm";
+import { requirementFromAgentData } from "@/lib/incomingAgent";
 
 export default async function NewQueryPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
   const user = await getCurrentUser();
@@ -48,10 +49,14 @@ export default async function NewQueryPage({ searchParams }: { searchParams: Pro
           sources={sources ?? []}
           // The email body carries the actual ask (item list, quantities,
           // etc.) — the subject is often just a generic label ("RFQ",
-          // "Query"). Requirement defaults to the body, falling back to
-          // the subject only when the body is empty, so the field a sales
-          // user actually reads isn't blank or a one-word placeholder.
-          initialRequirement={(incomingDocument?.body_text?.trim() || incomingDocument?.subject) ?? undefined}
+          // "Query"). When the Email Agent already read the items out of the
+          // email/attachment, Requirement is just that clean item list;
+          // otherwise it defaults to the body, falling back to the subject only
+          // when the body is empty, so the field a sales user actually reads
+          // isn't blank or a one-word placeholder.
+          initialRequirement={
+            (requirementFromAgentData(incomingDocument?.ai_data) || incomingDocument?.body_text?.trim() || incomingDocument?.subject) ?? undefined
+          }
           initialNotes={
             incomingDocument
               ? `From email: ${incomingDocument.from_address ?? ""}${incomingDocument.subject ? `\nSubject: ${incomingDocument.subject}` : ""}`.trim()

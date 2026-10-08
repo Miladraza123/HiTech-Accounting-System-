@@ -21,13 +21,15 @@ export async function GET(request: Request) {
   const toDate = searchParams.get("to") || defaults.to;
 
   const supabase = await createClient();
-  const { data: payments } = await supabase
+  const { data: payments, error } = await supabase
     .from("payments")
     .select("*, parties(legal_name)")
     .gte("payment_date", fromDate)
     .lte("payment_date", toDate)
     .eq("status", "Posted")
     .order("payment_date", { ascending: false });
+  // A failed query must not download as an empty-but-valid spreadsheet.
+  if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });
 
   const rows = (payments ?? []).map((p) => ({
     payment_no: p.payment_no,

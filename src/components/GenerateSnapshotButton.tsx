@@ -3,10 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { generateDailySnapshotAction } from "@/app/actions/snapshots";
+import { karachiToday } from "@/lib/karachiTime";
 
 export function GenerateSnapshotButton() {
   const router = useRouter();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(karachiToday());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { karachiDateKey, karachiDateLabel, karachiTimeLabel } from "./karachiTime";
+import { karachiDateKey, karachiDateLabel, karachiTimeLabel, karachiToday } from "./karachiTime";
 
 describe("Karachi time formatting", () => {
   it("converts UTC to Pakistan Standard Time (UTC+5)", () => {
@@ -30,5 +30,18 @@ describe("Karachi time formatting", () => {
     // should convert with the exact same +5:00 offset as a July one.
     expect(karachiTimeLabel("2026-01-15T00:00:00+00:00")).toBe("05:00:00");
     expect(karachiTimeLabel("2026-07-15T00:00:00+00:00")).toBe("05:00:00");
+  });
+});
+
+describe("karachiToday", () => {
+  it("is already the next day in Karachi before 05:00 PKT", () => {
+    // 2026-10-05 20:15 UTC = 2026-10-06 01:15 PKT.
+    expect(karachiToday(new Date("2026-10-05T20:15:00Z"))).toBe("2026-10-06");
+  });
+
+  it("matches the UTC day later in the Karachi day", () => {
+    expect(karachiToday(new Date("2026-10-06T10:00:00Z"))).toBe("2026-10-06");
+    // 18:59 UTC is 23:59 PKT — still the same day.
+    expect(karachiToday(new Date("2026-10-06T18:59:00Z"))).toBe("2026-10-06");
   });
 });

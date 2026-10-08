@@ -170,12 +170,15 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
             </div>
           )}
 
-          {(canRequestGoAhead || goAheadRows.length > 0) && dc.status === "Issued" && (
+          {/* History is shown for any DC status (incl. the "Cancelled" go-aheads of a cancelled DC);
+              sending / accepting / completing only while the DC is Issued. */}
+          {((canRequestGoAhead && dc.status === "Issued") || goAheadRows.length > 0) && (
             <DispatchGoAheadPanel
               deliveryChallanId={id}
               goAheads={goAheadRows}
               currentUserId={user?.id ?? ""}
-              canRequest={canRequestGoAhead}
+              canRequest={canRequestGoAhead && dc.status === "Issued"}
+              canAct={dc.status === "Issued"}
               dispatchUsers={dispatchUsers ?? []}
             />
           )}

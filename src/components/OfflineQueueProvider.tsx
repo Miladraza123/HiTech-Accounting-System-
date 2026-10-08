@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 import {
   enqueueWrite,
+  countQueuedWrites,
   flushQueue,
-  listQueuedWrites,
   refreshMasterDataCache,
   type QueuedWriteInput,
   type SyncedConflict,
@@ -217,6 +217,9 @@ export function OfflineQueueProvider({
   const [isOnline, setIsOnline] = useState(true);
   const [offlineReason, setOfflineReason] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  // Writes another user queued on this device (the queue outlives logout) —
+  // never synced under this session, just announced.
+  const [otherUsersPending, setOtherUsersPending] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncedConflicts, setSyncedConflicts] = useState<SyncedConflict[]>([]);
   // Surfaces the service worker's own WARM_CACHE_RESULT ack (see sw.js and
@@ -343,8 +346,9 @@ export function OfflineQueueProvider({
   }, []);
 
   const refreshPendingCount = useCallback(async () => {
-    const items = await listQueuedWrites();
-    setPendingCount(items.length);
+    const { mine, otherUsers } = await countQueuedWrites();
+    setPendingCount(mine);
+    setOtherUsersPending(otherUsers);
   }, []);
 
   const runFlush = useCallback(async () => {
@@ -538,6 +542,12 @@ export function OfflineQueueProvider({
         warmCacheStatus={warmCacheStatus}
         lastNavDebug={lastNavDebug}
       />
+      {otherUsersPending > 0 && (
+        <div className="fixed inset-x-0 bottom-16 z-40 mx-auto w-full max-w-sm rounded-lg border border-line-strong bg-surface px-4 py-2 text-xs text-ink-soft shadow-md">
+          {otherUsersPending} change{otherUsersPending > 1 ? "s" : ""} from another user {otherUsersPending > 1 ? "are" : "is"} waiting — they
+          will sync when that user signs in.
+        </div>
+      )}
       {syncMessage && <SyncToast message={syncMessage} onDismiss={() => setSyncMessage(null)} />}
       {syncedConflicts.map((conflict) => (
         <SyncConflictBanner

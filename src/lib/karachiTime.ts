@@ -45,3 +45,12 @@ export function karachiTimeLabel(iso: string): string {
     hour12: false,
   });
 }
+
+/**
+ * Today's date as "YYYY-MM-DD" in Karachi's calendar — the default for date
+ * inputs. `new Date().toISOString().slice(0, 10)` is the UTC day, which is
+ * still "yesterday" in Pakistan between 00:00 and 05:00 PKT.
+ */
+export function karachiToday(now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone: KARACHI_TZ });
+}

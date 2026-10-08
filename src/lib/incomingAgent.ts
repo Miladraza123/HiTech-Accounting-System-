@@ -51,6 +51,19 @@ export function isValidEmail(value: string): boolean {
   return value.length <= 320 && EMAIL_RE.test(value);
 }
 
+/**
+ * Pulls a bare, lower-cased address out of a mail header value such as
+ * `"ACME <PO@acme.com>"` or `po@acme.com`. Returns null if there is none.
+ */
+export function extractEmailAddress(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const angle = trimmed.match(/<([^<>]+)>\s*$/);
+  const candidate = (angle ? angle[1] : trimmed).trim().toLowerCase();
+  return isValidEmail(candidate) ? candidate : null;
+}
+
 function str(v: unknown, max: number): string | undefined {
   if (typeof v !== "string") return undefined;
   const t = v.trim();
@@ -147,4 +160,22 @@ export function parseAgentFields(form: FormData): AgentFields | null {
   const senderEmail = email && isValidEmail(email) ? email : null;
 
   return { messageId, docType, data, needsReview, senderName, senderEmail };
+}
+
+/**
+ * Plain-text list of the requested items, used to pre-fill a Query's "Requirement"
+ * from an Email Agent document — just the item lines, no party/date/count/prices,
+ * e.g. "1. MS Plate 25mm - 1 pc". Returns null when there are no usable items so the
+ * caller can fall back to the email body.
+ */
+export function requirementFromAgentData(raw: unknown): string | null {
+  const items = sanitizeAgentData(raw)?.items ?? [];
+  const lines = items
+    .filter((it) => it.description)
+    .map((it) => {
+      const qty = it.quantity !== undefined ? `${it.quantity}${it.unit ? ` ${it.unit}` : ""}` : "";
+      return qty ? `${it.description} - ${qty}` : (it.description as string);
+    });
+  if (!lines.length) return null;
+  return lines.length === 1 ? lines[0] : lines.map((l, i) => `${i + 1}. ${l}`).join("\n");
 }

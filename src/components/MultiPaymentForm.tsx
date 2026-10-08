@@ -8,6 +8,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { Plus, Trash2 } from "lucide-react";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { SearchablePicker, PARTY_SOURCE, type PickerFilter, type PickerOption } from "@/components/SearchablePicker";
+import { karachiToday } from "@/lib/karachiTime";
 
 type Row = {
   key: string;
@@ -29,7 +30,7 @@ function newRow(direction: "receipt" | "payment", key: string = crypto.randomUUI
     direction,
     partyId: "",
     amount: "",
-    paymentDate: new Date().toISOString().slice(0, 10),
+    paymentDate: karachiToday(),
     source: "cash",
     method: "",
     referenceNo: "",

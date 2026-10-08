@@ -37,10 +37,23 @@ export function decodeDimension(dimension: string): { party_id?: string; bank_ac
   return {};
 }
 
-type DimensionKind = "" | "party" | "bank" | "petty_cash";
+export type DimensionKind = "" | "party" | "bank" | "petty_cash";
 
 function dimensionKind(dimension: string): DimensionKind {
   return (dimension.split(":")[0] as DimensionKind) || "";
+}
+
+// Chart-of-accounts codes that carry the bank / petty-cash dimension — the
+// same codes every posting function tags (fn_create_payment, fn_create_expense,
+// fn_create_contra_entry) and that _fn_post_journal_entry_core enforces.
+export const BANK_ACCOUNT_CODE = "1100";
+export const PETTY_CASH_ACCOUNT_CODE = "1060";
+
+/** Whether a dimension kind may be used on a line posted to `accountCode`. */
+export function dimensionAllowed(kind: DimensionKind, accountCode: string): boolean {
+  if (kind === "bank") return accountCode === BANK_ACCOUNT_CODE;
+  if (kind === "petty_cash") return accountCode === PETTY_CASH_ACCOUNT_CODE;
+  return true;
 }
 
 export function JournalVoucherLineEditor({
@@ -89,12 +102,15 @@ export function JournalVoucherLineEditor({
   return (
     <div className="rounded-xl border border-line bg-surface overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        {/* min-width keeps the columns usable on a phone; the wrapper scrolls sideways.
+            14rem + 14rem + 12rem (Memo) + 7rem + 7rem + 2rem = 56rem, so no column (Memo
+            used to collapse to ~37px) gets squeezed below its minimum. */}
+        <table className="w-full min-w-[920px] text-sm">
           <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
             <tr>
-              <th className="text-left px-3 py-2 w-56">Account</th>
-              <th className="text-left px-3 py-2 w-56">Party / Bank / Petty Cash</th>
-              <th className="text-left px-3 py-2">Memo</th>
+              <th className="text-left px-3 py-2 w-56 min-w-[14rem]">Account</th>
+              <th className="text-left px-3 py-2 w-56 min-w-[14rem]">Party / Bank / Petty Cash</th>
+              <th className="text-left px-3 py-2 min-w-[12rem]">Memo</th>
               <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Debit</th>
               <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Credit</th>
               <th className="w-8" />
@@ -104,7 +120,17 @@ export function JournalVoucherLineEditor({
             {lines.map((l) => (
               <tr key={l.key} className="border-t border-line">
                 <td className="px-2 py-1.5">
-                  <select value={l.account_code} onChange={(e) => update(l.key, { account_code: e.target.value })} className="input !py-1 text-xs">
+                  <select
+                    value={l.account_code}
+                    onChange={(e) =>
+                      update(l.key, {
+                        account_code: e.target.value,
+                        // A bank / petty-cash tag only belongs on its own control account.
+                        dimension: dimensionAllowed(dimensionKind(l.dimension), e.target.value) ? l.dimension : "",
+                      })
+                    }
+                    className="input !py-1 text-xs"
+                  >
                     <option value="">— Select account —</option>
                     {accounts.map((a) => (
                       <option key={a.code} value={a.code}>
@@ -127,8 +153,8 @@ export function JournalVoucherLineEditor({
                   >
                     <option value="">—</option>
                     <option value="party">Party (AR/AP)</option>
-                    <option value="bank">Bank Account</option>
-                    <option value="petty_cash">Petty Cash Fund</option>
+                    {l.account_code === BANK_ACCOUNT_CODE && <option value="bank">Bank Account</option>}
+                    {l.account_code === PETTY_CASH_ACCOUNT_CODE && <option value="petty_cash">Petty Cash Fund</option>}
                   </select>
 
                   {dimensionKind(l.dimension) === "party" && (

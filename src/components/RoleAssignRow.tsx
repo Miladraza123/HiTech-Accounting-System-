@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { assignRoleAction, revokeRoleAction } from "@/app/actions/setup";
 import { ROLE_LABELS } from "@/lib/roles";
 
@@ -14,6 +14,7 @@ export function RoleAssignRow({
   allRoles: { id: string; code: string }[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const available = allRoles.filter((r) => !assignedRoleIds.includes(r.id));
 
   return (
@@ -25,8 +26,10 @@ export function RoleAssignRow({
           onChange={(e) => {
             const roleId = e.target.value;
             if (!roleId) return;
+            setError(null);
             startTransition(async () => {
-              await assignRoleAction(userId, roleId);
+              const res = await assignRoleAction(userId, roleId);
+              if (res.error) setError(res.error);
             });
             e.target.value = "";
           }}
@@ -40,6 +43,7 @@ export function RoleAssignRow({
           ))}
         </select>
       )}
+      {error && <span className="text-xs text-bad">{error}</span>}
     </div>
   );
 }
@@ -54,15 +58,25 @@ export function RevokeRoleChip({
   label: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => startTransition(() => revokeRoleAction(userId, roleId))}
-      title="Click to remove"
-      className="inline-flex items-center gap-1 rounded-full bg-ledger-soft px-2 py-0.5 text-xs text-ledger disabled:opacity-50"
-    >
-      {label} <span aria-hidden>×</span>
-    </button>
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null);
+          startTransition(async () => {
+            const res = await revokeRoleAction(userId, roleId);
+            if (res.error) setError(res.error);
+          });
+        }}
+        title="Click to remove"
+        className="inline-flex items-center gap-1 rounded-full bg-ledger-soft px-2 py-0.5 text-xs text-ledger disabled:opacity-50"
+      >
+        {label} <span aria-hidden>×</span>
+      </button>
+      {error && <span className="text-xs text-bad">{error}</span>}
+    </span>
   );
 }

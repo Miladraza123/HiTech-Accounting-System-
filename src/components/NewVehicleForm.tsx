@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createVehicleAction } from "@/app/actions/vehicles";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 // Phase 11 (Master Offline-First Roadmap, addendum): Vehicle previously
 // had no offline path at all (only Party/Item/Warehouse did, since
@@ -19,7 +20,7 @@ export function NewVehicleForm({ profiles }: { profiles: Tables<"profiles">[] })
   const [vehicleType, setVehicleType] = useState("");
   const [makeModel, setMakeModel] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
-  const [assignmentDate, setAssignmentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [assignmentDate, setAssignmentDate] = useState(karachiToday());
   const [openingMeter, setOpeningMeter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

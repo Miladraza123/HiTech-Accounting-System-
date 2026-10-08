@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { createHmac } from "crypto";
 
 // A tiny in-memory stand-in for the Supabase admin client — just enough of the
 // query-builder surface that the webhook route uses.
@@ -126,8 +127,40 @@ describe("POST /api/inbound-email", () => {
 
   it("marks a previously trusted sender as trusted", async () => {
     state.trusted = ["po@acme.com"];
-    await POST(post({ sender: "x", agent_message_id: "m2", agent_sender_email: "po@acme.com" }));
+    await POST(post({ sender: "ACME <PO@acme.com>", agent_message_id: "m2", agent_sender_email: "po@acme.com" }));
     expect(state.inserts[0].sender_trust).toBe("trusted");
+  });
+
+  it("does not trust a sender just because the agent claims a trusted address", async () => {
+    state.trusted = ["po@acme.com"];
+    await POST(post({ sender: "attacker@evil.com", agent_message_id: "m2b", agent_sender_email: "po@acme.com" }));
+    expect(state.inserts[0].sender_trust).toBe("untrusted");
+    expect(state.inserts[0].sender_email).toBe("attacker@evil.com");
+  });
+
+  it("requires a fresh Mailgun signature once a signing key is configured", async () => {
+    process.env.MAILGUN_WEBHOOK_SIGNING_KEY = "mg-key";
+    const missing = await POST(post({ sender: "a@b.com" }));
+    expect(missing.status).toBe(401);
+
+    const sign = (timestamp: string, token: string) => createHmac("sha256", "mg-key").update(timestamp + token).digest("hex");
+    const stale = String(Math.floor(Date.now() / 1000) - 10 * 60);
+    const staleRes = await POST(post({ sender: "a@b.com", timestamp: stale, token: "t1", signature: sign(stale, "t1") }));
+    expect(staleRes.status).toBe(401);
+
+    const now = String(Math.floor(Date.now() / 1000));
+    const ok = await POST(post({ sender: "a@b.com", timestamp: now, token: "t2", signature: sign(now, "t2") }));
+    expect(ok.status).toBe(200);
+    expect(state.inserts).toHaveLength(1);
+  });
+
+  it("skips oversized attachments and caps the attachment count", async () => {
+    const fields: Record<string, string | File> = { sender: "a@b.com", "attachment-count": "12" };
+    for (let i = 1; i <= 12; i++) fields[`attachment-${i}`] = new File(["d"], `f${i}.pdf`, { type: "application/pdf" });
+    fields["attachment-1"] = new File([new Uint8Array(15 * 1024 * 1024 + 1)], "big.pdf", { type: "application/pdf" });
+    await POST(post(fields));
+    expect(state.attachments).toHaveLength(9);
+    expect(state.attachments.map((a) => a.file_name)).not.toContain("big.pdf");
   });
 
   it("is idempotent: a repeated agent_message_id returns the existing row", async () => {

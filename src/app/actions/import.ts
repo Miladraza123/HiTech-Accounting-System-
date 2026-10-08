@@ -139,6 +139,56 @@ type OpeningStockRow = {
   notes?: string;
 };
 
+const LOOKUP_CHUNK = 200;
+
+function chunk<T>(list: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Returns "item_code|warehouse_code" for every pair in `rows` that already
+ * has an 'OpeningStock' stock_ledger entry (the txn_type
+ * fn_import_opening_stock posts via _fn_post_stock_ledger).
+ */
+async function findExistingOpeningStock(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: OpeningStockRow[]
+): Promise<{ keys: Set<string>; error: string | null }> {
+  const keys = new Set<string>();
+  const itemCodes = [...new Set(rows.map((r) => r.item_code?.trim()).filter((c): c is string => !!c))];
+  const warehouseCodes = [...new Set(rows.map((r) => r.warehouse_code?.trim()).filter((c): c is string => !!c))];
+  if (!itemCodes.length || !warehouseCodes.length) return { keys, error: null };
+
+  const itemCodeById = new Map<string, string>();
+  for (const part of chunk(itemCodes, LOOKUP_CHUNK)) {
+    const { data, error } = await supabase.from("items").select("id, item_code").in("item_code", part);
+    if (error) return { keys, error: error.message };
+    for (const it of data ?? []) itemCodeById.set(it.id, it.item_code);
+  }
+  const { data: warehouses, error: whError } = await supabase.from("warehouses").select("id, code").in("code", warehouseCodes);
+  if (whError) return { keys, error: whError.message };
+  const warehouseCodeById = new Map((warehouses ?? []).map((w) => [w.id, w.code] as const));
+  if (!itemCodeById.size || !warehouseCodeById.size) return { keys, error: null };
+
+  for (const part of chunk([...itemCodeById.keys()], LOOKUP_CHUNK)) {
+    const { data, error } = await supabase
+      .from("stock_ledger")
+      .select("item_id, warehouse_id")
+      .eq("txn_type", "OpeningStock")
+      .in("item_id", part)
+      .in("warehouse_id", [...warehouseCodeById.keys()]);
+    if (error) return { keys, error: error.message };
+    for (const l of data ?? []) {
+      const itemCode = itemCodeById.get(l.item_id);
+      const whCode = warehouseCodeById.get(l.warehouse_id);
+      if (itemCode && whCode) keys.add(`${itemCode}|${whCode}`);
+    }
+  }
+  return { keys, error: null };
+}
+
 export async function commitOpeningStockImportAction(rows: OpeningStockRow[]): Promise<ImportResult> {
   const supabase = await createClient();
   const {
@@ -158,10 +208,30 @@ export async function commitOpeningStockImportAction(rows: OpeningStockRow[]): P
   const rowErrors: { row: number; message: string }[] = [];
   let importedCount = 0;
 
+  // Idempotency: fn_import_opening_stock posts a fresh 'OpeningStock' ledger
+  // row every time it runs, so re-uploading the same file used to double the
+  // stock (and the opening journal). Any item+warehouse that already has an
+  // opening entry — or appears twice in this file — is skipped and reported.
+  const existing = await findExistingOpeningStock(supabase, rows);
+  if (existing.error) {
+    await supabase.from("import_batches").update({ status: "failed", row_count: 0 }).eq("id", batch.id);
+    return { error: existing.error, importedCount: 0, rowErrors: [] };
+  }
+  const seen = existing.keys;
+
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     if (!r.item_code?.trim() || !r.warehouse_code?.trim() || !r.qty || !r.as_of_date) {
       rowErrors.push({ row: i + 1, message: "Item code, warehouse code, qty, and date are required — row skipped." });
+      continue;
+    }
+
+    const key = `${r.item_code.trim()}|${r.warehouse_code.trim()}`;
+    if (seen.has(key)) {
+      rowErrors.push({
+        row: i + 1,
+        message: `Opening stock for item "${r.item_code.trim()}" in warehouse "${r.warehouse_code.trim()}" was already imported — row skipped.`,
+      });
       continue;
     }
 
@@ -180,6 +250,7 @@ export async function commitOpeningStockImportAction(rows: OpeningStockRow[]): P
       rowErrors.push({ row: i + 1, message: error.message });
     } else {
       importedCount++;
+      seen.add(key);
     }
   }
 
@@ -218,7 +289,6 @@ export async function commitOpeningBalancesImportAction(
   }
 
   const isReceivable = entityType === "opening_receivables";
-  const partyType = isReceivable ? "client" : "supplier";
   const rowErrors: { row: number; message: string }[] = [];
   let importedCount = 0;
 
@@ -229,51 +299,17 @@ export async function commitOpeningBalancesImportAction(
       continue;
     }
 
-    // find or create the party
-    let partyId: string | null = null;
-    const { data: existing } = await supabase
-      .from("parties")
-      .select("id")
-      .ilike("legal_name", r.party_name.trim())
-      .limit(1)
-      .maybeSingle();
-
-    if (existing) {
-      partyId = existing.id;
-    } else {
-      const { data: created, error: createErr } = await supabase
-        .from("parties")
-        .insert({ legal_name: r.party_name.trim(), party_type: partyType, created_by: user?.id })
-        .select("id")
-        .single();
-      if (createErr || !created) {
-        // 42501 = blocked by RLS: only Owner/Sales/Store may create parties.
-        const message =
-          createErr?.code === "42501"
-            ? `"${r.party_name.trim()}" is not in Clients & Suppliers yet, and your role can't add it — ask the Owner, Sales or Store to add it first.`
-            : (createErr?.message ?? "Failed to create party.");
-        rowErrors.push({ row: i + 1, message });
-        continue;
-      }
-      partyId = created.id;
-    }
-
-    const lines = isReceivable
-      ? [
-          { account_code: "1200", party_id: partyId, debit: r.amount, credit: 0, memo: "Opening balance" },
-          { account_code: "1900", party_id: null, debit: 0, credit: r.amount, memo: "Opening balance" },
-        ]
-      : [
-          { account_code: "1900", party_id: null, debit: r.amount, credit: 0, memo: "Opening balance" },
-          { account_code: "2100", party_id: partyId, debit: 0, credit: r.amount, memo: "Opening balance" },
-        ];
-
-    const { error: jeError } = await supabase.rpc("fn_post_journal_entry", {
-      p_entry_date: r.as_of_date,
-      p_narration: r.narration || `Opening balance — ${r.party_name.trim()}`,
-      p_source_table: "import_batches",
-      p_source_id: batch.id,
-      p_lines: lines,
+    // One database call per row: exact name match (no ILIKE wildcards),
+    // party-type check, creates the party if allowed, refuses a second
+    // opening balance for the same party, and links the entry to this
+    // batch (phase 47.05).
+    const { error: jeError } = await supabase.rpc("fn_import_opening_balance", {
+      p_kind: isReceivable ? "receivable" : "payable",
+      p_party_name: r.party_name.trim(),
+      p_amount: r.amount,
+      p_as_of_date: r.as_of_date,
+      p_narration: r.narration as string,
+      p_batch_id: batch.id,
     });
 
     if (jeError) {

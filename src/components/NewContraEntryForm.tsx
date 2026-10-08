@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createContraEntryAction, type ContraSourceType } from "@/app/actions/cashBank";
 import type { Tables } from "@/lib/supabase/database.types";
+import { karachiToday } from "@/lib/karachiTime";
 
 function SourcePicker({
   label,
@@ -69,7 +70,7 @@ export function NewContraEntryForm({
   pettyCashFunds: Tables<"petty_cash_funds">[];
 }) {
   const router = useRouter();
-  const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
+  const [transferDate, setTransferDate] = useState(karachiToday());
   const [fromType, setFromType] = useState<ContraSourceType>("cash");
   const [fromBankId, setFromBankId] = useState("");
   const [fromFundId, setFromFundId] = useState("");

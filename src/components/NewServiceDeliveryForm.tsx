@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createServiceDeliveryAction } from "@/app/actions/serviceJobs";
+import { karachiToday } from "@/lib/karachiTime";
 
 export function NewServiceDeliveryForm({ serviceJobId }: { serviceJobId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [deliveryDate, setDeliveryDate] = useState(karachiToday());
   const [vehicleNo, setVehicleNo] = useState("");
   const [driverName, setDriverName] = useState("");
   const [remarks, setRemarks] = useState("");

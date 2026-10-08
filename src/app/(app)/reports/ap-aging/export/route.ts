@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { buildExcelResponse } from "@/lib/excelExport";
+import { asAgingRows } from "@/lib/aging";
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -10,9 +11,11 @@ export async function GET() {
 
   const supabase = await createClient();
   // Shares fn_ap_aging with the AP Aging screen — see the AR export.
-  const { data: aged } = await supabase.rpc("fn_ap_aging");
+  const { data: aged, error } = await supabase.rpc("fn_ap_aging");
+  // A failed query must not download as an empty-but-valid spreadsheet.
+  if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });
 
-  const rows = (aged ?? []).map((r) => ({
+  const rows = asAgingRows(aged).map((r) => ({
     supplier: r.name ?? "—",
     current: r.bucket_current,
     d1_30: r.bucket_1_30,
@@ -20,6 +23,9 @@ export async function GET() {
     d61_90: r.bucket_61_90,
     d90_plus: r.bucket_90_plus,
     total: r.total,
+    opening: r.opening_balance,
+    unapplied: r.unapplied,
+    net: r.net,
   }));
 
   return buildExcelResponse(
@@ -32,6 +38,9 @@ export async function GET() {
       { header: "61-90 Days", key: "d61_90" },
       { header: "90+ Days", key: "d90_plus" },
       { header: "Total", key: "total" },
+      { header: "Opening / Adj.", key: "opening" },
+      { header: "Unapplied", key: "unapplied" },
+      { header: "Net", key: "net" },
     ],
     rows,
     "ap-aging.xlsx"

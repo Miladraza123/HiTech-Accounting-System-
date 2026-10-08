@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSupplierBillAction } from "@/app/actions/supplierBills";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 type GrnOption = { id: string; grn_no: string; received_date: string; parties: { legal_name: string } | null };
 
@@ -15,7 +16,7 @@ type GrnOption = { id: string; grn_no: string; received_date: string; parties: {
 export function NewSupplierBillForm({ grns }: { grns: GrnOption[] }) {
   const router = useRouter();
   const [grnId, setGrnId] = useState("");
-  const [billDate, setBillDate] = useState(new Date().toISOString().slice(0, 10));
+  const [billDate, setBillDate] = useState(karachiToday());
   const [billRef, setBillRef] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

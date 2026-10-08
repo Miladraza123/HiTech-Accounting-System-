@@ -30,3 +30,42 @@ export function dueDateFrom(docDate: string, creditDays: number): string {
 export function bucketTotal(b: Buckets): number {
   return b.current + b.d1_30 + b.d31_60 + b.d61_90 + b.d90_plus;
 }
+
+/**
+ * One row of fn_ar_aging / fn_ap_aging (phase46_02). The bucket columns
+ * cover open invoices / supplier bills only; opening_balance (opening and
+ * manual party journal entries on 1200/2100), unapplied (Posted payments
+ * not yet allocated) and net = total + opening_balance - unapplied make the
+ * report tie to the control account. Declared here until
+ * src/lib/supabase/database.types.ts is regenerated with the new columns.
+ */
+export type AgingReportRow = {
+  party_id: string;
+  name: string | null;
+  bucket_current: number;
+  bucket_1_30: number;
+  bucket_31_60: number;
+  bucket_61_90: number;
+  bucket_90_plus: number;
+  total: number;
+  opening_balance: number;
+  unapplied: number;
+  net: number;
+};
+
+/** Narrow the untyped-extra-columns RPC result to AgingReportRow[]. */
+export function asAgingRows(data: unknown): AgingReportRow[] {
+  return ((data ?? []) as Partial<AgingReportRow>[]).map((r) => ({
+    party_id: r.party_id ?? "",
+    name: r.name ?? null,
+    bucket_current: Number(r.bucket_current ?? 0),
+    bucket_1_30: Number(r.bucket_1_30 ?? 0),
+    bucket_31_60: Number(r.bucket_31_60 ?? 0),
+    bucket_61_90: Number(r.bucket_61_90 ?? 0),
+    bucket_90_plus: Number(r.bucket_90_plus ?? 0),
+    total: Number(r.total ?? 0),
+    opening_balance: Number(r.opening_balance ?? 0),
+    unapplied: Number(r.unapplied ?? 0),
+    net: Number(r.net ?? 0),
+  }));
+}

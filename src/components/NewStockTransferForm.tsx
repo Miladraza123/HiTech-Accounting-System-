@@ -8,6 +8,7 @@ import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { getPendingCreateOptions, type PendingCreateOption } from "@/lib/offlineQueue";
 import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
 import { type LineItem } from "@/components/QuotationLineEditor";
+import { karachiToday } from "@/lib/karachiTime";
 
 type Line = { item_id: string; qty: string };
 
@@ -24,7 +25,7 @@ export function NewStockTransferForm({
   const router = useRouter();
   const [fromWarehouseId, setFromWarehouseId] = useState("");
   const [toWarehouseId, setToWarehouseId] = useState("");
-  const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
+  const [transferDate, setTransferDate] = useState(karachiToday());
   const [remarks, setRemarks] = useState("");
   const [lines, setLines] = useState<Line[]>([{ item_id: "", qty: "" }]);
   const [error, setError] = useState<string | null>(null);

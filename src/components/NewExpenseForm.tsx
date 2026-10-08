@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createExpenseAction } from "@/app/actions/cashBank";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { karachiToday } from "@/lib/karachiTime";
 
 export function NewExpenseForm({
   expenseHeads,
@@ -22,7 +23,7 @@ export function NewExpenseForm({
   vehicles: Tables<"vehicles">[];
 }) {
   const router = useRouter();
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [expenseDate, setExpenseDate] = useState(karachiToday());
   const [expenseHeadId, setExpenseHeadId] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentSource, setPaymentSource] = useState<"cash" | "bank" | "petty_cash">("cash");
@@ -43,7 +44,9 @@ export function NewExpenseForm({
   const [savedOffline, setSavedOffline] = useState(false);
 
   const selectedHead = expenseHeads.find((h) => h.id === expenseHeadId);
-  const isFuel = selectedHead?.code === "FUEL";
+  // The live fuel head is code "FE" named "FUEL" (seeded as code "FUEL"),
+  // so match either code or a name containing "fuel".
+  const isFuel = !!selectedHead && (["FUEL", "FE"].includes(selectedHead.code.toUpperCase()) || /fuel/i.test(selectedHead.name));
 
   function submit() {
     setError(null);

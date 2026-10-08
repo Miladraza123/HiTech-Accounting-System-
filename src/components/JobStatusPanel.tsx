@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateJobProgressAction, markJobReadyForDispatchAction, cancelJobAction } from "@/app/actions/jobs";
+import { JobCancelDispositionDialog, type JobCancelDispositionData } from "@/components/JobCancelDispositionDialog";
 
 const TERMINAL = ["ReadyForDispatch", "Delivered", "Cancelled"];
 
@@ -11,11 +12,18 @@ export function JobStatusPanel({
   status,
   progressPct,
   canManage,
+  disposition = null,
 }: {
   jobId: string;
   status: string;
   progressPct: number;
   canManage: boolean;
+  /**
+   * Owner only, and only for a job that holds issued material or is Ready for
+   * Dispatch — the cancel then has to decide where the job's cost goes
+   * (fn_cancel_job_with_disposition). null = the plain fn_cancel_job flow.
+   */
+  disposition?: JobCancelDispositionData | null;
 }) {
   const router = useRouter();
   const [progress, setProgress] = useState(String(progressPct));
@@ -28,6 +36,7 @@ export function JobStatusPanel({
   if (!canManage) return null;
 
   const terminal = TERMINAL.includes(status);
+  const dispositionCancel = !!disposition && !["Delivered", "Cancelled"].includes(status);
   const canMarkReady = ["FabricationStarted", "InProcess"].includes(status);
 
   function submitProgress() {
@@ -115,7 +124,22 @@ export function JobStatusPanel({
         </button>
       )}
 
+      {dispositionCancel &&
+        disposition &&
+        (cancelOpen ? (
+          <JobCancelDispositionDialog jobId={jobId} data={disposition} onClose={() => setCancelOpen(false)} />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCancelOpen(true)}
+            className="w-full rounded-md border border-bad text-bad bg-bg px-3 py-1.5 text-xs hover:bg-surface-2 transition"
+          >
+            Cancel Job
+          </button>
+        ))}
+
       {!terminal &&
+        !dispositionCancel &&
         (cancelOpen ? (
           <div className="space-y-2 rounded-md border border-bad bg-bad-soft p-3">
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason for cancelling…" className="input resize-none text-xs" />

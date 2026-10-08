@@ -6,6 +6,8 @@ import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { JobMaterialPanel } from "@/components/JobMaterialPanel";
 import { JobStatusPanel } from "@/components/JobStatusPanel";
+import type { JobCancelDispositionData } from "@/components/JobCancelDispositionDialog";
+import { ITEM_PAGE_SIZE } from "@/lib/itemOptions";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
 
@@ -77,6 +79,50 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const materialCost = (costLedger ?? []).filter((c) => c.cost_type === "material").reduce((s, c) => s + c.amount, 0);
   const labourCost = (costLedger ?? []).filter((c) => c.cost_type === "labour").reduce((s, c) => s + c.amount, 0);
   const overheadCost = (costLedger ?? []).filter((c) => c.cost_type === "overhead").reduce((s, c) => s + c.amount, 0);
+
+  // Owner-only cancel with a disposition (convert into a finished item, or
+  // return the materials to stock) — for a job that holds issued material or
+  // is already Ready for Dispatch, where the plain cancel refuses.
+  const issuedLines = (requirements ?? [])
+    .filter((r) => r.issued_qty - r.returned_qty > 0)
+    .map((r) => {
+      const item = r.items as unknown as { item_code: string; description: string; base_unit: string } | null;
+      return {
+        item_code: item?.item_code ?? "—",
+        description: item?.description ?? "",
+        qty: Math.round((r.issued_qty - r.returned_qty) * 1000) / 1000,
+        unit: r.unit ?? item?.base_unit ?? null,
+      };
+    });
+  let disposition: JobCancelDispositionData | null = null;
+  if (
+    isOwner(user) &&
+    canManageJob &&
+    !["Delivered", "Cancelled"].includes(job.status) &&
+    (job.status === "ReadyForDispatch" || issuedLines.length > 0)
+  ) {
+    const [{ data: jobExpenses }, { data: warehouses }, { data: units }, { data: stockedItems }] = await Promise.all([
+      supabase.from("expenses").select("amount").eq("job_id", id).eq("status", "Posted"),
+      supabase.from("warehouses").select("id, name").eq("is_active", true).order("name"),
+      supabase.from("units").select("code, name").order("code"),
+      supabase
+        .from("items")
+        .select("id, item_code, description")
+        .eq("is_active", true)
+        .eq("is_stocked", true)
+        .order("item_code")
+        .limit(ITEM_PAGE_SIZE),
+    ]);
+    disposition = {
+      jobWarehouseId: job.warehouse_id,
+      materialCost,
+      jobExpenses: (jobExpenses ?? []).reduce((s, e) => s + e.amount, 0),
+      issuedLines,
+      warehouses: warehouses ?? [],
+      units: units ?? [],
+      itemOptions: (stockedItems ?? []).map((i) => ({ id: i.id, label: i.item_code, hint: i.description })),
+    };
+  }
 
   return (
     <div className="space-y-6">
@@ -204,7 +250,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         <div className="space-y-6">
-          <JobStatusPanel jobId={id} status={job.status} progressPct={job.progress_pct} canManage={canManageJob} />
+          <JobStatusPanel jobId={id} status={job.status} progressPct={job.progress_pct} canManage={canManageJob} disposition={disposition} />
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>

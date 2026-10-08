@@ -8,6 +8,7 @@ const STATUS_STYLE: Record<string, string> = {
   Pending: "bg-warn-soft text-warn",
   Accepted: "bg-ledger-soft text-ledger",
   Completed: "bg-good-soft text-good",
+  Cancelled: "bg-surface-2 text-ink-faint",
 };
 
 export type GoAheadRow = { id: string; given_to: string; given_to_name: string; given_by_name: string; status: string; created_at: string };
@@ -17,12 +18,15 @@ export function DispatchGoAheadPanel({
   goAheads,
   currentUserId,
   canRequest,
+  canAct = true,
   dispatchUsers,
 }: {
   deliveryChallanId: string;
   goAheads: GoAheadRow[];
   currentUserId: string;
   canRequest: boolean;
+  /** false = read-only history (e.g. the DC is no longer Issued): no Accept / Complete buttons. */
+  canAct?: boolean;
   dispatchUsers: { id: string; full_name: string }[];
 }) {
   const router = useRouter();
@@ -70,12 +74,12 @@ export function DispatchGoAheadPanel({
             <span className="text-ink-soft text-xs">{g.given_by_name} → {g.given_to_name}</span>
             <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[g.status] ?? ""}`}>{g.status}</span>
           </div>
-          {g.given_to === currentUserId && g.status === "Pending" && (
+          {canAct && g.given_to === currentUserId && g.status === "Pending" && (
             <button type="button" onClick={() => accept(g.id)} disabled={pending} className="w-full rounded-md bg-accent px-2 py-1.5 text-xs font-medium text-white disabled:opacity-60">
               {pending ? "…" : "Accept"}
             </button>
           )}
-          {g.given_to === currentUserId && g.status === "Accepted" && (
+          {canAct && g.given_to === currentUserId && g.status === "Accepted" && (
             <button type="button" onClick={() => complete(g.id)} disabled={pending} className="w-full rounded-md bg-good px-2 py-1.5 text-xs font-medium text-white disabled:opacity-60">
               {pending ? "…" : "Mark Delivery Complete"}
             </button>
@@ -84,7 +88,7 @@ export function DispatchGoAheadPanel({
       ))}
       {!goAheads.length && <p className="text-xs text-ink-faint">No Go-Ahead sent yet.</p>}
 
-      {canRequest && (
+      {canRequest && canAct && !goAheads.some((g) => g.status === "Pending") && (
         <div className="space-y-2 border-t border-line pt-3">
           <select value={givenTo} onChange={(e) => setGivenTo(e.target.value)} className="input !py-1.5 text-xs">
             <option value="">— Select Dispatch person —</option>
