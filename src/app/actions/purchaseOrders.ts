@@ -76,7 +76,7 @@ export async function closePurchaseOrderAction(purchaseOrderId: string, reason: 
   return { error: error?.message ?? null };
 }
 
-export type GrnLineInput = { po_line_id: string; this_receipt_qty: number };
+export type GrnLineInput = { po_line_id: string; this_receipt_qty: number; item_id?: string };
 
 export async function createGrnAction(input: {
   supplier_id: string;

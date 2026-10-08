@@ -74,6 +74,34 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
   return { error: null, success: true };
 }
 
+// Minimal Item creation for the GRN "Add New Item" inline flow (Phase
+// 46.03) — just enough to receive stock against it. Everything else
+// (category, spec, HS code, costing, opening stock) stays the Items page's
+// own job, editable there afterwards.
+export async function quickCreateItemAction(input: {
+  item_code: string;
+  description: string;
+  base_unit: string;
+}): Promise<{ error: string | null; id?: string }> {
+  const supabase = await createClient();
+
+  const item_code = input.item_code.trim();
+  const description = input.description.trim();
+  if (!item_code || !description || !input.base_unit) {
+    return { error: "Item code, description, and unit are required." };
+  }
+
+  const { data: item, error } = await supabase
+    .from("items")
+    .insert({ item_code, description, base_unit: input.base_unit })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  revalidatePath("/items");
+  return { error: null, id: item.id };
+}
+
 export type ItemEditableFields = {
   item_code: string;
   description: string;

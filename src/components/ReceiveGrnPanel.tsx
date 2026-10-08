@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createGrnAction } from "@/app/actions/purchaseOrders";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+import { GrnItemAssigner } from "@/components/GrnItemAssigner";
 
 export function ReceiveGrnPanel({
   supplierId,
@@ -13,6 +14,8 @@ export function ReceiveGrnPanel({
   defaultWarehouseId,
   warehouses,
   lines,
+  units,
+  items,
 }: {
   supplierId: string;
   purchaseOrderId: string;
@@ -20,6 +23,8 @@ export function ReceiveGrnPanel({
   defaultWarehouseId: string | null;
   warehouses: Tables<"warehouses">[];
   lines: Tables<"purchase_order_lines">[];
+  units: Tables<"units">[];
+  items: Pick<Tables<"items">, "id" | "item_code" | "description">[];
 }) {
   const router = useRouter();
   const pendingLines = lines.filter((l) => l.received_qty < l.ordered_qty);
@@ -28,6 +33,10 @@ export function ReceiveGrnPanel({
   const [warehouseId, setWarehouseId] = useState(defaultWarehouseId ?? "");
   const [remarks, setRemarks] = useState("");
   const [qtys, setQtys] = useState<Record<string, string>>({});
+  // Only for PO lines that arrived here with no item_id at all (see
+  // QuotationLineEditor's "Item (optional)" column) — backfilled onto the
+  // PO line as part of this same GRN submission. See GrnItemAssigner.
+  const [assignedItems, setAssignedItems] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
@@ -66,7 +75,11 @@ export function ReceiveGrnPanel({
   function submit() {
     setError(null);
     const grnLines = pendingLines
-      .map((l) => ({ po_line_id: l.id, this_receipt_qty: Number(qtys[l.id] ?? 0) }))
+      .map((l) => ({
+        po_line_id: l.id,
+        this_receipt_qty: Number(qtys[l.id] ?? 0),
+        item_id: l.item_id ?? assignedItems[l.id] ?? undefined,
+      }))
       .filter((l) => l.this_receipt_qty > 0);
 
     if (!grnLines.length) {
@@ -75,6 +88,10 @@ export function ReceiveGrnPanel({
     }
     if (purchaseType === "stock" && !warehouseId) {
       setError("Select Warehouse.");
+      return;
+    }
+    if (purchaseType === "stock" && grnLines.some((l) => !l.item_id)) {
+      setError("Pick or create an Item for every line you're receiving — stock can't post without one.");
       return;
     }
 
@@ -156,9 +173,27 @@ export function ReceiveGrnPanel({
               </tr>
             </thead>
             <tbody>
-              {pendingLines.map((l) => (
-                <tr key={l.id} className="border-t border-line">
-                  <td className="px-3 py-2 text-ink">{l.description}</td>
+              {pendingLines.map((l) => {
+                const needsItem = purchaseType === "stock" && !l.item_id;
+                const assignedLabel = assignedItems[l.id] && items.find((i) => i.id === assignedItems[l.id])?.item_code;
+                return (
+                <tr key={l.id} className="border-t border-line align-top">
+                  <td className="px-3 py-2 text-ink">
+                    {l.description}
+                    {needsItem && !assignedItems[l.id] && (
+                      <div className="mt-1.5 max-w-xs">
+                        <p className="mb-1 text-[11px] text-warn">No Item linked — pick or add one to receive this line.</p>
+                        <GrnItemAssigner
+                          units={units}
+                          initialOptions={items.map((i) => ({ id: i.id, label: i.item_code, hint: i.description }))}
+                          onAssign={(itemId) => setAssignedItems((a) => ({ ...a, [l.id]: itemId }))}
+                        />
+                      </div>
+                    )}
+                    {needsItem && assignedItems[l.id] && (
+                      <p className="mt-1 text-[11px] text-good">Item: {assignedLabel ?? "selected"}</p>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{l.ordered_qty}</td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{l.received_qty}</td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{(l.ordered_qty - l.received_qty).toFixed(3)}</td>
@@ -174,7 +209,8 @@ export function ReceiveGrnPanel({
                     />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

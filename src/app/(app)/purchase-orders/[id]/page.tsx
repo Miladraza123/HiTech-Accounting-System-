@@ -26,7 +26,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const canEdit = await hasPermission(user, "purchase_order.manage");
 
   const supabase = await createClient();
-  const [{ data: po }, { data: lines }, { data: warehouses }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }, { data: company }] = await Promise.all([
+  const [{ data: po }, { data: lines }, { data: warehouses }, { data: units }, { data: items }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }, { data: company }] = await Promise.all([
     supabase
       .from("purchase_orders")
       .select("*, parties(legal_name, billing_address), sales_orders(so_no)")
@@ -34,6 +34,11 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
       .maybeSingle(),
     supabase.from("purchase_order_lines").select("*").eq("purchase_order_id", id).order("sort_order"),
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
+    supabase.from("units").select("*").order("code"),
+    // Only the first page of items — the rest are found by typing, searched
+    // in the database. See SearchablePicker (used by the GRN "Add New Item"
+    // flow for a line whose Purchase Order line has no item_id yet).
+    supabase.from("items").select("id, item_code, description").eq("is_active", true).order("item_code").limit(20),
     supabase.from("grns").select("*, grn_lines(*)").eq("purchase_order_id", id).order("created_at", { ascending: false }),
     supabase.from("attachments").select("*").eq("owner_table", "purchase_orders").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "purchase_orders").eq("related_id", id).order("created_at", { ascending: false }),
@@ -140,6 +145,8 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
               defaultWarehouseId={po.warehouse_id}
               warehouses={warehouses ?? []}
               lines={lines ?? []}
+              units={units ?? []}
+              items={items ?? []}
             />
           )}
 
