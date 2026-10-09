@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { INCOMING_DOCUMENTS_ENABLED } from "@/lib/features";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { IncomingDocumentRow, type IncomingDocumentData } from "@/components/IncomingDocumentRow";
 import { IncomingDocumentsLive } from "@/components/IncomingDocumentsLive";
@@ -8,6 +9,7 @@ import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pag
 import { PaginationControls } from "@/components/PaginationControls";
 
 export default async function IncomingDocumentsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  if (!INCOMING_DOCUMENTS_ENABLED) redirect("/");
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "sales"))) redirect("/");
 
