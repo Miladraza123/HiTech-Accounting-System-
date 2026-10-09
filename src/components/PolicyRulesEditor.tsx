@@ -32,7 +32,7 @@ const SECTIONS: Section[] = [
   },
   { title: "Short days", keys: ["half_day_below_minutes", "absent_below_minutes"] },
   { title: "Overtime", keys: ["ot_enabled", "ot_min_minutes", "ot_rate_type", "ot_rate"] },
-  { title: "Leaves & pay", keys: ["sandwich_rule", "paid_leaves_per_year", "wager_pay_cycle", "wager_week_start"] },
+  { title: "Leaves & pay", keys: ["sandwich_rule", "paid_leaves_per_month", "wager_pay_cycle", "wager_week_start"] },
 ];
 
 const HINTS: Partial<Record<RuleKey, string>> = {
@@ -42,7 +42,7 @@ const HINTS: Partial<Record<RuleKey, string>> = {
   half_day_below_minutes: "0 = off",
   absent_below_minutes: "0 = off",
   sandwich_rule: "An off day or holiday between two absences is also counted as absent",
-  paid_leaves_per_year: "For permanent staff, in half days",
+  paid_leaves_per_month: "For permanent staff, in half days. Each month has its own allowance; unused leave does not carry over.",
 };
 
 /** Whether a rule matters given the other values (hidden otherwise). */
@@ -165,7 +165,7 @@ function RuleInput({
         </select>
       );
     default: {
-      const step = name === "ot_rate" ? "0.01" : name === "late_deduction_days" ? "0.25" : name === "paid_leaves_per_year" ? "0.5" : "1";
+      const step = name === "ot_rate" ? "0.01" : name === "late_deduction_days" ? "0.25" : name === "paid_leaves_per_month" ? "0.5" : "1";
       const min = name === "late_count_per_deduction" ? 1 : name === "late_deduction_days" || name === "ot_rate" ? step : 0;
       return (
         <div className="flex items-center gap-2">

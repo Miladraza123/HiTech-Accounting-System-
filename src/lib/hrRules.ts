@@ -30,7 +30,7 @@ export type HrRules = {
   sandwich_rule: boolean;
   wager_pay_cycle: WagerPayCycle;
   wager_week_start: number;
-  paid_leaves_per_year: number;
+  paid_leaves_per_month: number;
 };
 
 export type RuleKey = keyof HrRules;
@@ -58,7 +58,7 @@ export const DEFAULT_RULES: HrRules = {
   sandwich_rule: false,
   wager_pay_cycle: "weekly",
   wager_week_start: 1,
-  paid_leaves_per_year: 12,
+  paid_leaves_per_month: 1,
 };
 
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -85,7 +85,7 @@ export const RULE_LABELS: Record<RuleKey, string> = {
   sandwich_rule: "Sandwich rule",
   wager_pay_cycle: "Daily wager pay cycle",
   wager_week_start: "Pay week starts on",
-  paid_leaves_per_year: "Paid leaves per year",
+  paid_leaves_per_month: "Paid leaves per month",
 };
 
 export const LATE_MODE_LABELS: Record<LateMode, string> = {
@@ -212,7 +212,7 @@ export function summarizeRules(r: HrRules): string[] {
   );
   lines.push(`Sandwich rule: ${r.sandwich_rule ? "on" : "off"}`);
   lines.push(`Wagers paid ${PAY_CYCLE_LABELS[r.wager_pay_cycle].toLowerCase()}${r.wager_pay_cycle === "monthly" ? "" : ` (from ${WEEKDAYS[r.wager_week_start]})`}`);
-  lines.push(`Paid leaves: ${r.paid_leaves_per_year} days/year`);
+  lines.push(`Paid leaves: ${r.paid_leaves_per_month} days/month`);
   return lines;
 }
 

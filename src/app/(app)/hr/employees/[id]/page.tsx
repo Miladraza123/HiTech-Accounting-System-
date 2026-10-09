@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canManageHr, canReadHr, loadPolicyGroupOptions } from "@/lib/hrAccess";
 import { EMPLOYEE_TYPE_LABELS, RULE_LABELS, asOverrides, asRules, formatPay, formatRuleValue, summarizeRules, type RuleKey } from "@/lib/hrRules";
 import { karachiToday } from "@/lib/karachiTime";
+import { monthLabel } from "@/lib/hrMonth";
 import { deleteEmployeeTermsAction } from "@/app/actions/hr";
 import { EmployeeForm } from "@/components/EmployeeForm";
 import { EmployeeTermsForm } from "@/components/EmployeeTermsForm";
@@ -30,7 +31,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const asOf = today < emp.join_date ? emp.join_date : emp.leave_date && today > emp.leave_date ? emp.leave_date : today;
   const [{ data: rulesNow }, { data: leaveBal }, { data: advBal }] = await Promise.all([
     supabase.rpc("fn_hr_rules_for", { p_employee_id: id, p_date: asOf }),
-    supabase.rpc("fn_hr_leave_balance", { p_year: Number(asOf.slice(0, 4)), p_employee_ids: [id] }),
+    supabase.rpc("fn_hr_leave_balance", { p_month: asOf, p_employee_ids: [id] }),
     supabase.from("hr_advance_balances").select("outstanding").eq("employee_id", id),
   ]);
   const leave = leaveBal?.[0];
@@ -108,7 +109,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         <p className="text-sm text-ink-soft">
           {current?.employee_type === "permanent" && leave && (
             <>
-              Paid leave {asOf.slice(0, 4)}: {Number(leave.used)} of {Number(leave.quota)} used, {Number(leave.remaining)} left
+              Paid leave {monthLabel(asOf.slice(0, 7))}: {Number(leave.used)} of {Number(leave.quota)} used, {Number(leave.remaining)} left
               {Number(leave.unpaid_extra) > 0 && ` (${Number(leave.unpaid_extra)} extra day(s) unpaid)`} ·{" "}
             </>
           )}

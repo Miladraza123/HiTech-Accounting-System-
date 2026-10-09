@@ -6805,7 +6805,7 @@ export type Database = {
         Returns: Json
       }
       fn_hr_leave_balance: {
-        Args: { p_employee_ids?: string[]; p_year: number }
+        Args: { p_employee_ids?: string[]; p_month: string }
         Returns: {
           employee_id: string
           quota: number
