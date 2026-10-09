@@ -6,17 +6,17 @@ import { DEFAULT_RULES, asOverrides, asRules, paidShiftMinutes, ruleSetProblems,
 describe("hrRules", () => {
   it("DEFAULT_RULES matches fn_hr_default_rules() in the migration", () => {
     const sql = readFileSync(
-      join(__dirname, "../../supabase/migrations/20261006150000_phase47_01_hr_attendance_masters.sql"),
+      join(__dirname, "../../supabase/migrations/20261009100000_phase47_06_paid_leaves_per_month.sql"),
       "utf8"
-    );
-    const body = sql.slice(sql.indexOf("function public.fn_hr_default_rules()"), sql.indexOf("-- Checks one rule set"));
+    ).toLowerCase();
+    const body = sql.slice(sql.indexOf("function public.fn_hr_default_rules()"), sql.indexOf("function public.fn_hr_validate_rules"));
     for (const [key, value] of Object.entries(DEFAULT_RULES)) {
       const literal = Array.isArray(value)
         ? `jsonb_build_array(${value.join(", ")})`
         : typeof value === "string"
           ? `'${value}'`
           : String(value);
-      expect(body, key).toContain(`'${key}', ${literal}`);
+      expect(body, key).toContain(`'${key}', ${literal}`.toLowerCase());
     }
   });
 

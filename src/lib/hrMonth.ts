@@ -14,3 +14,9 @@ export function shiftMonth(month: string, delta: number): string {
 export function isMonth(v: string | undefined): v is string {
   return !!v && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
 }
+
+/** "2026-10" → "Oct 2026". */
+export function monthLabel(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+}

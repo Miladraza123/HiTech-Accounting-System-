@@ -5,16 +5,17 @@ import { getCurrentUser } from "@/lib/auth";
 import { canReadHr } from "@/lib/hrAccess";
 import { karachiToday } from "@/lib/karachiTime";
 import { days } from "@/lib/hrSalary";
+import { isMonth, monthLabel, shiftMonth } from "@/lib/hrMonth";
 
-export default async function LeaveBalancePage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
+export default async function LeaveBalancePage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const user = await getCurrentUser();
   if (!canReadHr(user)) redirect("/");
-  const { year: raw } = await searchParams;
-  const year = /^\d{4}$/.test(raw ?? "") ? Number(raw) : Number(karachiToday().slice(0, 4));
+  const { month: raw } = await searchParams;
+  const month = isMonth(raw) ? raw : karachiToday().slice(0, 7);
 
   const supabase = await createClient();
   const [{ data: rows, error }, { data: employees }] = await Promise.all([
-    supabase.rpc("fn_hr_leave_balance", { p_year: year }),
+    supabase.rpc("fn_hr_leave_balance", { p_month: `${month}-01` }),
     supabase.from("hr_employees_current").select("id, code, full_name, employee_type, status"),
   ]);
   const byId = new Map((employees ?? []).map((e) => [e.id, e]));
@@ -27,17 +28,17 @@ export default async function LeaveBalancePage({ searchParams }: { searchParams:
     <div className="space-y-5 max-w-4xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-ink">Paid Leave Balance {year}</h1>
+          <h1 className="text-lg font-semibold text-ink">Paid Leave Balance {monthLabel(month)}</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Quota comes from the policy group (or the employee&apos;s own rules). Paid-type leave beyond the quota is paid as unpaid leave.
+            Each month has its own quota, from the policy group (or the employee&apos;s own rules). Paid-type leave beyond the month&apos;s quota is paid as unpaid leave; unused leave does not carry over.
           </p>
         </div>
         <div className="flex gap-2 text-xs">
-          <Link href={`?year=${year - 1}`} className="rounded-md border border-line px-2 py-1">
-            ← {year - 1}
+          <Link href={`?month=${shiftMonth(month, -1)}`} className="rounded-md border border-line px-2 py-1">
+            ← {monthLabel(shiftMonth(month, -1))}
           </Link>
-          <Link href={`?year=${year + 1}`} className="rounded-md border border-line px-2 py-1">
-            {year + 1} →
+          <Link href={`?month=${shiftMonth(month, 1)}`} className="rounded-md border border-line px-2 py-1">
+            {monthLabel(shiftMonth(month, 1))} →
           </Link>
         </div>
       </div>
@@ -72,7 +73,7 @@ export default async function LeaveBalancePage({ searchParams }: { searchParams:
             {!list.length && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
-                  No permanent employees in {year}.
+                  No permanent employees in {monthLabel(month)}.
                 </td>
               </tr>
             )}
