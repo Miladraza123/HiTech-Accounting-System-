@@ -56,7 +56,15 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         },
       };
     })
-    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    // Sorted by employee Code (numeric where possible) rather than name —
+    // an attendance register is read/filled by code, not alphabetically,
+    // and the Code column is the leading one in the grid.
+    .sort((a, b) => {
+      const na = Number(a.code);
+      const nb = Number(b.code);
+      if (Number.isFinite(na) && Number.isFinite(nb) && a.code !== "" && b.code !== "") return na - nb;
+      return a.code.localeCompare(b.code);
+    });
 
   const weekday = WEEKDAY[new Date(`${date}T00:00:00Z`).getUTCDay()];
 
