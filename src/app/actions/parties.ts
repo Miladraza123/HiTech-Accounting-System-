@@ -62,8 +62,6 @@ export async function createPartyAction(
       billing_address: String(formData.get("billing_address") ?? "").trim() || null,
       province: String(formData.get("province") ?? "").trim() || null,
       short_code: shortCode || null,
-      require_quotation_attn: formData.get("require_quotation_attn") === "on",
-      require_invoice_po: formData.get("require_invoice_po") === "on",
       credit_limit: creditLimit.value,
       credit_days: creditDays.value,
       created_by: user?.id,

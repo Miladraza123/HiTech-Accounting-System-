@@ -33,7 +33,7 @@ export default async function ServiceInvoicePrintPage({
 
   if (!invoice) notFound();
 
-  const [{ signatureUrl, stampUrl, headerUrl, footerUrl }, { data: contacts }] = await Promise.all([
+  const [{ logoUrl, signatureUrl, stampUrl, footerUrl }, { data: contacts }] = await Promise.all([
     getCompanyBrandingUrls(supabase, company, { signature: signature === "1", stamp: stamp === "1" }),
     supabase.from("party_contacts").select("phone, is_primary").eq("party_id", invoice.party_id).not("phone", "is", null).order("is_primary", { ascending: false }).limit(1),
   ]);
@@ -70,7 +70,17 @@ export default async function ServiceInvoicePrintPage({
         }))}
         note={company?.service_invoice_note ?? null}
         signatoryName={company?.signatory_name ?? null}
-        headerUrl={headerUrl}
+        headerCompany={{
+          name: company?.legal_name ?? "Company",
+          phone: company?.phone ?? null,
+          phone2: company?.phone2 ?? null,
+          email: company?.email ?? null,
+          email2: company?.email2 ?? null,
+          address: company?.address ?? null,
+          ntn: company?.ntn ?? null,
+          strn: company?.strn ?? null,
+        }}
+        logoUrl={logoUrl}
         footerUrl={footerUrl}
         signatureUrl={signatureUrl}
         stampUrl={stampUrl}

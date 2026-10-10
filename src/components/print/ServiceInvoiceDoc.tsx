@@ -1,5 +1,6 @@
 import { LetterheadFrame, SignatureBlock } from "@/components/print/LetterheadFrame";
 import { formatAmount } from "@/lib/docRef";
+import { LetterheadHeader, type LetterheadCompany } from "@/components/print/LetterheadHeader";
 
 export type ServiceInvoiceDocLine = { description: string; qty: number; rate: number; tax_pct: number; amount: number };
 
@@ -12,7 +13,8 @@ export type ServiceInvoiceDocProps = {
   lines: ServiceInvoiceDocLine[];
   note: string | null;
   signatoryName: string | null;
-  headerUrl: string | null;
+  headerCompany: LetterheadCompany;
+  logoUrl: string | null;
   footerUrl: string | null;
   signatureUrl: string | null;
   stampUrl: string | null;
@@ -46,9 +48,8 @@ export function ServiceInvoiceDoc(p: ServiceInvoiceDocProps) {
   return (
     <LetterheadFrame
       scope={SERVICE_INVOICE_SCOPE}
-      headerUrl={p.headerUrl}
+      header={<LetterheadHeader company={p.headerCompany} logoUrl={p.logoUrl} />}
       footerUrl={p.footerUrl}
-      fallbackHeader={<div className="b" style={{ fontSize: 20 }}>{p.seller.name}</div>}
     >
       <div className="center b" style={{ marginTop: "3mm", fontSize: 15 }}>
         SST INVOICE

@@ -20,14 +20,14 @@ export function serialOf(docNo: string): number | null {
 }
 
 /**
- * Quotation reference "HTE/TPFL/12": company code / client code / serial.
+ * Quotation reference "HTE/TPFL/0012": company code / client code / 4-digit serial.
  * Falls back to the plain quotation number until both codes exist, so a
  * printout never shows a half-built reference.
  */
 export function quotationRef(companyCode: string | null | undefined, partyCode: string | null | undefined, quotationNo: string): string {
   const serial = serialOf(quotationNo);
   if (!companyCode || !partyCode || serial === null) return quotationNo;
-  return `${companyCode}/${partyCode}/${serial}`;
+  return `${companyCode}/${partyCode}/${String(serial).padStart(4, "0")}`;
 }
 
 /** 4800 -> "4,800", 19200.5 -> "19,200.50": whole numbers without decimals, others with two. */

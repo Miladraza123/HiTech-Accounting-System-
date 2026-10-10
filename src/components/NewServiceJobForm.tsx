@@ -18,6 +18,7 @@ export function NewServiceJobForm({ clientParties }: { clientParties: Pick<Table
   const [customerDcNo, setCustomerDcNo] = useState("");
   const [customerDcDate, setCustomerDcDate] = useState("");
   const [conditionNotes, setConditionNotes] = useState("");
+  const [clientPo, setClientPo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -32,6 +33,10 @@ export function NewServiceJobForm({ clientParties }: { clientParties: Pick<Table
       setError("Describe the machine/part.");
       return;
     }
+    if (!clientPo.trim()) {
+      setError("Enter the client's PO number.");
+      return;
+    }
     startTransition(async () => {
       const res = await createServiceJobAction({
         party_id: partyId,
@@ -39,6 +44,7 @@ export function NewServiceJobForm({ clientParties }: { clientParties: Pick<Table
         customer_dc_no: customerDcNo || null,
         customer_dc_date: customerDcDate || null,
         received_condition_notes: conditionNotes || null,
+        client_po_no: clientPo,
       });
       if (res.error) setError(res.error);
       else if (res.id) router.push(`/service-jobs/${res.id}`);
@@ -67,6 +73,10 @@ export function NewServiceJobForm({ clientParties }: { clientParties: Pick<Table
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Machine/Part Description *</span>
         <input value={assetDescription} onChange={(e) => setAssetDescription(e.target.value)} className="input" placeholder="e.g. 5HP Motor, Model XYZ" />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-xs font-medium text-ink-soft">Client PO No. *</span>
+        <input value={clientPo} onChange={(e) => setClientPo(e.target.value)} className="input" placeholder="e.g. 4500101166" />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block space-y-1.5">

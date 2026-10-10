@@ -4,9 +4,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QuotationDoc, type QuotationDocProps } from "@/components/print/QuotationDoc";
 import { ServiceInvoiceDoc, type ServiceInvoiceDocProps } from "@/components/print/ServiceInvoiceDoc";
 
+const headerCompany = {
+  name: "HiTech Engineering",
+  phone: "+92 300 243 5659",
+  phone2: "(+92) 21 351 586 14",
+  email: "hitechengineering.pk1@gmail.com",
+  email2: "hitechengineer.pk1.com",
+  address: "R-74 Sector 31 B, KDA Employees Qouta Korangi, Near Industrial Area, Karachi.",
+  ntn: "8890257-3",
+  strn: "8890257-3",
+};
+
 const quotation: QuotationDocProps = {
   companyName: "HiTech Engineering",
-  refNo: "HTE/TPFL/5410",
+  refNo: "HTE/TPFL/5412",
   date: "6-Oct-26",
   partyName: "Tri-Pack Films Limited",
   attn: "Mr. Atif Ali Tanoli",
@@ -19,7 +30,8 @@ const quotation: QuotationDocProps = {
   completionTime: "4 to 5 working week after receiving of purchase order",
   validityText: "7 DAYS",
   signatoryName: "MUHAMMAD ABBAS",
-  headerUrl: process.env.HDR ?? "/letterhead/header.jpg",
+  headerCompany,
+  logoUrl: process.env.LOGO ?? null,
   footerUrl: process.env.FTR ?? "/letterhead/footer.jpg",
   signatureUrl: process.env.SIG ?? null,
   stampUrl: null,
@@ -34,7 +46,8 @@ const invoice: ServiceInvoiceDocProps = {
   lines: [{ description: "Service at Chiller C/T # 02\nSR No.\nService at Chiller C/T # 02", qty: 1, rate: 350000, tax_pct: 15, amount: 350000 }],
   note: "Note: According to FBR Tax Laws please deduct 4% Income Tax U/s 153 (1) (b) (Engineering Services) and deposit in Government Treasury. After that please provide income tax challans.",
   signatoryName: "MUHAMMAD ABBAS",
-  headerUrl: process.env.HDR ?? "/letterhead/header.jpg",
+  headerCompany,
+  logoUrl: process.env.LOGO ?? null,
   footerUrl: process.env.FTR ?? "/letterhead/footer.jpg",
   signatureUrl: process.env.SIG ?? null,
   stampUrl: null,
@@ -44,7 +57,7 @@ describe("letterhead print documents", () => {
   it("quotation shows ref, attn, subject, the boxed totals and the terms", () => {
     const html = renderToStaticMarkup(<QuotationDoc {...quotation} />);
     if (process.env.DUMP_DIR) writeFileSync(`${process.env.DUMP_DIR}/quotation.html`, `<!doctype html><meta charset="utf-8"><body style="margin:0">${html}`);
-    for (const t of ["HTE/TPFL/5410", "MR. ATIF ALI TANOLI", "SUBJECT: QUOTATION FOR SUPPLY OF SPIDER,COUPLING PR# 2400008883", "Dear Sir,", "4,800", "19,200", "ADD GST 18%", "PKR. 3,456", "PKR. 22,656", "JOB COMPLETION TIME:", "7 DAYS", "FOR HITECH ENGINEERING", "MUHAMMAD ABBAS"]) {
+    for (const t of ["HTE/TPFL/5412", "MR. ATIF ALI TANOLI", "SUBJECT: QUOTATION FOR SUPPLY OF SPIDER,COUPLING PR# 2400008883", "Dear Sir,", "4,800", "19,200", "ADD GST 18%", "PKR. 3,456", "PKR. 22,656", "JOB COMPLETION TIME:", "7 DAYS", "FOR HITECH ENGINEERING", "MUHAMMAD ABBAS"]) {
       expect(html).toContain(t);
     }
   });
@@ -73,9 +86,21 @@ describe("letterhead print documents", () => {
     }
   });
 
-  it("falls back to a text header when there is no banner image", () => {
-    const html = renderToStaticMarkup(<ServiceInvoiceDoc {...invoice} headerUrl={null} footerUrl={null} />);
-    expect(html).toContain('class="lh-header-text"');
+  it("builds the header from the company profile: both phones, both emails, address, NTN and STRN apart", () => {
+    const html = renderToStaticMarkup(<QuotationDoc {...quotation} />);
+    for (const t of ["+92 300 243 5659", "(+92) 21 351 586 14", "hitechengineering.pk1@gmail.com", "hitechengineer.pk1.com", "R-74 Sector 31 B", "NTN: 8890257-3", "STRN: 8890257-3"]) {
+      expect(html).toContain(t);
+    }
+  });
+
+  it("leaves out the header lines the company profile does not have, and has no footer banner without an image", () => {
+    const html = renderToStaticMarkup(
+      <ServiceInvoiceDoc {...invoice} headerCompany={{ ...headerCompany, phone2: null, email2: null, strn: null }} footerUrl={null} />
+    );
+    expect(html).not.toContain("(+92) 21 351 586 14");
+    expect(html).not.toContain("hitechengineer.pk1.com");
+    expect(html).not.toContain("STRN:");
+    expect(html).toContain("NTN: 8890257-3");
     expect(html).not.toContain('class="lh-footer"');
   });
 });

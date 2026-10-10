@@ -120,17 +120,9 @@ export function PartyForm({
               <input name="short_code" maxLength={10} placeholder="TPFL" className="input uppercase" />
             </Field>
             <p className="text-[11px] text-ink-faint pb-2">
-              Short code in the quotation reference, e.g. HTE/TPFL/12. 2 to 10 letters or digits. Offline-saved clients get it later from their own page.
+              Short code in the quotation reference, e.g. HTE/TPFL/0012. 2 to 10 letters or digits. Offline-saved clients get it later from their own page.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-xs text-ink-soft">
-            <input type="checkbox" name="require_quotation_attn" />
-            Attn is required on this client&apos;s quotations
-          </label>
-          <label className="flex items-center gap-2 text-xs text-ink-soft">
-            <input type="checkbox" name="require_invoice_po" />
-            Client PO number is required on this client&apos;s service invoices
-          </label>
         </div>
       )}
 

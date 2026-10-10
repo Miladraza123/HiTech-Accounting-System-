@@ -37,7 +37,6 @@ export default async function CompanySetupPage() {
           logoPath={company?.logo_path ?? null}
           signaturePath={company?.signature_path ?? null}
           stampPath={company?.stamp_path ?? null}
-          headerPath={company?.letterhead_header_path ?? null}
           footerPath={company?.letterhead_footer_path ?? null}
         />
       </div>
@@ -46,13 +45,15 @@ export default async function CompanySetupPage() {
         <div>
           <h2 className="text-sm font-semibold text-ink">Quotation &amp; Service Invoice Print</h2>
           <p className="mt-1 text-xs text-ink-soft">
-            The company code builds the quotation reference (HTE/TPFL/12). Each client&apos;s own code is set on the client&apos;s page.
+            The header of the Quotation and Service Invoice is built from the Company Profile above (logo, phones, emails, address, NTN, STRN). The company code builds the quotation reference (HTE/TPFL/0012). Each client&apos;s own code is set on the client&apos;s page.
           </p>
         </div>
         <CompanyDocSettingsForm
           shortCode={company?.short_code ?? null}
           signatoryName={company?.signatory_name ?? null}
           serviceInvoiceNote={company?.service_invoice_note ?? null}
+          phone2={company?.phone2 ?? null}
+          email2={company?.email2 ?? null}
         />
       </div>
     </div>

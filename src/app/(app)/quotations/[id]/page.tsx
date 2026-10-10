@@ -38,7 +38,7 @@ export default async function QuotationDetailPage({
   const supabase = await createClient();
   const [{ data: quotation }, { data: revisions }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }] =
     await Promise.all([
-      supabase.from("quotations").select("*, parties(legal_name, short_code, require_quotation_attn), queries(query_no)").eq("id", id).maybeSingle(),
+      supabase.from("quotations").select("*, parties(legal_name, short_code), queries(query_no)").eq("id", id).maybeSingle(),
       supabase.from("quotation_revisions").select("*").eq("quotation_id", id).order("rev_no", { ascending: false }),
       supabase.from("units").select("*").order("code"),
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
@@ -63,7 +63,7 @@ export default async function QuotationDetailPage({
   // sits far outside the first page.
   const items = await fetchLineItems(supabase, (lines ?? []).map((l) => l.item_id));
 
-  const party = quotation.parties as unknown as { legal_name: string; short_code: string | null; require_quotation_attn: boolean } | null;
+  const party = quotation.parties as unknown as { legal_name: string; short_code: string | null } | null;
   const { data: partyContacts } = await supabase.from("party_contacts").select("id, name").eq("party_id", quotation.party_id).order("name");
   const query = quotation.queries as unknown as { query_no: string } | null;
   const showDraftEditor = canEdit && isViewingCurrent && quotation.status === "Draft";
@@ -139,7 +139,6 @@ export default async function QuotationDetailPage({
             refNo={quotationRef(company?.short_code, party?.short_code, quotation.quotation_no)}
             attn={quotation.attn}
             subject={quotation.subject}
-            requireAttn={!!party?.require_quotation_attn}
             canEdit={canEdit}
             contacts={partyContacts ?? []}
           />

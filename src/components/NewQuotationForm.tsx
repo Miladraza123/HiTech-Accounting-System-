@@ -41,7 +41,6 @@ export function NewQuotationForm({
   contacts = [],
   defaultAttn = "",
   defaultSubject = "",
-  requireAttn = false,
   missingPartyCode = false,
 }: {
   queryId: string;
@@ -49,8 +48,6 @@ export function NewQuotationForm({
   contacts?: { id: string; name: string; designation: string | null }[];
   defaultAttn?: string;
   defaultSubject?: string;
-  /** This client needs Attn on every quotation. */
-  requireAttn?: boolean;
   /** The client has no code yet, so the printed reference falls back to the quotation number. */
   missingPartyCode?: boolean;
   // A first page of items plus those already referenced here — the rest
@@ -67,7 +64,6 @@ export function NewQuotationForm({
   const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct, "init-0")]);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
-  const [offlineError, setOfflineError] = useState<string | null>(null);
   // Guards the offline branch below against a rapid double-click — see
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
@@ -78,11 +74,6 @@ export function NewQuotationForm({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const attn = String(formData.get("attn") ?? "").trim();
-    if (requireAttn && !attn) {
-      setOfflineError("Attn is required for this client.");
-      return;
-    }
-    setOfflineError(null);
     await guard(async () => {
       await enqueue({
         kind: "create",
@@ -139,10 +130,8 @@ export function NewQuotationForm({
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-ink-soft">
-              Attn {requireAttn && <span className="text-bad">*</span>}
-            </span>
-            <input name="attn" list="quotation-attn-options" defaultValue={defaultAttn} required={requireAttn} className="input" placeholder="e.g. MR. ATIF ALI TANOLI" />
+            <span className="text-xs font-medium text-ink-soft">Attn (optional)</span>
+            <input name="attn" list="quotation-attn-options" defaultValue={defaultAttn} className="input" placeholder="e.g. MR. ATIF ALI TANOLI" />
             <datalist id="quotation-attn-options">
               {contacts.map((c) => (
                 <option key={c.id} value={c.name}>
@@ -193,7 +182,7 @@ export function NewQuotationForm({
         </p>
       )}
 
-      {(state.error || offlineError) && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error ?? offlineError}</p>}
+      {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
 
       <button
         type="submit"

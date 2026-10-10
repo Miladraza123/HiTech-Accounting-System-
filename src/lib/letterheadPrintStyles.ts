@@ -8,8 +8,17 @@ export function letterheadPrintStyles(scope: string): string {
     @page { size: A4; margin: 0; }
     .${scope} { all: initial; box-sizing: border-box; display: flex; flex-direction: column; font-family: Calibri, Carlito, "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1.35; color: #000; background: #fff; max-width: 210mm; min-height: 297mm; margin: 0 auto; }
     .${scope} * { box-sizing: border-box; }
-    .${scope} .lh-header, .${scope} .lh-footer { display: block; width: 100%; height: auto; }
-    .${scope} .lh-header-text { padding: 20px 16mm 12px; border-bottom: 3px solid #0b7d78; font-size: 12px; }
+    .${scope} .lh-footer { display: block; width: 100%; height: auto; }
+    .${scope} .lh-hdr { display: block; width: 100%; }
+    .${scope} .lh-band { position: relative; width: 100%; aspect-ratio: 1081 / 195; }
+    .${scope} .lh-band-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .${scope} .lh-logo { position: absolute; left: 3%; top: 6%; width: 32%; height: 88%; display: flex; align-items: center; }
+    .${scope} .lh-logo img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+    .${scope} .lh-logo-text { font-size: 22px; font-weight: 700; color: #00837b; }
+    .${scope} .lh-contact { position: absolute; left: 51.5%; right: 2.5%; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; color: #fff; font-size: 13px; font-weight: 700; line-height: 1.3; }
+    .${scope} .lh-row { display: flex; align-items: flex-start; gap: 8px; }
+    .${scope} .lh-ico { flex: 0 0 14px; padding-top: 2px; display: inline-flex; }
+    .${scope} .lh-reg { text-align: right; font-size: 12px; font-weight: 700; font-style: italic; padding: 5px 5% 0 0; display: flex; justify-content: flex-end; gap: 16px; }
     .${scope} .lh-body { flex: 1 0 auto; padding: 6mm 16mm 6mm; }
     .${scope} .lh-footer { margin-top: auto; }
     .${scope} .b { font-weight: 700; }

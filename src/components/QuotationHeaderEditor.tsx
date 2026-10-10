@@ -11,7 +11,6 @@ export function QuotationHeaderEditor({
   refNo,
   attn,
   subject,
-  requireAttn,
   canEdit,
   contacts,
 }: {
@@ -19,7 +18,6 @@ export function QuotationHeaderEditor({
   refNo: string;
   attn: string | null;
   subject: string | null;
-  requireAttn: boolean;
   canEdit: boolean;
   contacts: { id: string; name: string }[];
 }) {
@@ -63,7 +61,6 @@ export function QuotationHeaderEditor({
         <>
           <p className="text-xs text-ink-soft">
             Attn: <span className="text-ink">{attn || "—"}</span>
-            {requireAttn && !attn && <span className="ml-1 text-bad">(required for this client)</span>}
           </p>
           <p className="text-xs text-ink-soft">
             Subject: <span className="text-ink">{subject || "—"}</span>
@@ -72,7 +69,7 @@ export function QuotationHeaderEditor({
       ) : (
         <div className="space-y-2">
           <label className="block space-y-1">
-            <span className="text-[11px] text-ink-faint">Attn {requireAttn && <span className="text-bad">*</span>}</span>
+            <span className="text-[11px] text-ink-faint">Attn (optional)</span>
             <input value={attnValue} onChange={(e) => setAttnValue(e.target.value)} list={`attn-${quotationId}`} className="input !py-1 text-xs" />
             <datalist id={`attn-${quotationId}`}>
               {contacts.map((c) => (

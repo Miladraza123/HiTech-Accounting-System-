@@ -1,5 +1,6 @@
 import { LetterheadFrame, SignatureBlock } from "@/components/print/LetterheadFrame";
 import { formatAmount } from "@/lib/docRef";
+import { LetterheadHeader, type LetterheadCompany } from "@/components/print/LetterheadHeader";
 
 export type QuotationDocLine = { description: string; rate: number; qty: number; unit: string | null; tax_pct: number; amount: number };
 
@@ -18,7 +19,8 @@ export type QuotationDocProps = {
   completionTime: string | null;
   validityText: string | null;
   signatoryName: string | null;
-  headerUrl: string | null;
+  headerCompany: LetterheadCompany;
+  logoUrl: string | null;
   footerUrl: string | null;
   signatureUrl: string | null;
   stampUrl: string | null;
@@ -42,9 +44,8 @@ export function QuotationDoc(p: QuotationDocProps) {
   return (
     <LetterheadFrame
       scope={QUOTATION_SCOPE}
-      headerUrl={p.headerUrl}
+      header={<LetterheadHeader company={p.headerCompany} logoUrl={p.logoUrl} />}
       footerUrl={p.footerUrl}
-      fallbackHeader={<div className="b" style={{ fontSize: 20 }}>{p.companyName}</div>}
     >
       <div className="meta">
         <span className="label">REF # :</span>

@@ -3,8 +3,10 @@ import { formatAmount, formatInvoiceDate, formatQuoteDate, isValidShortCode, nor
 
 describe("docRef", () => {
   it("builds the quotation reference from the codes and the running serial", () => {
-    expect(quotationRef("HTE", "TPFL", "QTN-202627-0012")).toBe("HTE/TPFL/12");
+    expect(quotationRef("HTE", "TPFL", "QTN-202627-0012")).toBe("HTE/TPFL/0012");
     expect(quotationRef("HTE", "TPFL", "QTN-202627-5410")).toBe("HTE/TPFL/5410");
+    expect(quotationRef("HTE", "TPFL", "QTN-202627-5412")).toBe("HTE/TPFL/5412");
+    expect(quotationRef("HTE", "TPFL", "QTN-202627-0001")).toBe("HTE/TPFL/0001");
   });
   it("falls back to the quotation number until both codes exist", () => {
     expect(quotationRef("HTE", null, "QTN-202627-0001")).toBe("QTN-202627-0001");
