@@ -7,8 +7,17 @@ import { ruleSetProblems, type HrRules } from "@/lib/hrRules";
 import { PolicyRulesEditor, hasBlankNumber } from "@/components/PolicyRulesEditor";
 import { EffectiveDateField } from "@/components/EffectiveDateField";
 
-/** "Change policy": starts from the latest rules and saves them as a new version from the chosen date. */
-export function PolicyVersionForm({ groupId, latest, firstFrom }: { groupId: string; latest: HrRules; firstFrom: string }) {
+/**
+ * "Change policy": starts from the latest rules and saves them as a new
+ * version from the chosen date. No minimum date here — unlike Employee
+ * Terms (which can never start before the join date), a Policy Group's
+ * own "first version" date is just whatever was entered first, not a
+ * hard boundary, so a version earlier than it is a legitimate backdate
+ * (e.g. the group's rules should really have applied since the start of
+ * the year). The real limit is server-side only: fn_hr_set_policy_version
+ * refuses a date that would fall inside an already-finalised Salary Sheet.
+ */
+export function PolicyVersionForm({ groupId, latest }: { groupId: string; latest: HrRules }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [rules, setRules] = useState<HrRules>(latest);
@@ -51,7 +60,7 @@ export function PolicyVersionForm({ groupId, latest, firstFrom }: { groupId: str
   return (
     <div className="rounded-xl border border-accent bg-surface p-4 sm:p-5 space-y-4">
       <h2 className="text-sm font-semibold text-ink">Change Policy</h2>
-      <EffectiveDateField value={effectiveFrom} onChange={setEffectiveFrom} min={firstFrom} />
+      <EffectiveDateField value={effectiveFrom} onChange={setEffectiveFrom} />
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Reason / note</span>
         <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Ramzan timing" />

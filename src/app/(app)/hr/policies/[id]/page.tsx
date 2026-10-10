@@ -56,7 +56,7 @@ export default async function PolicyGroupPage({ params }: { params: Promise<{ id
         </ul>
       </section>
 
-      {canManage && list[0] && <PolicyVersionForm groupId={group.id} latest={asRules(list[0].rules)} firstFrom={first.effective_from} />}
+      {canManage && list[0] && <PolicyVersionForm groupId={group.id} latest={asRules(list[0].rules)} />}
 
       <section className="rounded-xl border border-line bg-surface overflow-hidden">
         <h2 className="px-4 pt-4 text-sm font-semibold text-ink">Version History</h2>
