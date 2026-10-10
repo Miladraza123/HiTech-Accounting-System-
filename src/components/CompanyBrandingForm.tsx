@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { uploadCompanyImageAction, removeCompanyImageAction, getCompanyImagePreviewUrlAction, type BrandingKind } from "@/app/actions/companyBranding";
 import { autoCropLogo } from "@/lib/logoAutoCrop";
+import { shrinkImageToFit } from "@/lib/shrinkImage";
 import { buttonClass } from "@/components/ui/Button";
 
 // Roughly enough to stay sharp printed at the sizes these are actually
@@ -10,6 +11,9 @@ import { buttonClass } from "@/components/ui/Button";
 // image below this will look visibly soft once scaled up, regardless
 // of how correctly the print CSS itself sizes the box.
 const MIN_DIMENSION_PX = 150;
+
+// Same cap the server enforces (companyBranding.ts). A bigger photo is scaled down here first.
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
@@ -54,6 +58,16 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
     setError(null);
     let file = formData.get("file");
     if (file instanceof File && file.type !== "image/svg+xml") {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        // A phone photo is often 2 to 6 MB; scale it down instead of refusing it.
+        const smaller = await shrinkImageToFit(file, MAX_UPLOAD_BYTES);
+        if (!smaller) {
+          setError("This image is too large and could not be reduced. Use a PNG or JPEG under 2MB.");
+          return;
+        }
+        file = smaller;
+        formData.set("file", file);
+      }
       if (kind === "logo") {
         // Trims blank/transparent margin around the actual logo artwork
         // before it's ever stored — the print box (PrintLogoBlock.tsx)
@@ -77,16 +91,26 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
       }
     }
     startTransition(async () => {
-      const res = await uploadCompanyImageAction(kind, formData);
-      if (res.error) setError(res.error);
+      try {
+        const res = await uploadCompanyImageAction(kind, formData);
+        if (res.error) setError(res.error);
+      } catch {
+        // A thrown server-action error (network drop, request too large) would otherwise
+        // reach the page's error boundary and replace the whole screen.
+        setError("Upload failed. Check your connection and try again with a smaller image.");
+      }
     });
   }
 
   function handleRemove() {
     setError(null);
     startTransition(async () => {
-      const res = await removeCompanyImageAction(kind);
-      if (res.error) setError(res.error);
+      try {
+        const res = await removeCompanyImageAction(kind);
+        if (res.error) setError(res.error);
+      } catch {
+        setError("Could not remove the image. Try again.");
+      }
     });
   }
 
