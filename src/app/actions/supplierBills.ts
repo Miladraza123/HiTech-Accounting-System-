@@ -28,6 +28,22 @@ export async function createSupplierBillAction(input: {
   return { error: null, id: data as string };
 }
 
+// supplier_bill_ref is the supplier's own bill reference — a pure external
+// memo with no accounting effect, so a typo fix goes through a narrow,
+// single-column RPC rather than Cancel+recreate. supplier_bills has no
+// general RLS update policy (every other field only moves through its own
+// RPC), so this checks its own permission the same way.
+export async function updateSupplierBillRefAction(billId: string, ref: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_update_supplier_bill_ref", {
+    p_id: billId,
+    p_ref: ref,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/supplier-bills/${billId}`);
+  return { error: null };
+}
+
 export async function cancelSupplierBillAction(billId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!isOwner(user)) return NO_PERMISSION;

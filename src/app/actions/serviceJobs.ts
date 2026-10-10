@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { smartMergeUpdate } from "@/lib/smartMerge";
 
 export type ActionResult = { error: string | null; id?: string; success?: boolean };
 
@@ -33,6 +34,24 @@ export async function createServiceJobAction(input: {
   await supabase.from("service_jobs").update({ client_po_no: poNo }).eq("id", data as string);
   revalidatePath("/service-jobs");
   return { error: null, id: data as string, success: true };
+}
+
+// customer_dc_no (the client's own delivery-challan number) is a pure
+// external memo with no accounting effect — a typo fix via Smart Merge,
+// same pattern as Party credit terms, rather than Cancel+recreate.
+export async function updateServiceJobDcNoAction(serviceJobId: string, currentDcNo: string | null, nextDcNo: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { result, error } = await smartMergeUpdate(
+    supabase,
+    "service_jobs",
+    serviceJobId,
+    { customer_dc_no: currentDcNo },
+    { customer_dc_no: nextDcNo || null }
+  );
+  if (error) return { error: error.message };
+  if (result && result.conflicts.length > 0) return { error: "This was just changed by someone else — reopen and try again." };
+  revalidatePath(`/service-jobs/${serviceJobId}`);
+  return { error: null, success: true };
 }
 
 export async function completeServiceJobAction(serviceJobId: string): Promise<ActionResult> {

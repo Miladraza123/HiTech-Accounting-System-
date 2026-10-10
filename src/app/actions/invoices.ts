@@ -21,6 +21,7 @@ export async function createInvoiceAction(input: {
   sales_order_id: string;
   invoice_date: string;
   lines: InvoiceLineInput[];
+  invoice_no?: string;
 }): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "invoice.manage"))) return NO_PERMISSION;
@@ -30,10 +31,26 @@ export async function createInvoiceAction(input: {
     p_sales_order_id: input.sales_order_id,
     p_invoice_date: input.invoice_date,
     p_lines: input.lines,
+    p_invoice_no: (input.invoice_no ?? null) as string,
   });
   if (error) return { error: error.message };
   revalidatePath("/invoices");
   return { error: null, id: data as string };
+}
+
+export type InvoiceNumberOption = { invoice_no: string; kind: "sequential" | "reclaimed" };
+
+// The picker behind the two cancelled-number cases: a trailing cancellation
+// (nothing created after it) and a cancellation after a later number
+// already exists — both are just "available numbers", offered alongside
+// the normal next-sequential one, letting Owner/Accounts choose either way.
+export async function getAvailableInvoiceNumbersAction(): Promise<InvoiceNumberOption[]> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "invoice.manage"))) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("fn_get_available_invoice_numbers");
+  return (data ?? []) as InvoiceNumberOption[];
 }
 
 export async function cancelInvoiceAction(invoiceId: string, reason: string): Promise<ActionResult> {

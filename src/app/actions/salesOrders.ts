@@ -135,6 +135,23 @@ export async function amendSalesOrderAction(
   return { error: error?.message ?? null };
 }
 
+// A lightweight correction for a typo in the Client PO Number alone — no
+// reason, no revision row, unlike amendSalesOrderAction above. client_po_number
+// is a pure external reference (the client's own PO number) with no effect
+// on accounting or stock, so it's safe to fix in one step via a narrow,
+// single-column RPC (sales_orders has no general RLS update policy at all —
+// see fn_update_sales_order_po_number's own migration comment).
+export async function updateSalesOrderPoNumberAction(salesOrderId: string, poNumber: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_update_sales_order_po_number", {
+    p_id: salesOrderId,
+    p_po_number: poNumber,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/sales-orders/${salesOrderId}`);
+  return { error: null };
+}
+
 export async function cancelSalesOrderAction(salesOrderId: string, reason: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "sales_order.manage"))) return NO_PERMISSION;

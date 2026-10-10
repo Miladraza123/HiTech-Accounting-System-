@@ -8,6 +8,8 @@ import { CancelSupplierBillButton } from "@/components/CancelSupplierBillButton"
 import { PurchaseReturnPanel } from "@/components/PurchaseReturnPanel";
 import { CancelPurchaseReturnButton } from "@/components/CancelPurchaseReturnButton";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
+import { InlineFieldEdit } from "@/components/InlineFieldEdit";
+import { updateSupplierBillRefAction } from "@/app/actions/supplierBills";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -57,7 +59,17 @@ export default async function SupplierBillDetailPage({ params }: { params: Promi
           <p className="text-sm text-ink-soft mt-0.5">
             {party?.legal_name} — GRN {grn?.grn_no} ({grn?.received_date})
           </p>
-          {bill.supplier_bill_ref && <p className="text-xs text-ink-faint mt-0.5">Supplier Ref#: {bill.supplier_bill_ref}</p>}
+          {canManage ? (
+            <div className="mt-1 max-w-xs">
+              <InlineFieldEdit
+                label="Supplier Ref#"
+                value={bill.supplier_bill_ref}
+                onSave={updateSupplierBillRefAction.bind(null, id)}
+              />
+            </div>
+          ) : (
+            bill.supplier_bill_ref && <p className="text-xs text-ink-faint mt-0.5">Supplier Ref#: {bill.supplier_bill_ref}</p>
+          )}
         </div>
         <PrintPdfActions
           printPath={`/supplier-bills/${id}/print`}

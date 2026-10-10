@@ -3043,6 +3043,44 @@ export type Database = {
           },
         ]
       }
+      payment_amendments: {
+        Row: {
+          amended_at: string
+          amended_by: string | null
+          id: string
+          new_values: Json
+          old_values: Json
+          payment_id: string
+          reason: string | null
+        }
+        Insert: {
+          amended_at?: string
+          amended_by?: string | null
+          id?: string
+          new_values: Json
+          old_values: Json
+          payment_id: string
+          reason?: string | null
+        }
+        Update: {
+          amended_at?: string
+          amended_by?: string | null
+          id?: string
+          new_values?: Json
+          old_values?: Json
+          payment_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_amendments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -5956,6 +5994,20 @@ export type Database = {
         Args: { p_allocations: Json; p_payment_id: string }
         Returns: undefined
       }
+      fn_amend_payment: {
+        Args: {
+          p_amount: number
+          p_bank_account_id: string
+          p_method: string
+          p_party_id: string
+          p_payment_date: string
+          p_payment_id: string
+          p_petty_cash_fund_id: string
+          p_reason?: string
+          p_reference_no: string
+        }
+        Returns: undefined
+      }
       fn_amend_sales_order: {
         Args: {
           p_client_po_number: string
@@ -6261,6 +6313,7 @@ export type Database = {
       fn_create_invoice: {
         Args: {
           p_invoice_date: string
+          p_invoice_no?: string
           p_lines: Json
           p_sales_order_id: string
         }
@@ -6734,6 +6787,13 @@ export type Database = {
         }[]
       }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
+      fn_get_available_invoice_numbers: {
+        Args: never
+        Returns: {
+          invoice_no: string
+          kind: string
+        }[]
+      }
       fn_get_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_has_write_role: { Args: never; Returns: boolean }
       fn_health_label: {
@@ -7138,6 +7198,7 @@ export type Database = {
           outstanding_amount: number
         }[]
       }
+      fn_peek_next_number: { Args: { p_doc_type: string }; Returns: string }
       fn_pending_orders: {
         Args: { p_limit: number; p_offset: number }
         Returns: {
@@ -7312,6 +7373,14 @@ export type Database = {
       }
       fn_update_job_progress: {
         Args: { p_job_id: string; p_note: string; p_progress_pct: number }
+        Returns: undefined
+      }
+      fn_update_sales_order_po_number: {
+        Args: { p_id: string; p_po_number: string }
+        Returns: undefined
+      }
+      fn_update_supplier_bill_ref: {
+        Args: { p_id: string; p_ref: string }
         Returns: undefined
       }
       fn_update_task: {

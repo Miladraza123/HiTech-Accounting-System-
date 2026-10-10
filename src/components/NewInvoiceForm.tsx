@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createInvoiceAction, type InvoiceLineInput } from "@/app/actions/invoices";
+import { createInvoiceAction, getAvailableInvoiceNumbersAction, type InvoiceLineInput, type InvoiceNumberOption } from "@/app/actions/invoices";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { karachiToday } from "@/lib/karachiTime";
 
@@ -32,6 +32,25 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  const [numberOptions, setNumberOptions] = useState<InvoiceNumberOption[] | null>(null);
+  const [invoiceNo, setInvoiceNo] = useState("");
+
+  // The number choice only matters online (an offline-queued Invoice always
+  // gets the plain next-sequential number once it syncs — see the offline
+  // branch of submit() below) — no need to fetch it otherwise.
+  useEffect(() => {
+    if (!isOnline) return;
+    let cancelled = false;
+    getAvailableInvoiceNumbersAction().then((opts) => {
+      if (cancelled) return;
+      setNumberOptions(opts);
+      const sequential = opts.find((o) => o.kind === "sequential");
+      setInvoiceNo(sequential?.invoice_no ?? "");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnline]);
 
   const so = salesOrders.find((s) => s.id === soId);
 
@@ -94,7 +113,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
     }
 
     startTransition(async () => {
-      const res = await createInvoiceAction({ sales_order_id: soId, invoice_date: invoiceDate, lines });
+      const res = await createInvoiceAction({ sales_order_id: soId, invoice_date: invoiceDate, lines, invoice_no: invoiceNo || undefined });
       if (res.error) setError(res.error);
       else router.push(`/invoices/${res.id}`);
     });
@@ -131,6 +150,23 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
             <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="input" />
           </label>
         </div>
+
+        {!!numberOptions?.some((o) => o.kind === "reclaimed") && (
+          <div className="space-y-1.5 border-t border-line pt-3">
+            <span className="text-xs font-medium text-ink-soft">
+              Invoice Number — a cancelled Invoice&apos;s number is available to reuse
+            </span>
+            <div className="space-y-1.5">
+              {numberOptions.map((o) => (
+                <label key={o.invoice_no} className="flex items-center gap-2 text-sm">
+                  <input type="radio" checked={invoiceNo === o.invoice_no} onChange={() => setInvoiceNo(o.invoice_no)} />
+                  <span className="font-mono">{o.invoice_no}</span>
+                  <span className="text-xs text-ink-faint">{o.kind === "sequential" ? "(next number)" : "(reclaimed — cancelled Invoice)"}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {so && (

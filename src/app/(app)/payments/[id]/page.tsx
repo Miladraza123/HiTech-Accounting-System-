@@ -6,6 +6,8 @@ import { canSeeFinance } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
 import { AllocatePaymentPanel } from "@/components/AllocatePaymentPanel";
 import { CancelPaymentButton } from "@/components/CancelPaymentButton";
+import { EditPaymentPanel } from "@/components/EditPaymentPanel";
+import { PaymentEditHistory } from "@/components/PaymentEditHistory";
 
 const STATUS_STYLE: Record<string, string> = {
   Posted: "bg-good-soft text-good",
@@ -21,9 +23,11 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const canManage = await hasPermission(user, "payment.manage");
 
   const supabase = await createClient();
-  const [{ data: payment }, { data: allocations }] = await Promise.all([
+  const [{ data: payment }, { data: allocations }, { data: bankAccounts }, { data: pettyCashFunds }] = await Promise.all([
     supabase.from("payments").select("*, parties(legal_name), bank_accounts(account_name), petty_cash_funds(fund_name)").eq("id", id).maybeSingle(),
     supabase.from("payment_allocations").select("*").eq("payment_id", id).order("created_at", { ascending: false }),
+    supabase.from("bank_accounts").select("*").eq("is_active", true).order("account_name"),
+    supabase.from("petty_cash_funds").select("*").eq("is_active", true).order("fund_name"),
   ]);
 
   if (!payment) notFound();
@@ -33,6 +37,8 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const fund = payment.petty_cash_funds as unknown as { fund_name: string } | null;
   const sourceLabel = bank?.account_name ?? fund?.fund_name ?? "Cash in Hand";
   const canCancel = isOwner(user) && payment.status === "Posted";
+  const canEditPayment = isOwner(user) && payment.status === "Posted";
+  const currentSource: "cash" | "bank" | "petty_cash" = payment.petty_cash_fund_id ? "petty_cash" : payment.bank_account_id ? "bank" : "cash";
 
   let allocRows: { key: string; label: string; date: string; outstanding: number; poNo?: string | null }[] = [];
   const invoiceIds = (allocations ?? []).map((a) => a.invoice_id).filter(Boolean) as string[];
@@ -158,12 +164,32 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="space-y-6">
+          {canEditPayment && (
+            <EditPaymentPanel
+              paymentId={id}
+              direction={payment.direction as "receipt" | "payment"}
+              currentParty={{ id: payment.party_id, label: party?.legal_name ?? "" }}
+              currentAmount={payment.amount}
+              currentDate={payment.payment_date}
+              currentMethod={payment.method}
+              currentReferenceNo={payment.reference_no}
+              currentSource={currentSource}
+              currentBankAccountId={payment.bank_account_id}
+              currentPettyCashFundId={payment.petty_cash_fund_id}
+              hasAllocations={!!allocations?.length}
+              bankAccounts={bankAccounts ?? []}
+              pettyCashFunds={pettyCashFunds ?? []}
+            />
+          )}
+
           {canCancel && (
             <div className="rounded-xl border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>
               <CancelPaymentButton paymentId={id} />
             </div>
           )}
+
+          {isOwner(user) && <PaymentEditHistory paymentId={id} />}
         </div>
       </div>
     </div>

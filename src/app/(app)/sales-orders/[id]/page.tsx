@@ -8,6 +8,8 @@ import { SalesOrderAmendPanel } from "@/components/SalesOrderAmendPanel";
 import { CancelSalesOrderButton } from "@/components/CancelSalesOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
+import { InlineFieldEdit } from "@/components/InlineFieldEdit";
+import { updateSalesOrderPoNumberAction } from "@/app/actions/salesOrders";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -84,7 +86,15 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div className="rounded-xl border border-line bg-surface p-5 grid grid-cols-2 gap-4 text-sm">
-            <Field label="Client PO Number" value={so.client_po_number} />
+            {canEdit ? (
+              <InlineFieldEdit
+                label="Client PO Number"
+                value={so.client_po_number}
+                onSave={updateSalesOrderPoNumberAction.bind(null, id)}
+              />
+            ) : (
+              <Field label="Client PO Number" value={so.client_po_number} />
+            )}
             <Field label="PO Date" value={so.po_date} />
             <Field label="Delivery Schedule" value={so.delivery_schedule ?? "—"} />
             <Field label="Reference Query" value={query?.query_no ?? "—"} />

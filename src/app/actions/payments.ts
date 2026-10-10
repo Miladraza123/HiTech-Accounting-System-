@@ -73,6 +73,69 @@ export async function cancelPaymentAction(paymentId: string, reason: string): Pr
   return { error: error?.message ?? null };
 }
 
+// ---------- Owner-only Payment edit (Amount/Date/Party/Account/Reference) ----------
+// fn_amend_payment updates the Payment's existing journal entry in place
+// (no visible reversal pair) and clears any existing allocations — the
+// client is expected to warn about that and ask for confirmation first,
+// since the full amount always comes back fully unallocated afterward.
+// A hidden, Owner-only audit trail (payment_amendments) keeps the real
+// before/after values; see getPaymentAmendmentHistoryAction below.
+export type AmendPaymentInput = {
+  party_id: string;
+  payment_date: string;
+  method: string | null;
+  reference_no: string | null;
+  amount: number;
+  bank_account_id?: string | null;
+  petty_cash_fund_id?: string | null;
+  reason?: string | null;
+};
+
+export async function amendPaymentAction(paymentId: string, input: AmendPaymentInput): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!isOwner(user)) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_amend_payment", {
+    p_payment_id: paymentId,
+    p_party_id: input.party_id,
+    p_payment_date: input.payment_date,
+    p_method: input.method as string,
+    p_reference_no: input.reference_no as string,
+    p_amount: input.amount,
+    p_bank_account_id: (input.bank_account_id ?? null) as string,
+    p_petty_cash_fund_id: (input.petty_cash_fund_id ?? null) as string,
+    p_reason: (input.reason ?? null) as string,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/payments/${paymentId}`);
+  revalidatePath("/payments");
+  revalidatePath("/invoices");
+  revalidatePath("/supplier-bills");
+  return { error: null };
+}
+
+export type PaymentAmendmentRow = {
+  id: string;
+  amended_at: string;
+  reason: string | null;
+  old_values: Record<string, unknown>;
+  new_values: Record<string, unknown>;
+};
+
+export async function getPaymentAmendmentHistoryAction(paymentId: string): Promise<PaymentAmendmentRow[]> {
+  const user = await getCurrentUser();
+  if (!isOwner(user)) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("payment_amendments")
+    .select("id, amended_at, reason, old_values, new_values")
+    .eq("payment_id", paymentId)
+    .order("amended_at", { ascending: false });
+  return (data ?? []) as PaymentAmendmentRow[];
+}
+
 // ---------- Multiple payments in one go ----------
 // Each row lands the same way an unallocated/"on account" single payment
 // already can — no bill-wise allocation inside the batch grid; allocate

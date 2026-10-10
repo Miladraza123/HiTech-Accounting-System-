@@ -8,7 +8,13 @@ import { CancelWithReasonButton } from "@/components/CancelWithReasonButton";
 import { NewServiceDeliveryForm } from "@/components/NewServiceDeliveryForm";
 import { NewServiceInvoiceForm } from "@/components/NewServiceInvoiceForm";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
-import { cancelServiceJobAction, cancelServiceDeliveryAction, cancelServiceInvoiceAction } from "@/app/actions/serviceJobs";
+import { InlineFieldEdit } from "@/components/InlineFieldEdit";
+import {
+  cancelServiceJobAction,
+  cancelServiceDeliveryAction,
+  cancelServiceInvoiceAction,
+  updateServiceJobDcNoAction,
+} from "@/app/actions/serviceJobs";
 
 const JOB_STATUS_STYLE: Record<string, string> = {
   Received: "bg-warn-soft text-warn",
@@ -69,8 +75,19 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                 <p className="text-ink mt-0.5">{job.asset_description}</p>
               </div>
               <div>
-                <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">Client&apos;s DC</p>
-                <p className="text-ink mt-0.5">{job.customer_dc_no ?? "—"} {job.customer_dc_date && `(${job.customer_dc_date})`}</p>
+                {canManageJob ? (
+                  <InlineFieldEdit
+                    label="Client's DC"
+                    value={job.customer_dc_no}
+                    onSave={updateServiceJobDcNoAction.bind(null, id, job.customer_dc_no)}
+                  />
+                ) : (
+                  <>
+                    <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">Client&apos;s DC</p>
+                    <p className="text-ink mt-0.5">{job.customer_dc_no ?? "—"}</p>
+                  </>
+                )}
+                {job.customer_dc_date && <p className="text-xs text-ink-faint mt-0.5">({job.customer_dc_date})</p>}
               </div>
             </div>
             {job.received_condition_notes && (

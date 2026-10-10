@@ -16,20 +16,25 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   Cancelled: "bad",
 };
 
-export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string }> }) {
   const user = await getCurrentUser();
   if (!canSeeInvoices(user)) redirect("/");
   const canCreate = await hasPermission(user, "invoice.manage");
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, status: statusParam } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
+  // Cancelled Invoices are deliberately excluded from the Party Ledger (see
+  // fn_party_ledger) — this filter is their "separate folder", kept serial-
+  // ordered right alongside the normal list rather than a whole new page.
+  const status = statusParam === "Cancelled" ? "Cancelled" : statusParam === "Posted" ? "Posted" : "all";
 
   const supabase = await createClient();
-  const { data: invoices, count } = await supabase
+  let query = supabase
     .from("invoices")
     .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(rangeFrom, rangeTo);
+    .order("created_at", { ascending: false });
+  if (status !== "all") query = query.eq("status", status);
+  const { data: invoices, count } = await query.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
   // Outstanding for exactly the invoices on this page. It used to fetch the
@@ -56,6 +61,24 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
             + New Invoice
           </Link>
         )}
+      </div>
+
+      <div className="flex gap-2">
+        {([
+          { key: "all", label: "All" },
+          { key: "Posted", label: "Active" },
+          { key: "Cancelled", label: "Cancelled" },
+        ] as const).map((t) => (
+          <Link
+            key={t.key}
+            href={t.key === "all" ? "/invoices" : `/invoices?status=${t.key}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              status === t.key ? "bg-accent text-white" : "bg-surface-2 text-ink-soft hover:bg-surface-2/80"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
@@ -115,7 +138,13 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         )}
       </div>
 
-      <PaginationControls basePath="/invoices" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls
+        basePath="/invoices"
+        searchParams={status === "all" ? {} : { status }}
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={count ?? 0}
+      />
     </div>
   );
 }
