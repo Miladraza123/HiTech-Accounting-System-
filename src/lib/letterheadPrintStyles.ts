@@ -15,7 +15,7 @@ export function letterheadPrintStyles(scope: string): string {
     .${scope} .lh-logo { position: absolute; left: 3%; top: 6%; width: 32%; height: 88%; display: flex; align-items: center; }
     .${scope} .lh-logo img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
     .${scope} .lh-logo-text { font-size: 22px; font-weight: 700; color: #00837b; }
-    .${scope} .lh-contact { position: absolute; left: 51.5%; right: 2.5%; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; color: #fff; font-size: 13px; font-weight: 700; line-height: 1.3; }
+    .${scope} .lh-contact { position: absolute; left: 51.5%; right: 2.5%; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; color: #000; font-size: 13px; font-weight: 700; line-height: 1.3; }
     .${scope} .lh-row { display: flex; align-items: flex-start; gap: 8px; }
     .${scope} .lh-ico { flex: 0 0 14px; padding-top: 2px; display: inline-flex; }
     .${scope} .lh-reg { text-align: right; font-size: 12px; font-weight: 700; font-style: italic; padding: 5px 5% 0 0; display: flex; justify-content: flex-end; gap: 16px; }
