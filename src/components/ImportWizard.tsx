@@ -9,8 +9,14 @@ import {
   parseExcelFileAction,
   type ImportResult,
 } from "@/app/actions/import";
+import {
+  getAttendanceImportLookupsAction,
+  importAttendanceChunkAction,
+  recordAttendanceImportBatchAction,
+  type AttendanceImportRow,
+} from "@/app/actions/hr";
 
-type EntityType = "clients" | "suppliers" | "opening_receivables" | "opening_payables" | "opening_stock";
+type EntityType = "clients" | "suppliers" | "opening_receivables" | "opening_payables" | "opening_stock" | "attendance";
 
 const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: string[][] }[] = [
   {
@@ -58,12 +64,31 @@ const ENTITIES: { value: EntityType; label: string; columns: string[]; sample: s
       ["MS-PLATE-6MM", "WH-01", "500", "185.50", "2026-06-30", "Before physical count"],
     ],
   },
+  {
+    value: "attendance",
+    label: "Attendance (historical backfill — e.g. an old date range)",
+    columns: ["employee_code", "work_date", "mark", "check_in", "check_out", "leave_type", "leave_fraction", "note"],
+    sample: [
+      ["employee_code", "work_date", "mark", "check_in", "check_out", "leave_type", "leave_fraction", "note"],
+      ["01", "2026-01-05", "Present", "09:00", "18:00", "", "", ""],
+      ["01", "2026-01-06", "Leave", "", "", "Casual Leave", "1", "Family function"],
+      ["02", "2026-01-05", "Absent", "", "", "", "", ""],
+    ],
+  },
 ];
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+const ATTENDANCE_CHUNK_SIZE = 50;
 
 type Row = Record<string, string>;
 
-export function ImportWizard({ canImportParties }: { canImportParties: boolean }) {
-  const entities = canImportParties ? ENTITIES : ENTITIES.filter((e) => e.value !== "clients" && e.value !== "suppliers");
+export function ImportWizard({ canImportParties, canImportAttendance }: { canImportParties: boolean; canImportAttendance: boolean }) {
+  const entities = ENTITIES.filter((e) => {
+    if ((e.value === "clients" || e.value === "suppliers") && !canImportParties) return false;
+    if (e.value === "attendance" && !canImportAttendance) return false;
+    return true;
+  });
   const [entity, setEntity] = useState<EntityType>(entities[0].value);
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState("");
@@ -71,6 +96,7 @@ export function ImportWizard({ canImportParties }: { canImportParties: boolean }
   const [committing, setCommitting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const config = entities.find((e) => e.value === entity)!;
 
@@ -119,12 +145,95 @@ export function ImportWizard({ canImportParties }: { canImportParties: boolean }
   // real ledger entries.
   const commitInFlight = useRef(false);
 
+  // Attendance is structurally different from the other entity types — it
+  // spans many employee+date rows that each need their own pass/fail (see
+  // importAttendanceChunkAction), not one bulk RPC call — so it gets its own
+  // commit path rather than forcing it through the shared one below.
+  async function handleAttendanceCommit() {
+    setProgress(null);
+    const lookups = await getAttendanceImportLookupsAction();
+    const employeeIdByCode = new Map(lookups.employees.map((e) => [e.code.trim().toLowerCase(), e.id]));
+    const leaveTypeIdByName = new Map(lookups.leaveTypes.map((t) => [t.name.trim().toLowerCase(), t.id]));
+
+    const rowErrors: { row: number; message: string }[] = [];
+    const resolved: { originalRow: number; data: AttendanceImportRow }[] = [];
+
+    rows.forEach((r, i) => {
+      const rowNum = i + 1;
+      const code = (r.employee_code ?? "").trim();
+      const workDate = (r.work_date ?? "").trim();
+      const markRaw = (r.mark ?? "").trim().toLowerCase();
+      if (!code) return rowErrors.push({ row: rowNum, message: "Employee code is empty — row skipped." });
+      const employeeId = employeeIdByCode.get(code.toLowerCase());
+      if (!employeeId) return rowErrors.push({ row: rowNum, message: `Employee code "${code}" not found — row skipped.` });
+      if (!DATE_RE.test(workDate)) return rowErrors.push({ row: rowNum, message: "work_date must be YYYY-MM-DD — row skipped." });
+      if (!["present", "absent", "leave"].includes(markRaw)) {
+        return rowErrors.push({ row: rowNum, message: `mark must be Present, Absent or Leave (got "${r.mark}") — row skipped.` });
+      }
+      const checkIn = (r.check_in ?? "").trim() || null;
+      const checkOut = (r.check_out ?? "").trim() || null;
+      if (checkIn && !TIME_RE.test(checkIn)) return rowErrors.push({ row: rowNum, message: "check_in must be like 09:00 — row skipped." });
+      if (checkOut && !TIME_RE.test(checkOut)) return rowErrors.push({ row: rowNum, message: "check_out must be like 18:00 — row skipped." });
+
+      let leaveTypeId: string | null = null;
+      let leaveFraction: number | null = null;
+      if (markRaw === "leave") {
+        const leaveTypeName = (r.leave_type ?? "").trim();
+        if (!leaveTypeName) return rowErrors.push({ row: rowNum, message: "leave_type is required for a Leave row — row skipped." });
+        const lt = leaveTypeIdByName.get(leaveTypeName.toLowerCase());
+        if (!lt) return rowErrors.push({ row: rowNum, message: `Leave type "${leaveTypeName}" not found — row skipped.` });
+        leaveTypeId = lt;
+        const fractionRaw = (r.leave_fraction ?? "").trim();
+        leaveFraction = fractionRaw ? Number(fractionRaw) : 1;
+        if (leaveFraction !== 0.5 && leaveFraction !== 1) {
+          return rowErrors.push({ row: rowNum, message: "leave_fraction must be 1 (full day) or 0.5 (half day) — row skipped." });
+        }
+      }
+
+      resolved.push({
+        originalRow: rowNum,
+        data: {
+          employee_id: employeeId,
+          work_date: workDate,
+          mark: markRaw as "present" | "absent" | "leave",
+          check_in: checkIn,
+          check_out: checkOut,
+          leave_type_id: leaveTypeId,
+          leave_fraction: leaveFraction,
+          note: (r.note ?? "").trim() || null,
+        },
+      });
+    });
+
+    let importedCount = 0;
+    setProgress({ done: 0, total: resolved.length });
+    for (let i = 0; i < resolved.length; i += ATTENDANCE_CHUNK_SIZE) {
+      const batch = resolved.slice(i, i + ATTENDANCE_CHUNK_SIZE);
+      const chunkResults = await importAttendanceChunkAction(batch.map((b) => b.data));
+      chunkResults.forEach((res, j) => {
+        if (res.ok) importedCount++;
+        else rowErrors.push({ row: batch[j].originalRow, message: res.message ?? "Failed." });
+      });
+      setProgress({ done: Math.min(i + ATTENDANCE_CHUNK_SIZE, resolved.length), total: resolved.length });
+    }
+
+    await recordAttendanceImportBatchAction(rows.length, importedCount, rowErrors);
+    rowErrors.sort((a, b) => a.row - b.row);
+    setResult({ error: null, importedCount, rowErrors });
+    if (importedCount > 0) setRows([]);
+    setProgress(null);
+  }
+
   async function handleCommit() {
     if (commitInFlight.current) return;
     commitInFlight.current = true;
     setCommitting(true);
     setResult(null);
     try {
+      if (entity === "attendance") {
+        await handleAttendanceCommit();
+        return;
+      }
       let res: ImportResult;
       if (entity === "clients" || entity === "suppliers") {
         res = await commitPartiesImportAction(
@@ -196,6 +305,14 @@ export function ImportWizard({ canImportParties }: { canImportParties: boolean }
         <p className="text-xs text-ink-faint">
           The file should have these columns: <span className="font-mono">{config.columns.join(", ")}</span>
         </p>
+        {entity === "attendance" && (
+          <p className="text-xs text-ink-faint">
+            employee_code must match an existing employee&apos;s Code. mark is one of Present / Absent / Leave. For a
+            Leave row, leave_type must match an existing Leave Type&apos;s name exactly, and leave_fraction is 1 (full
+            day, default) or 0.5 (half day). check_in/check_out are optional, like 09:00. A row already entered for
+            that employee+date gets overwritten, not duplicated — safe to re-upload the same file.
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <label className="inline-flex cursor-pointer items-center rounded-md border border-line-strong bg-bg px-3 py-1.5 text-sm text-ink hover:bg-surface-2 transition">
@@ -230,7 +347,7 @@ export function ImportWizard({ canImportParties }: { canImportParties: boolean }
               disabled={committing}
               className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 transition disabled:opacity-60"
             >
-              {committing ? "Importing…" : `Import ${rows.length} rows`}
+              {committing ? (progress ? `Importing… ${progress.done}/${progress.total}` : "Importing…") : `Import ${rows.length} rows`}
             </button>
           </div>
           <div className="overflow-x-auto">

@@ -240,6 +240,94 @@ export async function saveAttendanceAction(date: string, rows: AttendanceRowInpu
 }
 
 // ---------------------------------------------------------------------------
+// Bulk attendance import (historical backfill, via the Import Wizard)
+// ---------------------------------------------------------------------------
+export type AttendanceImportLookups = {
+  employees: { id: string; code: string }[];
+  leaveTypes: { id: string; name: string }[];
+};
+
+// Every employee regardless of active/left status — a historical backfill
+// may well cover someone who has since left the company.
+export async function getAttendanceImportLookupsAction(): Promise<AttendanceImportLookups> {
+  if (!(await canManage())) return { employees: [], leaveTypes: [] };
+  const supabase = await createClient();
+  const [{ data: employees }, { data: leaveTypes }] = await Promise.all([
+    supabase.from("hr_employees").select("id, code"),
+    supabase.from("hr_leave_types").select("id, name").eq("is_active", true),
+  ]);
+  return { employees: employees ?? [], leaveTypes: leaveTypes ?? [] };
+}
+
+export type AttendanceImportRow = {
+  employee_id: string;
+  work_date: string;
+  mark: "present" | "absent" | "leave";
+  check_in: string | null;
+  check_out: string | null;
+  leave_type_id: string | null;
+  leave_fraction: number | null;
+  note: string | null;
+};
+
+export type AttendanceImportRowResult = { ok: boolean; message?: string };
+
+// One fn_hr_save_attendance call per row, not grouped by date — so one bad
+// row (a locked month, an employee not yet joined, a bad time) is reported
+// and skipped on its own, instead of failing every other row that happens
+// to share its date. fn_hr_save_attendance is already upsert-based (same
+// employee+date re-imported just overwrites cleanly), so this is safe to
+// call this way, and it reuses every validation the Daily Attendance screen
+// itself already relies on — no business rule is duplicated here.
+export async function importAttendanceChunkAction(rows: AttendanceImportRow[]): Promise<AttendanceImportRowResult[]> {
+  if (!(await canManage())) return rows.map(() => ({ ok: false, message: "Only the Owner or HR can do this." }));
+  const supabase = await createClient();
+  const results: AttendanceImportRowResult[] = [];
+  for (const r of rows) {
+    const { error } = await supabase.rpc("fn_hr_save_attendance", {
+      p_date: r.work_date,
+      p_rows: [
+        {
+          employee_id: r.employee_id,
+          mark: r.mark,
+          check_in: r.check_in,
+          check_out: r.check_out,
+          extra_pairs: [],
+          leave_type_id: r.leave_type_id,
+          leave_fraction: r.leave_fraction,
+          note: r.note,
+        },
+      ] as unknown as Json,
+    });
+    results.push(error ? { ok: false, message: error.message } : { ok: true });
+  }
+  revalidatePath("/hr/attendance");
+  return results;
+}
+
+// Written once, after the client has pushed every chunk through
+// importAttendanceChunkAction — the same audit trail every other Import
+// Wizard entity gets in import_batches, just finalized in one shot rather
+// than built up row by row (there's no partial/previewed state to track:
+// each row's own outcome is already known by the time this is called).
+export async function recordAttendanceImportBatchAction(
+  rowCount: number,
+  importedCount: number,
+  rowErrors: { row: number; message: string }[]
+): Promise<ActionResult> {
+  if (!(await canManage())) return NO_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_record_attendance_import_batch", {
+    p_row_count: importedCount,
+    p_status: rowErrors.length === rowCount && rowCount > 0 ? "failed" : "committed",
+    p_error_report: (rowErrors.length ? rowErrors : null) as unknown as Json,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/setup/import");
+  return { error: null };
+}
+
+// ---------------------------------------------------------------------------
 // Holidays and leave types
 // ---------------------------------------------------------------------------
 export async function addHolidayAction(date: string, name: string): Promise<ActionResult> {

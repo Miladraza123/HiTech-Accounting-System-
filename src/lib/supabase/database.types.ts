@@ -6934,6 +6934,10 @@ export type Database = {
         Args: { p_sheet_id: string }
         Returns: undefined
       }
+      fn_hr_record_attendance_import_batch: {
+        Args: { p_error_report: Json; p_row_count: number; p_status: string }
+        Returns: string
+      }
       fn_hr_register: {
         Args: { p_month: string }
         Returns: {

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { canManageHr } from "@/lib/hrAccess";
 import { ImportWizard } from "@/components/ImportWizard";
 
 export default async function ImportPage() {
   const user = await getCurrentUser();
-  const canImport = isOwner(user) || hasRole(user, "accounts");
+  const canImportAttendance = canManageHr(user);
+  const canImport = isOwner(user) || hasRole(user, "accounts") || canImportAttendance;
   if (!canImport) redirect("/");
   // Matches the parties insert RLS policy (owner/sales/store). Accounts can
   // import opening balances and stock, but not create clients/suppliers.
@@ -15,9 +17,9 @@ export default async function ImportPage() {
       <div>
         <h1 className="text-lg font-semibold text-ink">Import Wizard</h1>
         <p className="mt-1 text-sm text-ink-soft">
-          Load your existing clients, suppliers, outstanding balances, and warehouse stock from a
-          CSV or Excel file — each import is recorded as a batch, with a review
-          step.
+          Load your existing clients, suppliers, outstanding balances, warehouse stock, and
+          historical attendance from a CSV or Excel file — each import is recorded as a batch,
+          with a review step.
         </p>
         <p className="mt-1 text-xs text-ink-faint">
           Before importing Opening Stock, the item code must already exist in Item Master and the
@@ -26,7 +28,7 @@ export default async function ImportPage() {
         </p>
       </div>
 
-      <ImportWizard canImportParties={canImportParties} />
+      <ImportWizard canImportParties={canImportParties} canImportAttendance={canImportAttendance} />
     </div>
   );
 }
