@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
+import { isValidShortCode, normalizeShortCode } from "@/lib/docRef";
 
 export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string };
 
@@ -41,6 +42,10 @@ export async function createPartyAction(
   const party_type = String(formData.get("party_type") ?? "client");
   if (!legal_name) return { error: "Name is required." };
 
+  const shortCode = normalizeShortCode(String(formData.get("short_code") ?? ""));
+  if (shortCode && !isValidShortCode(shortCode)) return { error: "Client code must be 2 to 10 letters or digits, like TPFL." };
+  if (!shortCode && (party_type === "client" || party_type === "both")) return { error: "Client code is required (e.g. TPFL)." };
+
   const creditLimit = parseNonNegative(formData.get("credit_limit"), "Credit limit");
   if (creditLimit.error) return { error: creditLimit.error };
   const creditDays = parseNonNegative(formData.get("credit_days"), "Credit days", true);
@@ -56,6 +61,9 @@ export async function createPartyAction(
       cnic: String(formData.get("cnic") ?? "").trim() || null,
       billing_address: String(formData.get("billing_address") ?? "").trim() || null,
       province: String(formData.get("province") ?? "").trim() || null,
+      short_code: shortCode || null,
+      require_quotation_attn: formData.get("require_quotation_attn") === "on",
+      require_invoice_po: formData.get("require_invoice_po") === "on",
       credit_limit: creditLimit.value,
       credit_days: creditDays.value,
       created_by: user?.id,

@@ -38,8 +38,21 @@ export function NewQuotationForm({
   items: itemsProp,
   units,
   defaultTaxPct,
+  contacts = [],
+  defaultAttn = "",
+  defaultSubject = "",
+  requireAttn = false,
+  missingPartyCode = false,
 }: {
   queryId: string;
+  /** The client's contacts: suggestions for Attn. */
+  contacts?: { id: string; name: string; designation: string | null }[];
+  defaultAttn?: string;
+  defaultSubject?: string;
+  /** This client needs Attn on every quotation. */
+  requireAttn?: boolean;
+  /** The client has no code yet, so the printed reference falls back to the quotation number. */
+  missingPartyCode?: boolean;
   // A first page of items plus those already referenced here — the rest
   // are found by typing, searched in the database. See SearchablePicker.
   items: LineItem[];
@@ -54,6 +67,7 @@ export function NewQuotationForm({
   const [lines, setLines] = useState<EditableLine[]>([blankLine(defaultTaxPct, "init-0")]);
   const { isOnline, enqueue } = useOfflineQueue();
   const [savedOffline, setSavedOffline] = useState(false);
+  const [offlineError, setOfflineError] = useState<string | null>(null);
   // Guards the offline branch below against a rapid double-click — see
   // useOfflineSubmitGuard's own comment for why `pending` above (from
   // useActionState) can't do this on its own for this specific path.
@@ -63,6 +77,12 @@ export function NewQuotationForm({
     if (isOnline) return; // let the normal <form action> submission run, unchanged
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const attn = String(formData.get("attn") ?? "").trim();
+    if (requireAttn && !attn) {
+      setOfflineError("Attn is required for this client.");
+      return;
+    }
+    setOfflineError(null);
     await guard(async () => {
       await enqueue({
         kind: "create",
@@ -71,6 +91,8 @@ export function NewQuotationForm({
         label: "Quotation",
         payload: {
           query_id: queryId,
+          attn: attn || null,
+          subject: String(formData.get("subject") ?? "").trim() || null,
           terms: String(formData.get("terms") ?? "").trim() || null,
           validity_date: String(formData.get("validity_date") ?? "") || null,
           delivery_terms: String(formData.get("delivery_terms") ?? "").trim() || null,
@@ -114,17 +136,44 @@ export function NewQuotationForm({
         readOnly
       />
 
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">
+              Attn {requireAttn && <span className="text-bad">*</span>}
+            </span>
+            <input name="attn" list="quotation-attn-options" defaultValue={defaultAttn} required={requireAttn} className="input" placeholder="e.g. MR. ATIF ALI TANOLI" />
+            <datalist id="quotation-attn-options">
+              {contacts.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.designation ?? ""}
+                </option>
+              ))}
+            </datalist>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-ink-soft">Subject</span>
+            <input name="subject" defaultValue={defaultSubject} className="input" placeholder="QUOTATION FOR SUPPLY OF ..." />
+          </label>
+        </div>
+        {missingPartyCode && (
+          <p className="text-xs text-warn">
+            This client has no Client code yet, so the printed Ref # will show the quotation number. Set the code under Document Settings on the client&apos;s page.
+          </p>
+        )}
+      </div>
+
       <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} defaultTaxPct={defaultTaxPct} />
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
         <div className="grid grid-cols-2 gap-4">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-ink-soft">Validity Date</span>
+            <span className="text-xs font-medium text-ink-soft">Validity (valid until)</span>
             <input name="validity_date" type="date" className="input" />
           </label>
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-ink-soft">Delivery Terms</span>
-            <input name="delivery_terms" className="input" placeholder="e.g. 15 days from PO" />
+            <span className="text-xs font-medium text-ink-soft">Job Completion Time</span>
+            <input name="delivery_terms" className="input" placeholder="e.g. 4 TO 5 WORKING WEEK AFTER RECEIVING OF PURCHASE ORDER" />
           </label>
         </div>
         <label className="block space-y-1.5">
@@ -144,7 +193,7 @@ export function NewQuotationForm({
         </p>
       )}
 
-      {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
+      {(state.error || offlineError) && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error ?? offlineError}</p>}
 
       <button
         type="submit"

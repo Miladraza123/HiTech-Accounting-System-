@@ -173,12 +173,13 @@ export function QuotationLineEditor({
                     {showPurchaseHistory && l.item_id && <LastPurchasedHint key={l.item_id} itemId={l.item_id} />}
                   </td>
                   <td className="px-2 py-1.5">
-                    <input
+                    <textarea
                       value={l.description}
                       onChange={(e) => update(l.key, { description: e.target.value })}
                       required
-                      className="input !py-1 text-xs"
-                      placeholder="Item / service"
+                      rows={2}
+                      className="input !py-1 text-xs resize-y"
+                      placeholder="Item / service (Enter for extra lines: type, make, ...)"
                     />
                   </td>
                   <td className="px-2 py-1.5">

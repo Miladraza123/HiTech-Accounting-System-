@@ -44,9 +44,16 @@ export async function createQuotationAction(
   const delivery_terms = String(formData.get("delivery_terms") ?? "").trim() || null;
   const payment_terms = String(formData.get("payment_terms") ?? "").trim() || null;
   const lines = readLinesFromForm(formData);
+  const attn = String(formData.get("attn") ?? "").trim();
+  const subject = String(formData.get("subject") ?? "").trim();
 
   if (!query_id) return { error: "Select a Query." };
   if (!lines.length) return { error: "Add at least one item/service." };
+
+  // Some clients need every quotation addressed to a named person (Attn).
+  const { data: queryRow } = await supabase.from("queries").select("parties(require_quotation_attn)").eq("id", query_id).maybeSingle();
+  const requireAttn = (queryRow?.parties as unknown as { require_quotation_attn: boolean } | null)?.require_quotation_attn;
+  if (requireAttn && !attn) return { error: "Attn is required for this client." };
 
   const { data, error } = await supabase.rpc("fn_create_quotation", {
     p_query_id: query_id,
@@ -58,6 +65,10 @@ export async function createQuotationAction(
   });
 
   if (error || !data) return { error: error?.message ?? "Failed to create Quotation." };
+
+  if (attn || subject) {
+    await supabase.from("quotations").update({ attn: attn || null, subject: subject || null }).eq("id", data as string);
+  }
 
   redirect(`/quotations/${data}`);
 }

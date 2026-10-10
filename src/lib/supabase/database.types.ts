@@ -208,6 +208,11 @@ export type Database = {
       }
       company: {
         Row: {
+          short_code: string | null
+          signatory_name: string | null
+          service_invoice_note: string | null
+          letterhead_header_path: string | null
+          letterhead_footer_path: string | null
           address: string | null
           base_currency: string
           created_at: string
@@ -227,6 +232,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          short_code?: string | null
+          signatory_name?: string | null
+          service_invoice_note?: string | null
+          letterhead_header_path?: string | null
+          letterhead_footer_path?: string | null
           address?: string | null
           base_currency?: string
           created_at?: string
@@ -246,6 +256,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          short_code?: string | null
+          signatory_name?: string | null
+          service_invoice_note?: string | null
+          letterhead_header_path?: string | null
+          letterhead_footer_path?: string | null
           address?: string | null
           base_currency?: string
           created_at?: string
@@ -2810,6 +2825,7 @@ export type Database = {
       }
       numbering_sequences: {
         Row: {
+          include_fy: boolean
           current_value: number
           doc_type: string
           fy_reset: boolean
@@ -2821,6 +2837,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          include_fy?: boolean
           current_value?: number
           doc_type: string
           fy_reset?: boolean
@@ -2832,6 +2849,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          include_fy?: boolean
           current_value?: number
           doc_type?: string
           fy_reset?: boolean
@@ -2846,6 +2864,9 @@ export type Database = {
       }
       parties: {
         Row: {
+          short_code: string | null
+          require_quotation_attn: boolean
+          require_invoice_po: boolean
           billing_address: string | null
           cnic: string | null
           created_at: string
@@ -2864,6 +2885,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          short_code?: string | null
+          require_quotation_attn?: boolean
+          require_invoice_po?: boolean
           billing_address?: string | null
           cnic?: string | null
           created_at?: string
@@ -2882,6 +2906,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          short_code?: string | null
+          require_quotation_attn?: boolean
+          require_invoice_po?: boolean
           billing_address?: string | null
           cnic?: string | null
           created_at?: string
@@ -3882,6 +3909,8 @@ export type Database = {
       }
       quotations: {
         Row: {
+          attn: string | null
+          subject: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -3894,6 +3923,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          attn?: string | null
+          subject?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3906,6 +3937,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          attn?: string | null
+          subject?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -4457,6 +4490,7 @@ export type Database = {
       }
       service_invoices: {
         Row: {
+          client_po_no: string | null
           cancel_reason: string | null
           created_at: string
           created_by: string | null
@@ -4474,6 +4508,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          client_po_no?: string | null
           cancel_reason?: string | null
           created_at?: string
           created_by?: string | null
@@ -4491,6 +4526,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          client_po_no?: string | null
           cancel_reason?: string | null
           created_at?: string
           created_by?: string | null

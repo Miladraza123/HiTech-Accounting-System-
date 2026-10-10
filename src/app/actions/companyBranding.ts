@@ -8,7 +8,7 @@ export type ActionResult = { error: string | null; success?: boolean };
 
 const COMPANY_ID = "00000000-0000-0000-0000-000000000001";
 
-export type BrandingKind = "logo" | "signature" | "stamp";
+export type BrandingKind = "logo" | "signature" | "stamp" | "letterhead_header" | "letterhead_footer";
 
 // These are small letterhead assets, not general attachments — a much
 // tighter size cap than the attachments bucket's own 25MB limit, and
@@ -21,10 +21,16 @@ async function readCompanyColumn(
   supabase: Awaited<ReturnType<typeof createClient>>,
   kind: BrandingKind
 ): Promise<string | null> {
-  const { data } = await supabase.from("company").select("logo_path, signature_path, stamp_path").eq("id", COMPANY_ID).maybeSingle();
+  const { data } = await supabase
+    .from("company")
+    .select("logo_path, signature_path, stamp_path, letterhead_header_path, letterhead_footer_path")
+    .eq("id", COMPANY_ID)
+    .maybeSingle();
   if (!data) return null;
   if (kind === "logo") return data.logo_path;
   if (kind === "signature") return data.signature_path;
+  if (kind === "letterhead_header") return data.letterhead_header_path;
+  if (kind === "letterhead_footer") return data.letterhead_footer_path;
   return data.stamp_path;
 }
 
@@ -35,6 +41,8 @@ async function writeCompanyColumn(
 ) {
   if (kind === "logo") return supabase.from("company").update({ logo_path: value }).eq("id", COMPANY_ID);
   if (kind === "signature") return supabase.from("company").update({ signature_path: value }).eq("id", COMPANY_ID);
+  if (kind === "letterhead_header") return supabase.from("company").update({ letterhead_header_path: value }).eq("id", COMPANY_ID);
+  if (kind === "letterhead_footer") return supabase.from("company").update({ letterhead_footer_path: value }).eq("id", COMPANY_ID);
   return supabase.from("company").update({ stamp_path: value }).eq("id", COMPANY_ID);
 }
 

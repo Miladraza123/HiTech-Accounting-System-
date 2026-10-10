@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { CompanyForm } from "@/components/CompanyForm";
 import { CompanyBrandingForm } from "@/components/CompanyBrandingForm";
+import { CompanyDocSettingsForm } from "@/components/CompanyDocSettingsForm";
 
 export default async function CompanySetupPage() {
   const user = await getCurrentUser();
@@ -36,6 +37,22 @@ export default async function CompanySetupPage() {
           logoPath={company?.logo_path ?? null}
           signaturePath={company?.signature_path ?? null}
           stampPath={company?.stamp_path ?? null}
+          headerPath={company?.letterhead_header_path ?? null}
+          footerPath={company?.letterhead_footer_path ?? null}
+        />
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-ink">Quotation &amp; Service Invoice Print</h2>
+          <p className="mt-1 text-xs text-ink-soft">
+            The company code builds the quotation reference (HTE/TPFL/12). Each client&apos;s own code is set on the client&apos;s page.
+          </p>
+        </div>
+        <CompanyDocSettingsForm
+          shortCode={company?.short_code ?? null}
+          signatoryName={company?.signatory_name ?? null}
+          serviceInvoiceNote={company?.service_invoice_note ?? null}
         />
       </div>
     </div>

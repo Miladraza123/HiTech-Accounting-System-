@@ -82,8 +82,9 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
       // scaled up. Checked client-side (natural pixel dimensions, after
       // any crop above) before even uploading; SVG is vector and has no
       // meaningful "resolution" to check.
+      const isBanner = kind === "letterhead_header" || kind === "letterhead_footer";
       const dims = await readImageDimensions(file);
-      if (dims && Math.min(dims.width, dims.height) < MIN_DIMENSION_PX) {
+      if (dims && !isBanner && Math.min(dims.width, dims.height) < MIN_DIMENSION_PX) {
         setError(
           `This image is only ${dims.width}×${dims.height}px — too low-resolution to print sharply. Use an image at least ${MIN_DIMENSION_PX}×${MIN_DIMENSION_PX}px.`
         );
@@ -119,7 +120,7 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
       <p className="text-xs font-medium text-ink-soft">{label}</p>
       <p className="text-xs text-ink-faint">{hint}</p>
 
-      <div className="flex h-16 w-full items-center justify-center rounded border border-line bg-white">
+      <div className={`flex w-full items-center justify-center rounded border border-line bg-white ${kind.startsWith("letterhead") ? "h-12" : "h-16"}`}>
         {loadingPreview ? (
           <span className="text-xs text-ink-faint">Loading…</span>
         ) : previewUrl ? (
@@ -150,10 +151,14 @@ export function CompanyBrandingForm({
   logoPath,
   signaturePath,
   stampPath,
+  headerPath = null,
+  footerPath = null,
 }: {
   logoPath: string | null;
   signaturePath: string | null;
   stampPath: string | null;
+  headerPath?: string | null;
+  footerPath?: string | null;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
@@ -165,6 +170,18 @@ export function CompanyBrandingForm({
         path={signaturePath}
       />
       <BrandingSlot kind="stamp" label="Stamp" hint="Shown only when chosen at Print/Download time on a document." path={stampPath} />
+      <BrandingSlot
+        kind="letterhead_header"
+        label="Letterhead Header Banner"
+        hint="Top banner of the Quotation and Service Invoice. The HiTech banner is used until you upload one."
+        path={headerPath}
+      />
+      <BrandingSlot
+        kind="letterhead_footer"
+        label="Letterhead Footer Banner"
+        hint="Bottom banner of the Quotation and Service Invoice. The HiTech banner is used until you upload one."
+        path={footerPath}
+      />
     </div>
   );
 }
