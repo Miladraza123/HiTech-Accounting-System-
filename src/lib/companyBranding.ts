@@ -17,13 +17,12 @@ export type CompanyBrandingPaths = {
   logo_path: string | null;
   signature_path: string | null;
   stamp_path: string | null;
-  letterhead_header_path?: string | null;
   letterhead_footer_path?: string | null;
 } | null | undefined;
 
-// Shipped with the app: the HiTech letterhead banners, used until a different
-// header/footer image is uploaded under Company Profile.
-export const DEFAULT_LETTERHEAD_HEADER = "/letterhead/header.jpg";
+// Shipped with the app: the HiTech letterhead footer wave, used until a different
+// footer image is uploaded under Company Profile. (The header is drawn in code
+// from the company profile, see components/print/LetterheadHeader.tsx.)
 export const DEFAULT_LETTERHEAD_FOOTER = "/letterhead/footer.jpg";
 
 /**
@@ -41,21 +40,18 @@ export async function getCompanyBrandingUrls(
   logoUrl: string | null;
   signatureUrl: string | null;
   stampUrl: string | null;
-  headerUrl: string;
   footerUrl: string;
 }> {
-  const [logoUrl, signatureUrl, stampUrl, uploadedHeader, uploadedFooter] = await Promise.all([
+  const [logoUrl, signatureUrl, stampUrl, uploadedFooter] = await Promise.all([
     signPath(supabase, company?.logo_path),
     opts.signature ? signPath(supabase, company?.signature_path) : Promise.resolve(null),
     opts.stamp ? signPath(supabase, company?.stamp_path) : Promise.resolve(null),
-    signPath(supabase, company?.letterhead_header_path),
     signPath(supabase, company?.letterhead_footer_path),
   ]);
   return {
     logoUrl,
     signatureUrl,
     stampUrl,
-    headerUrl: uploadedHeader ?? DEFAULT_LETTERHEAD_HEADER,
     footerUrl: uploadedFooter ?? DEFAULT_LETTERHEAD_FOOTER,
   };
 }

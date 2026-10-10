@@ -26,7 +26,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
 
   const supabase = await createClient();
   const [{ data: job }, { data: deliveries }, { data: invoices }, { data: company }] = await Promise.all([
-    supabase.from("service_jobs").select("*, parties(legal_name, billing_address, require_invoice_po)").eq("id", id).maybeSingle(),
+    supabase.from("service_jobs").select("*, parties(legal_name, billing_address)").eq("id", id).maybeSingle(),
     supabase.from("service_deliveries").select("*").eq("service_job_id", id).order("created_at", { ascending: false }),
     supabase.from("service_invoices").select("*, service_invoice_lines(*)").eq("service_job_id", id).order("created_at", { ascending: false }),
     supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
@@ -34,7 +34,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
 
   if (!job) notFound();
 
-  const party = job.parties as unknown as { legal_name: string; billing_address: string | null; require_invoice_po: boolean } | null;
+  const party = job.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const canComplete = canManageJob && job.status === "Received";
   const canCancelJob = isOwner(user) && job.status !== "Cancelled" && !deliveries?.some((d) => d.status !== "Cancelled") && !invoices?.some((i) => i.status !== "Cancelled");
   const canDeliver = canManageDelivery && job.status === "Completed";
@@ -52,6 +52,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
             <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${JOB_STATUS_STYLE[job.status] ?? ""}`}>{job.status}</span>
           </div>
           <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
+          {job.client_po_no && <p className="text-xs text-ink-faint mt-0.5">Client PO: <span className="font-mono">{job.client_po_no}</span></p>}
         </div>
       </div>
 
@@ -150,7 +151,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
             </div>
           )}
 
-          {canInvoice && <NewServiceInvoiceForm serviceJobId={id} requirePo={!!party?.require_invoice_po} />}
+          {canInvoice && <NewServiceInvoiceForm serviceJobId={id} jobPoNo={job.client_po_no} />}
         </div>
 
         <div className="space-y-6">

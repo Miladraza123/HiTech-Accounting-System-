@@ -208,6 +208,8 @@ export type Database = {
       }
       company: {
         Row: {
+          phone2: string | null
+          email2: string | null
           short_code: string | null
           signatory_name: string | null
           service_invoice_note: string | null
@@ -232,6 +234,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          phone2?: string | null
+          email2?: string | null
           short_code?: string | null
           signatory_name?: string | null
           service_invoice_note?: string | null
@@ -256,6 +260,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          phone2?: string | null
+          email2?: string | null
           short_code?: string | null
           signatory_name?: string | null
           service_invoice_note?: string | null
@@ -4562,6 +4568,7 @@ export type Database = {
       }
       service_jobs: {
         Row: {
+          client_po_no: string | null
           asset_description: string
           cancel_reason: string | null
           created_at: string
@@ -4579,6 +4586,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          client_po_no?: string | null
           asset_description: string
           cancel_reason?: string | null
           created_at?: string
@@ -4596,6 +4604,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          client_po_no?: string | null
           asset_description?: string
           cancel_reason?: string | null
           created_at?: string

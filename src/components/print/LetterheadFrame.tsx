@@ -2,34 +2,28 @@ import type { ReactNode } from "react";
 import { letterheadPrintStyles } from "@/lib/letterheadPrintStyles";
 
 /**
- * The shared sheet of the letterhead-style documents: header banner on top,
- * footer banner at the bottom of the page, the document body between them.
+ * The shared sheet of the letterhead-style documents: the header (drawn from the
+ * company profile) on top, the footer banner image at the bottom of the page, the
+ * document body between them.
  * Plain markup (no client JS) so it works for browser print and for the PDF
  * download, which both load the print route.
  */
 export function LetterheadFrame({
   scope,
-  headerUrl,
+  header,
   footerUrl,
-  fallbackHeader,
   children,
 }: {
   scope: string;
-  headerUrl: string | null;
+  /** The letterhead header (see LetterheadHeader), built from the Company Profile. */
+  header: ReactNode;
   footerUrl: string | null;
-  /** Shown instead of the banner image when none is available. */
-  fallbackHeader: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className={scope}>
       <style dangerouslySetInnerHTML={{ __html: letterheadPrintStyles(scope) }} />
-      {headerUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- print page: plain server-rendered HTML captured for PDF/print, see PrintLogoBlock.tsx
-        <img className="lh-header" src={headerUrl} alt="" />
-      ) : (
-        <div className="lh-header-text">{fallbackHeader}</div>
-      )}
+      {header}
       <div className="lh-body">{children}</div>
       {footerUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- see above

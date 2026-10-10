@@ -21,7 +21,7 @@ export default async function NewQuotationPage({
   const [{ data: query }, items, { data: units }, { data: company }] = await Promise.all([
     supabase
       .from("queries")
-      .select("id, query_no, requirement, party_id, parties(legal_name, short_code, require_quotation_attn)")
+      .select("id, query_no, requirement, party_id, parties(legal_name, short_code)")
       .eq("id", query_id)
       .maybeSingle(),
     fetchLineItems(supabase),
@@ -30,7 +30,7 @@ export default async function NewQuotationPage({
   ]);
 
   if (!query) notFound();
-  const party = query.parties as unknown as { legal_name: string; short_code: string | null; require_quotation_attn: boolean } | null;
+  const party = query.parties as unknown as { legal_name: string; short_code: string | null } | null;
   const { data: contacts } = await supabase
     .from("party_contacts")
     .select("id, name, designation, is_primary")
@@ -59,7 +59,6 @@ export default async function NewQuotationPage({
         contacts={contacts ?? []}
         defaultAttn={primary?.name ?? ""}
         defaultSubject={`QUOTATION FOR ${query.requirement}`.toUpperCase()}
-        requireAttn={!!party?.require_quotation_attn}
         missingPartyCode={!party?.short_code}
       />
     </div>

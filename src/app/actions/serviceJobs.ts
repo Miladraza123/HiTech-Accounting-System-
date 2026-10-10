@@ -16,7 +16,10 @@ export async function createServiceJobAction(input: {
   customer_dc_no: string | null;
   customer_dc_date: string | null;
   received_condition_notes: string | null;
+  client_po_no: string;
 }): Promise<ActionResult> {
+  const poNo = input.client_po_no.trim();
+  if (!poNo) return { error: "Client PO number is required." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_create_service_job", {
     p_party_id: input.party_id,
@@ -26,6 +29,8 @@ export async function createServiceJobAction(input: {
     p_received_condition_notes: input.received_condition_notes as string,
   });
   if (error) return { error: error.message };
+  // The PO number lives on the job row itself (the RPC above has no parameter for it).
+  await supabase.from("service_jobs").update({ client_po_no: poNo }).eq("id", data as string);
   revalidatePath("/service-jobs");
   return { error: null, id: data as string, success: true };
 }
@@ -85,12 +90,12 @@ export async function createServiceInvoiceAction(
   clientPoNo: string | null = null
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const poNo = clientPoNo?.trim() || null;
 
-  // Some clients need their PO number on every invoice.
-  const { data: job } = await supabase.from("service_jobs").select("parties(require_invoice_po)").eq("id", serviceJobId).maybeSingle();
-  const requirePo = (job?.parties as unknown as { require_invoice_po: boolean } | null)?.require_invoice_po;
-  if (requirePo && !poNo) return { error: "Client PO number is required for this client." };
+  // The client's PO number comes from the Service Job. An older job without one
+  // takes it here, and it is saved onto the job too.
+  const { data: job } = await supabase.from("service_jobs").select("client_po_no").eq("id", serviceJobId).maybeSingle();
+  const poNo = job?.client_po_no?.trim() || clientPoNo?.trim() || null;
+  if (!poNo) return { error: "Client PO number is required." };
 
   const { data, error } = await supabase.rpc("fn_create_service_invoice", {
     p_service_job_id: serviceJobId,
@@ -98,7 +103,8 @@ export async function createServiceInvoiceAction(
     p_lines: lines,
   });
   if (error) return { error: error.message };
-  if (poNo) await supabase.from("service_invoices").update({ client_po_no: poNo }).eq("id", data as string);
+  await supabase.from("service_invoices").update({ client_po_no: poNo }).eq("id", data as string);
+  if (!job?.client_po_no) await supabase.from("service_jobs").update({ client_po_no: poNo }).eq("id", serviceJobId);
   revalidatePath(`/service-jobs/${serviceJobId}`);
   return { error: null, id: data as string, success: true };
 }

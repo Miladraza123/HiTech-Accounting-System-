@@ -50,11 +50,6 @@ export async function createQuotationAction(
   if (!query_id) return { error: "Select a Query." };
   if (!lines.length) return { error: "Add at least one item/service." };
 
-  // Some clients need every quotation addressed to a named person (Attn).
-  const { data: queryRow } = await supabase.from("queries").select("parties(require_quotation_attn)").eq("id", query_id).maybeSingle();
-  const requireAttn = (queryRow?.parties as unknown as { require_quotation_attn: boolean } | null)?.require_quotation_attn;
-  if (requireAttn && !attn) return { error: "Attn is required for this client." };
-
   const { data, error } = await supabase.rpc("fn_create_quotation", {
     p_query_id: query_id,
     p_terms: terms as string,

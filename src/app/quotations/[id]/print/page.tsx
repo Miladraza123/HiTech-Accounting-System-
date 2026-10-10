@@ -32,7 +32,7 @@ export default async function QuotationPrintPage({
 
   if (!quotation) notFound();
 
-  const { signatureUrl, stampUrl, headerUrl, footerUrl } = await getCompanyBrandingUrls(supabase, company, {
+  const { logoUrl, signatureUrl, stampUrl, footerUrl } = await getCompanyBrandingUrls(supabase, company, {
     signature: signature === "1",
     stamp: stamp === "1",
   });
@@ -76,7 +76,17 @@ export default async function QuotationPrintPage({
         completionTime={revision.delivery_terms}
         validityText={days === null ? null : `${days} ${days === 1 ? "DAY" : "DAYS"}`}
         signatoryName={company?.signatory_name ?? null}
-        headerUrl={headerUrl}
+        headerCompany={{
+          name: company?.legal_name ?? "Company",
+          phone: company?.phone ?? null,
+          phone2: company?.phone2 ?? null,
+          email: company?.email ?? null,
+          email2: company?.email2 ?? null,
+          address: company?.address ?? null,
+          ntn: company?.ntn ?? null,
+          strn: company?.strn ?? null,
+        }}
+        logoUrl={logoUrl}
         footerUrl={footerUrl}
         signatureUrl={signatureUrl}
         stampUrl={stampUrl}

@@ -153,12 +153,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
       {isClient && (owner || hasRole(user, "sales")) && (
         <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
           <h2 className="text-sm font-semibold text-ink">Document Settings</h2>
-          <PartyDocSettingsForm
-            partyId={id}
-            shortCode={party.short_code}
-            requireQuotationAttn={party.require_quotation_attn}
-            requireInvoicePo={party.require_invoice_po}
-          />
+          <PartyDocSettingsForm partyId={id} shortCode={party.short_code} />
         </div>
       )}
 

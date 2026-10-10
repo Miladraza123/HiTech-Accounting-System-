@@ -13,7 +13,7 @@ function blankLine(): Line {
   return { key: keySeq, description: "", qty: 1, rate: 0, tax_pct: 0 };
 }
 
-export function NewServiceInvoiceForm({ serviceJobId, requirePo = false }: { serviceJobId: string; requirePo?: boolean }) {
+export function NewServiceInvoiceForm({ serviceJobId, jobPoNo = null }: { serviceJobId: string; jobPoNo?: string | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(karachiToday());
@@ -40,8 +40,8 @@ export function NewServiceInvoiceForm({ serviceJobId, requirePo = false }: { ser
   function submit() {
     setError(null);
     const validLines = lines.filter((l) => l.description.trim());
-    if (requirePo && !clientPo.trim()) {
-      setError("Client PO number is required for this client.");
+    if (!jobPoNo && !clientPo.trim()) {
+      setError("Client PO number is required.");
       return;
     }
     if (!validLines.length) {
@@ -70,12 +70,19 @@ export function NewServiceInvoiceForm({ serviceJobId, requirePo = false }: { ser
           <span className="text-xs text-ink-faint">Invoice Date</span>
           <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="input !py-1 text-xs" />
         </label>
-        <label className="block space-y-1 max-w-[14rem]">
-          <span className="text-xs text-ink-faint">
-            Client PO No. {requirePo && <span className="text-bad">*</span>}
-          </span>
-          <input value={clientPo} onChange={(e) => setClientPo(e.target.value)} placeholder="e.g. 4500101166" className="input !py-1 text-xs" />
-        </label>
+        {jobPoNo ? (
+          <div className="space-y-1">
+            <span className="text-xs text-ink-faint">Client PO No. (from the Service Job)</span>
+            <p className="text-sm font-mono text-ink pt-1">{jobPoNo}</p>
+          </div>
+        ) : (
+          <label className="block space-y-1 max-w-[14rem]">
+            <span className="text-xs text-ink-faint">
+              Client PO No. <span className="text-bad">*</span>
+            </span>
+            <input value={clientPo} onChange={(e) => setClientPo(e.target.value)} placeholder="e.g. 4500101166" className="input !py-1 text-xs" />
+          </label>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-md border border-line">
