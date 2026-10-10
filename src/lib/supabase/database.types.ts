@@ -208,78 +208,78 @@ export type Database = {
       }
       company: {
         Row: {
-          phone2: string | null
-          email2: string | null
-          short_code: string | null
-          signatory_name: string | null
-          service_invoice_note: string | null
-          letterhead_header_path: string | null
-          letterhead_footer_path: string | null
           address: string | null
           base_currency: string
           created_at: string
           default_sales_tax_pct: number
           email: string | null
+          email2: string | null
           fiscal_year_start_month: number
           id: string
           legal_name: string
+          letterhead_footer_path: string | null
+          letterhead_header_path: string | null
           logo_path: string | null
           ntn: string | null
           period_lock_date: string | null
           phone: string | null
+          phone2: string | null
           province: string | null
+          service_invoice_note: string | null
+          short_code: string | null
+          signatory_name: string | null
           signature_path: string | null
           stamp_path: string | null
           strn: string | null
           updated_at: string
         }
         Insert: {
-          phone2?: string | null
-          email2?: string | null
-          short_code?: string | null
-          signatory_name?: string | null
-          service_invoice_note?: string | null
-          letterhead_header_path?: string | null
-          letterhead_footer_path?: string | null
           address?: string | null
           base_currency?: string
           created_at?: string
           default_sales_tax_pct?: number
           email?: string | null
+          email2?: string | null
           fiscal_year_start_month?: number
           id?: string
           legal_name: string
+          letterhead_footer_path?: string | null
+          letterhead_header_path?: string | null
           logo_path?: string | null
           ntn?: string | null
           period_lock_date?: string | null
           phone?: string | null
+          phone2?: string | null
           province?: string | null
+          service_invoice_note?: string | null
+          short_code?: string | null
+          signatory_name?: string | null
           signature_path?: string | null
           stamp_path?: string | null
           strn?: string | null
           updated_at?: string
         }
         Update: {
-          phone2?: string | null
-          email2?: string | null
-          short_code?: string | null
-          signatory_name?: string | null
-          service_invoice_note?: string | null
-          letterhead_header_path?: string | null
-          letterhead_footer_path?: string | null
           address?: string | null
           base_currency?: string
           created_at?: string
           default_sales_tax_pct?: number
           email?: string | null
+          email2?: string | null
           fiscal_year_start_month?: number
           id?: string
           legal_name?: string
+          letterhead_footer_path?: string | null
+          letterhead_header_path?: string | null
           logo_path?: string | null
           ntn?: string | null
           period_lock_date?: string | null
           phone?: string | null
+          phone2?: string | null
           province?: string | null
+          service_invoice_note?: string | null
+          short_code?: string | null
+          signatory_name?: string | null
           signature_path?: string | null
           stamp_path?: string | null
           strn?: string | null
@@ -2831,11 +2831,11 @@ export type Database = {
       }
       numbering_sequences: {
         Row: {
-          include_fy: boolean
           current_value: number
           doc_type: string
           fy_reset: boolean
           id: string
+          include_fy: boolean
           label: string
           last_reset_fy: number | null
           padding: number
@@ -2843,11 +2843,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          include_fy?: boolean
           current_value?: number
           doc_type: string
           fy_reset?: boolean
           id?: string
+          include_fy?: boolean
           label: string
           last_reset_fy?: number | null
           padding?: number
@@ -2855,11 +2855,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          include_fy?: boolean
           current_value?: number
           doc_type?: string
           fy_reset?: boolean
           id?: string
+          include_fy?: boolean
           label?: string
           last_reset_fy?: number | null
           padding?: number
@@ -2870,9 +2870,6 @@ export type Database = {
       }
       parties: {
         Row: {
-          short_code: string | null
-          require_quotation_attn: boolean
-          require_invoice_po: boolean
           billing_address: string | null
           cnic: string | null
           created_at: string
@@ -2885,15 +2882,15 @@ export type Database = {
           ntn: string | null
           party_type: string
           province: string | null
+          require_invoice_po: boolean
+          require_quotation_attn: boolean
           row_version: number
+          short_code: string | null
           strn: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
-          short_code?: string | null
-          require_quotation_attn?: boolean
-          require_invoice_po?: boolean
           billing_address?: string | null
           cnic?: string | null
           created_at?: string
@@ -2906,15 +2903,15 @@ export type Database = {
           ntn?: string | null
           party_type: string
           province?: string | null
+          require_invoice_po?: boolean
+          require_quotation_attn?: boolean
           row_version?: number
+          short_code?: string | null
           strn?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
-          short_code?: string | null
-          require_quotation_attn?: boolean
-          require_invoice_po?: boolean
           billing_address?: string | null
           cnic?: string | null
           created_at?: string
@@ -2927,7 +2924,10 @@ export type Database = {
           ntn?: string | null
           party_type?: string
           province?: string | null
+          require_invoice_po?: boolean
+          require_quotation_attn?: boolean
           row_version?: number
+          short_code?: string | null
           strn?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -3916,7 +3916,6 @@ export type Database = {
       quotations: {
         Row: {
           attn: string | null
-          subject: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -3925,12 +3924,12 @@ export type Database = {
           quotation_no: string
           responsible_user_id: string | null
           status: string
+          subject: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           attn?: string | null
-          subject?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3939,12 +3938,12 @@ export type Database = {
           quotation_no: string
           responsible_user_id?: string | null
           status?: string
+          subject?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           attn?: string | null
-          subject?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3953,6 +3952,7 @@ export type Database = {
           quotation_no?: string
           responsible_user_id?: string | null
           status?: string
+          subject?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -4496,8 +4496,8 @@ export type Database = {
       }
       service_invoices: {
         Row: {
-          client_po_no: string | null
           cancel_reason: string | null
+          client_po_no: string | null
           created_at: string
           created_by: string | null
           grand_total: number
@@ -4514,8 +4514,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          client_po_no?: string | null
           cancel_reason?: string | null
+          client_po_no?: string | null
           created_at?: string
           created_by?: string | null
           grand_total?: number
@@ -4532,8 +4532,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
-          client_po_no?: string | null
           cancel_reason?: string | null
+          client_po_no?: string | null
           created_at?: string
           created_by?: string | null
           grand_total?: number
@@ -4568,9 +4568,9 @@ export type Database = {
       }
       service_jobs: {
         Row: {
-          client_po_no: string | null
           asset_description: string
           cancel_reason: string | null
+          client_po_no: string | null
           created_at: string
           created_by: string | null
           customer_dc_date: string | null
@@ -4586,9 +4586,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          client_po_no?: string | null
           asset_description: string
           cancel_reason?: string | null
+          client_po_no?: string | null
           created_at?: string
           created_by?: string | null
           customer_dc_date?: string | null
@@ -4604,9 +4604,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
-          client_po_no?: string | null
           asset_description?: string
           cancel_reason?: string | null
+          client_po_no?: string | null
           created_at?: string
           created_by?: string | null
           customer_dc_date?: string | null

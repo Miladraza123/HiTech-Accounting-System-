@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 // A client is flagged once outstanding crosses this fraction of their credit
 // limit — "Warning" before they're actually over, "Over Limit" once they are.
@@ -12,9 +13,10 @@ export default async function CreditLimitWarningPage() {
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "sales") || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
-  const [{ data: parties }, { data: arSummary }] = await Promise.all([
+  const [{ data: parties }, { data: arSummary }, { data: company }] = await Promise.all([
     supabase.from("parties").select("id, legal_name, credit_limit, credit_days").in("party_type", ["client", "both"]).gt("credit_limit", 0),
     supabase.from("party_ar_summary").select("*"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   const outstandingById = new Map((arSummary ?? []).map((s) => [s.party_id, s.total_outstanding ?? 0]));
@@ -32,12 +34,22 @@ export default async function CreditLimitWarningPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Credit Limit Warning</h1>
-        <p className="text-sm text-ink-soft">Every client whose outstanding has reached 90% or more of their Credit Limit.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Credit Limit Warning</h1>
+          <p className="text-sm text-ink-soft">Every client whose outstanding has reached 90% or more of their Credit Limit.</p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/credit-limit-warning/print"
+          filename="Credit-Limit-Warning.pdf"
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

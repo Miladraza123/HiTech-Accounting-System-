@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function DailyLedgerPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const user = await getCurrentUser();
@@ -11,11 +12,14 @@ export default async function DailyLedgerPage({ searchParams }: { searchParams: 
   const selectedDate = date || new Date().toISOString().slice(0, 10);
 
   const supabase = await createClient();
-  const { data: entries } = await supabase
-    .from("journal_entries")
-    .select("*, journal_lines(*, chart_of_accounts(code, name), parties(legal_name))")
-    .eq("entry_date", selectedDate)
-    .order("created_at");
+  const [{ data: entries }, { data: company }] = await Promise.all([
+    supabase
+      .from("journal_entries")
+      .select("*, journal_lines(*, chart_of_accounts(code, name), parties(legal_name))")
+      .eq("entry_date", selectedDate)
+      .order("created_at"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   let dayDebit = 0;
   let dayCredit = 0;
@@ -34,11 +38,21 @@ export default async function DailyLedgerPage({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Daily Ledger / Day Book</h1>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Daily Ledger / Day Book</h1>
+        </div>
+        <PrintPdfActions
+          printPath={`/reports/daily-ledger/print?date=${selectedDate}`}
+          filename={`Daily-Ledger-${selectedDate}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

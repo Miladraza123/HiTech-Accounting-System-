@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function CashBankPage() {
   const user = await getCurrentUser();
@@ -9,10 +10,11 @@ export default async function CashBankPage() {
   if (!canView) redirect("/");
 
   const supabase = await createClient();
-  const [{ data: cashRow }, { data: bankBalances }, { data: pettyBalances }] = await Promise.all([
+  const [{ data: cashRow }, { data: bankBalances }, { data: pettyBalances }, { data: company }] = await Promise.all([
     supabase.from("cash_in_hand_balance").select("*").maybeSingle(),
     supabase.from("bank_account_balances").select("*").eq("is_active", true).order("account_name"),
     supabase.from("petty_cash_fund_balances").select("*").eq("is_active", true).order("fund_name"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   const cashBalance = cashRow?.balance ?? 0;
@@ -22,12 +24,20 @@ export default async function CashBankPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-lg font-semibold text-ink">Cash &amp; Bank Position</h1>
           <p className="mt-1 text-sm text-ink-soft">Live balances — every transaction (Payment, Expense, Transfer, Journal Voucher) is reflected here.</p>
         </div>
         <div className="flex gap-2">
+          <PrintPdfActions
+            printPath="/cash-bank/print"
+            filename={`Cash-Bank-Balances-${new Date().toISOString().slice(0, 10)}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
           <Link href="/transfers/new" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition">
             Fund Transfer
           </Link>

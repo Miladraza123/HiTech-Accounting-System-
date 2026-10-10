@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 function defaultMonthRange(): { from: string; to: string } {
   const now = new Date();
@@ -20,13 +21,16 @@ export default async function PaymentCollectionReportPage({ searchParams }: { se
   const toDate = to || defaults.to;
 
   const supabase = await createClient();
-  const { data: payments } = await supabase
-    .from("payments")
-    .select("*, parties(legal_name)")
-    .gte("payment_date", fromDate)
-    .lte("payment_date", toDate)
-    .eq("status", "Posted")
-    .order("payment_date", { ascending: false });
+  const [{ data: payments }, { data: company }] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("*, parties(legal_name)")
+      .gte("payment_date", fromDate)
+      .lte("payment_date", toDate)
+      .eq("status", "Posted")
+      .order("payment_date", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const receipts = (payments ?? []).filter((p) => p.direction === "receipt");
   const disbursements = (payments ?? []).filter((p) => p.direction === "payment");
@@ -55,12 +59,22 @@ export default async function PaymentCollectionReportPage({ searchParams }: { se
           </Link>
           <h1 className="text-lg font-semibold text-ink mt-1">Payment Collection Report</h1>
         </div>
-        <a
-          href={`/reports/payment-collection/export?from=${fromDate}&to=${toDate}`}
-          className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
-        >
-          Export to Excel
-        </a>
+        <div className="flex items-center gap-2">
+          <PrintPdfActions
+            printPath={`/reports/payment-collection/print?from=${fromDate}&to=${toDate}`}
+            filename={`Payment-Collection-${fromDate}-to-${toDate}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
+          <a
+            href={`/reports/payment-collection/export?from=${fromDate}&to=${toDate}`}
+            className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap"
+          >
+            Export to Excel
+          </a>
+        </div>
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">

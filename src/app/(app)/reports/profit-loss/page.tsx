@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 function defaultFyRange(): { from: string; to: string } {
   const now = new Date();
@@ -24,7 +25,10 @@ export default async function ProfitLossPage({ searchParams }: { searchParams: P
   // reducing them here. journal_entries grows with every posted document, so
   // the old shape shipped an entire financial year of transactions to the app
   // on each page view; this returns one row per account instead.
-  const { data: accounts } = await supabase.rpc("fn_profit_loss", { p_from: fromDate, p_to: toDate });
+  const [{ data: accounts }, { data: company }] = await Promise.all([
+    supabase.rpc("fn_profit_loss", { p_from: fromDate, p_to: toDate }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const byCode = (accounts ?? []).slice().sort((a, b) => a.code.localeCompare(b.code));
 
@@ -46,11 +50,21 @@ export default async function ProfitLossPage({ searchParams }: { searchParams: P
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Profit &amp; Loss Statement</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Profit &amp; Loss Statement</h1>
+        </div>
+        <PrintPdfActions
+          printPath={`/reports/profit-loss/print?from=${fromDate}&to=${toDate}`}
+          filename={`Profit-Loss-${fromDate}-to-${toDate}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">

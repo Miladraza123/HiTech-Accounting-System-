@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { GenerateSnapshotButton } from "@/components/GenerateSnapshotButton";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function DailySnapshotPage() {
   const user = await getCurrentUser();
@@ -10,7 +11,10 @@ export default async function DailySnapshotPage() {
   if (!(canGenerate || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
-  const { data: snapshots } = await supabase.from("daily_snapshots").select("*").order("snapshot_date", { ascending: false }).limit(90);
+  const [{ data: snapshots }, { data: company }] = await Promise.all([
+    supabase.from("daily_snapshots").select("*").order("snapshot_date", { ascending: false }).limit(90),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const latest = snapshots?.[0];
 
@@ -26,7 +30,17 @@ export default async function DailySnapshotPage() {
             A snapshot of the previous day is generated automatically at 00:10 every day. You can also generate or regenerate it manually below.
           </p>
         </div>
-        {canGenerate && <GenerateSnapshotButton />}
+        <div className="flex items-center gap-2">
+          <PrintPdfActions
+            printPath="/reports/daily-snapshot/print"
+            filename={`Daily-Snapshot-${new Date().toISOString().slice(0, 10)}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
+          {canGenerate && <GenerateSnapshotButton />}
+        </div>
       </div>
 
       {latest && (

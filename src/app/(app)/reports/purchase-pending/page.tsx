@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function PurchasePendingReportPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
@@ -19,10 +20,13 @@ export default async function PurchasePendingReportPage({ searchParams }: { sear
   // fn_purchase_pending filters in SQL and returns a single page. Sorting by
   // overdue-days descending with nulls last is exactly expected_delivery
   // ascending nulls last, so the order is unchanged.
-  const { data: pending } = await supabase.rpc("fn_purchase_pending", {
-    p_limit: DEFAULT_PAGE_SIZE,
-    p_offset: rangeFrom,
-  });
+  const [{ data: pending }, { data: company }] = await Promise.all([
+    supabase.rpc("fn_purchase_pending", {
+      p_limit: DEFAULT_PAGE_SIZE,
+      p_offset: rangeFrom,
+    }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const rows = (pending ?? []).map((r) => ({
     po_no: r.po_no,
@@ -41,12 +45,22 @@ export default async function PurchasePendingReportPage({ searchParams }: { sear
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Purchase Pending Report</h1>
-        <p className="text-sm text-ink-soft">Every Purchase Order line with pending receiving — most overdue first.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Purchase Pending Report</h1>
+          <p className="text-sm text-ink-soft">Every Purchase Order line with pending receiving — most overdue first.</p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/purchase-pending/print"
+          filename="Purchase-Pending-Report.pdf"
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-4 max-w-xs">

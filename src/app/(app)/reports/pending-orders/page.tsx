@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function PendingOrdersReportPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const user = await getCurrentUser();
@@ -19,10 +20,13 @@ export default async function PendingOrdersReportPage({ searchParams }: { search
   // because PostgREST cannot compare one column against another; in
   // fn_pending_orders it is a WHERE clause, so only genuinely pending lines
   // are fetched, one page at a time.
-  const { data: pending } = await supabase.rpc("fn_pending_orders", {
-    p_limit: DEFAULT_PAGE_SIZE,
-    p_offset: rangeFrom,
-  });
+  const [{ data: pending }, { data: company }] = await Promise.all([
+    supabase.rpc("fn_pending_orders", {
+      p_limit: DEFAULT_PAGE_SIZE,
+      p_offset: rangeFrom,
+    }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const rows = (pending ?? []).map((r) => ({
     so_no: r.so_no,
@@ -54,9 +58,19 @@ export default async function PendingOrdersReportPage({ searchParams }: { search
           <h1 className="text-lg font-semibold text-ink mt-1">Pending Order &amp; Delivery Report</h1>
           <p className="text-sm text-ink-soft">Every Sales Order line with pending delivery or invoicing — oldest orders first.</p>
         </div>
-        <a href="/reports/pending-orders/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
-          Export to Excel
-        </a>
+        <div className="flex items-center gap-2">
+          <PrintPdfActions
+            printPath="/reports/pending-orders/print"
+            filename={`Pending-Orders-${new Date().toISOString().slice(0, 10)}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
+          <a href="/reports/pending-orders/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
+            Export to Excel
+          </a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

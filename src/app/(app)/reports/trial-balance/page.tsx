@@ -2,13 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function TrialBalancePage() {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
-  const { data: rows } = await supabase.from("trial_balance").select("*").order("code");
+  const [{ data: rows }, { data: company }] = await Promise.all([
+    supabase.from("trial_balance").select("*").order("code"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const active = (rows ?? []).filter((r) => (r.total_debit ?? 0) !== 0 || (r.total_credit ?? 0) !== 0);
   const totalDebit = active.reduce((s, r) => s + (r.total_debit ?? 0), 0);
@@ -24,9 +28,19 @@ export default async function TrialBalancePage() {
           </Link>
           <h1 className="text-lg font-semibold text-ink mt-1">Trial Balance</h1>
         </div>
-        <a href="/reports/trial-balance/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
-          Export to Excel
-        </a>
+        <div className="flex items-start gap-2">
+          <a href="/reports/trial-balance/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
+            Export to Excel
+          </a>
+          <PrintPdfActions
+            printPath="/reports/trial-balance/print"
+            filename={`Trial-Balance-${new Date().toISOString().slice(0, 10)}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
+        </div>
       </div>
 
       {!balanced && (

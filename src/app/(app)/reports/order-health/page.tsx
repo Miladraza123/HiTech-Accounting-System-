@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { computeHealth, daysSince, HEALTH_LABEL_TEXT, HEALTH_BADGE_STYLE } from "@/lib/orderHealth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 // How many rows of each kind the tables show. This is a worst-first list, so
 // the interesting rows are always at the top; the header of each table still
@@ -42,7 +43,10 @@ export default async function OrderHealthReportPage() {
   // hundred-thousand-row HTML table. fn_order_health does the ranking and the
   // counting in the database and returns only the worst rows of each kind --
   // 21 KB instead of 16.5 MB, measured on that same data.
-  const { data } = await supabase.rpc("fn_order_health", { p_limit: ROWS_PER_TABLE });
+  const [{ data }, { data: company }] = await Promise.all([
+    supabase.rpc("fn_order_health", { p_limit: ROWS_PER_TABLE }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
   const result = (data ?? null) as {
     delayed_count: number;
     at_risk_count: number;
@@ -83,12 +87,22 @@ export default async function OrderHealthReportPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Order Health &amp; Stage Aging</h1>
-        <p className="text-sm text-ink-soft">Health flag and days in current stage for every open Sales Order / Purchase Order / Job.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Order Health &amp; Stage Aging</h1>
+          <p className="text-sm text-ink-soft">Health flag and days in current stage for every open Sales Order / Purchase Order / Job.</p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/order-health/print"
+          filename="Order-Health.pdf"
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

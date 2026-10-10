@@ -2,27 +2,39 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function VehicleExpensesReportPage() {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
-  const [{ data: vehicleSummary }, { data: personSummary }] = await Promise.all([
+  const [{ data: vehicleSummary }, { data: personSummary }, { data: company }] = await Promise.all([
     supabase.from("vehicle_expense_summary").select("*").order("total_expense", { ascending: false }),
     supabase.from("responsible_person_expense_summary").select("*").gt("expense_count", 0).order("total_expense", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   const highestVehicle = (vehicleSummary ?? [])[0];
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Vehicle &amp; Engineer/Rider Expense Report</h1>
-        <p className="text-sm text-ink-soft">Vehicle-wise / Fuel / Maintenance / Cost-per-KM, and person-wise field expense totals.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Vehicle &amp; Engineer/Rider Expense Report</h1>
+          <p className="text-sm text-ink-soft">Vehicle-wise / Fuel / Maintenance / Cost-per-KM, and person-wise field expense totals.</p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/vehicle-expenses/print"
+          filename="Vehicle-Expense-Report.pdf"
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       {highestVehicle && (highestVehicle.total_expense ?? 0) > 0 && (

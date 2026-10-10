@@ -2,13 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function BalanceSheetPage() {
   const user = await getCurrentUser();
   if (!(isOwner(user) || hasRole(user, "accounts") || hasRole(user, "auditor"))) redirect("/");
 
   const supabase = await createClient();
-  const { data: rows } = await supabase.from("trial_balance").select("*").order("code");
+  const [{ data: rows }, { data: company }] = await Promise.all([
+    supabase.from("trial_balance").select("*").order("code"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   const assetRows = (rows ?? []).filter((r) => r.account_type === "asset").map((r) => ({ code: r.code, name: r.name, amount: r.balance ?? 0 }));
   const liabilityRows = (rows ?? []).filter((r) => r.account_type === "liability").map((r) => ({ code: r.code, name: r.name, amount: -(r.balance ?? 0) }));
@@ -26,12 +30,22 @@ export default async function BalanceSheetPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Balance Sheet</h1>
-        <p className="text-sm text-ink-soft">As of today — a live snapshot of the entire ledger (a historical &quot;as of date&quot; is not yet supported).</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Balance Sheet</h1>
+          <p className="text-sm text-ink-soft">As of today — a live snapshot of the entire ledger (a historical &quot;as of date&quot; is not yet supported).</p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/balance-sheet/print"
+          filename={`Balance-Sheet-${new Date().toISOString().slice(0, 10)}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       {!balanced && (

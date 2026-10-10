@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 function defaultMonthRange(): { from: string; to: string } {
   const now = new Date();
@@ -20,12 +21,15 @@ export default async function GrnReportPage({ searchParams }: { searchParams: Pr
   const toDate = to || defaults.to;
 
   const supabase = await createClient();
-  const { data: grns } = await supabase
-    .from("grns")
-    .select("*, parties(legal_name), purchase_orders(po_no), warehouses(name), grn_lines(short_excess_qty, this_receipt_qty)")
-    .gte("received_date", fromDate)
-    .lte("received_date", toDate)
-    .order("received_date", { ascending: false });
+  const [{ data: grns }, { data: company }] = await Promise.all([
+    supabase
+      .from("grns")
+      .select("*, parties(legal_name), purchase_orders(po_no), warehouses(name), grn_lines(short_excess_qty, this_receipt_qty)")
+      .gte("received_date", fromDate)
+      .lte("received_date", toDate)
+      .order("received_date", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   type Line = { short_excess_qty: number; this_receipt_qty: number };
   const rows = (grns ?? []).map((g) => {
@@ -49,11 +53,21 @@ export default async function GrnReportPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">GRN / Receiving Report</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">GRN / Receiving Report</h1>
+        </div>
+        <PrintPdfActions
+          printPath={`/reports/grn-report/print?from=${fromDate}&to=${toDate}`}
+          filename={`GRN-Report-${fromDate}-to-${toDate}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">

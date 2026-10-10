@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function RawMaterialShortagePage() {
   const user = await getCurrentUser();
@@ -9,11 +10,14 @@ export default async function RawMaterialShortagePage() {
     redirect("/");
 
   const supabase = await createClient();
-  const { data: requirements } = await supabase
-    .from("job_material_requirements")
-    .select("item_id, required_qty, reserved_qty, issued_qty, returned_qty, source, unit, items(item_code, description, base_unit), jobs!inner(job_no, status)")
-    .eq("source", "stock")
-    .eq("jobs.status", "MaterialPending");
+  const [{ data: requirements }, { data: company }] = await Promise.all([
+    supabase
+      .from("job_material_requirements")
+      .select("item_id, required_qty, reserved_qty, issued_qty, returned_qty, source, unit, items(item_code, description, base_unit), jobs!inner(job_no, status)")
+      .eq("source", "stock")
+      .eq("jobs.status", "MaterialPending"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   type ItemInfo = { item_code: string; description: string; base_unit: string } | null;
   type JobInfo = { job_no: string; status: string };
@@ -37,14 +41,24 @@ export default async function RawMaterialShortagePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Raw Material Shortage</h1>
-        <p className="text-sm text-ink-soft">
-          Items whose shortage in current stock is holding up Job(s) at &quot;Material Pending&quot; — these need to be purchased.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Raw Material Shortage</h1>
+          <p className="text-sm text-ink-soft">
+            Items whose shortage in current stock is holding up Job(s) at &quot;Material Pending&quot; — these need to be purchased.
+          </p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/raw-material-shortage/print"
+          filename="Raw-Material-Shortage.pdf"
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-4">

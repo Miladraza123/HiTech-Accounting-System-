@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 const CASH_CODES = ["1050", "1100", "1060"];
 const ACCOUNT_LABEL: Record<string, string> = { "1050": "Cash in Hand", "1100": "Bank Accounts", "1060": "Petty Cash" };
@@ -30,7 +31,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: Pro
   // that sum in the database and returns one row per cash account. The
   // period query below stays as it is: it is bounded by the range the user
   // picked, not by how old the company is.
-  const [{ data: opening }, { data: periodEntries }] = await Promise.all([
+  const [{ data: opening }, { data: periodEntries }, { data: company }] = await Promise.all([
     supabase.rpc("fn_cash_opening_balances", { p_before: fromDate }),
     supabase
       .from("journal_entries")
@@ -38,6 +39,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: Pro
       .gte("entry_date", fromDate)
       .lte("entry_date", toDate)
       .order("entry_date"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   type Line = { debit: number; credit: number; chart_of_accounts: { code: string; name?: string } | null };
@@ -75,12 +77,22 @@ export default async function CashFlowPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Cash Flow &amp; Position</h1>
-        <p className="text-sm text-ink-soft">Cash in Hand + Bank Accounts + Petty Cash — combined Cash Book / Bank Book.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Cash Flow &amp; Position</h1>
+          <p className="text-sm text-ink-soft">Cash in Hand + Bank Accounts + Petty Cash — combined Cash Book / Bank Book.</p>
+        </div>
+        <PrintPdfActions
+          printPath={`/reports/cash-flow/print?from=${fromDate}&to=${toDate}`}
+          filename={`Cash-Flow-${fromDate}-to-${toDate}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">

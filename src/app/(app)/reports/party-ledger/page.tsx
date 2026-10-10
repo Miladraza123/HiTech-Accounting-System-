@@ -5,6 +5,7 @@ import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
 import { SearchablePicker, PARTY_SOURCE } from "@/components/SearchablePicker";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function PartyLedgerPage({ searchParams }: { searchParams: Promise<{ party_id?: string; page?: string }> }) {
   const user = await getCurrentUser();
@@ -19,11 +20,12 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
   // the rest are found by typing, searched in the database. No is_active
   // filter, deliberately: a ledger must still be viewable for a party that
   // has since been deactivated, exactly as before.
-  const [{ data: parties }, { data: selectedParty }] = await Promise.all([
+  const [{ data: parties }, { data: selectedParty }, { data: company }] = await Promise.all([
     supabase.from("parties").select("id, legal_name, party_type").order("legal_name").limit(20),
     party_id
       ? supabase.from("parties").select("id, legal_name, party_type").eq("id", party_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
   ]);
 
   // Same change as the General Ledger: a long-standing client accumulates a
@@ -77,11 +79,21 @@ export default async function PartyLedgerPage({ searchParams }: { searchParams: 
 
       {selectedParty && (
         <div className="rounded-xl border border-line bg-surface overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-line flex items-center justify-between">
+          <div className="px-4 py-2.5 border-b border-line flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-ink">{selectedParty.legal_name}</h2>
-            <span className="text-xs text-ink-faint tabular">
-              Dr {totalDebit.toLocaleString()} / Cr {totalCredit.toLocaleString()} / Balance {(totalDebit - totalCredit).toLocaleString()}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-ink-faint tabular">
+                Dr {totalDebit.toLocaleString()} / Cr {totalCredit.toLocaleString()} / Balance {(totalDebit - totalCredit).toLocaleString()}
+              </span>
+              <PrintPdfActions
+                printPath={`/reports/party-ledger/print?party_id=${party_id}`}
+                filename={`Statement-${selectedParty.legal_name}.pdf`}
+                hasSignature={!!company?.signature_path}
+                hasStamp={!!company?.stamp_path}
+                hasPhone={!!company?.phone}
+                hasEmail={!!company?.email}
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

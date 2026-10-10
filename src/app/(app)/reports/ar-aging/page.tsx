@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { asAgingRows } from "@/lib/aging";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function ArAgingPage() {
   const user = await getCurrentUser();
@@ -15,7 +16,10 @@ export default async function ArAgingPage() {
   // fn_ar_aging does the join and the bucketing in the database; its
   // fn_aging_bucket mirrors src/lib/aging.ts exactly (verified boundary by
   // boundary against the real JS implementation).
-  const { data: aged } = await supabase.rpc("fn_ar_aging");
+  const [{ data: aged }, { data: company }] = await Promise.all([
+    supabase.rpc("fn_ar_aging"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   // phase46_02: the RPC also returns opening_balance / unapplied / net.
   const rows = asAgingRows(aged).map((r) => ({
@@ -56,9 +60,19 @@ export default async function ArAgingPage() {
           </Link>
           <h1 className="text-lg font-semibold text-ink mt-1">AR Aging — Client-wise Outstanding</h1>
         </div>
-        <a href="/reports/ar-aging/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
-          Export to Excel
-        </a>
+        <div className="flex items-start gap-2">
+          <a href="/reports/ar-aging/export" className="rounded-md border border-line-strong bg-bg px-3 py-2 text-xs text-ink hover:bg-surface-2 transition whitespace-nowrap">
+            Export to Excel
+          </a>
+          <PrintPdfActions
+            printPath="/reports/ar-aging/print"
+            filename={`AR-Aging-${new Date().toISOString().slice(0, 10)}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
+        </div>
       </div>
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">

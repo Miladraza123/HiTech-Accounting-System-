@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { canSeeFinance } from "@/lib/financeAccess";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 // How many Sales Orders the picker offers at once. This page exists to look up
 // ONE order, so the list is a search result, not the whole order book.
@@ -44,7 +45,10 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
     if (matchedPartyIds.length) clauses.push(`party_id.in.(${matchedPartyIds.join(",")})`);
     pickerQuery = pickerQuery.or(clauses.join(","));
   }
-  const { data: pickerRows } = await pickerQuery.order("created_at", { ascending: false }).limit(PICKER_LIMIT);
+  const [{ data: pickerRows }, { data: company }] = await Promise.all([
+    pickerQuery.order("created_at", { ascending: false }).limit(PICKER_LIMIT),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   // Whatever is currently being viewed must stay in the list even when it
   // falls outside the current search, or the dropdown would read
@@ -122,12 +126,24 @@ export default async function OrderStatusReportPage({ searchParams }: { searchPa
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Order-wise Status</h1>
-        <p className="text-sm text-ink-soft">The complete journey of a Sales Order — from Query to Payment, all in one place.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Order-wise Status</h1>
+          <p className="text-sm text-ink-soft">The complete journey of a Sales Order — from Query to Payment, all in one place.</p>
+        </div>
+        {chain && so_id && (
+          <PrintPdfActions
+            printPath={`/reports/order-status/print?so_id=${so_id}`}
+            filename={`Order-Status-${chain.so?.so_no ?? so_id}.pdf`}
+            hasSignature={!!company?.signature_path}
+            hasStamp={!!company?.stamp_path}
+            hasPhone={!!company?.phone}
+            hasEmail={!!company?.email}
+          />
+        )}
       </div>
 
       <form className="flex items-center gap-2 flex-wrap">

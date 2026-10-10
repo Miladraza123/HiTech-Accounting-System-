@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { daysSince } from "@/lib/orderHealth";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function QuotationFollowupsPage() {
   const user = await getCurrentUser();
@@ -10,13 +11,16 @@ export default async function QuotationFollowupsPage() {
 
   const today = new Date().toISOString().slice(0, 10);
   const supabase = await createClient();
-  const { data: quotations } = await supabase
-    .from("quotations")
-    .select("id, quotation_no, status, parties(legal_name), queries!inner(query_no, next_followup_at)")
-    .eq("status", "Sent")
-    .not("queries.next_followup_at", "is", null)
-    .lte("queries.next_followup_at", today)
-    .order("created_at", { ascending: false });
+  const [{ data: quotations }, { data: company }] = await Promise.all([
+    supabase
+      .from("quotations")
+      .select("id, quotation_no, status, parties(legal_name), queries!inner(query_no, next_followup_at)")
+      .eq("status", "Sent")
+      .not("queries.next_followup_at", "is", null)
+      .lte("queries.next_followup_at", today)
+      .order("created_at", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   type QueryInfo = { query_no: string; next_followup_at: string | null };
   const rows = (quotations ?? [])
@@ -36,12 +40,22 @@ export default async function QuotationFollowupsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Quotation Follow-up Due</h1>
-        <p className="text-sm text-ink-soft">Sent quotations whose linked Query has a follow-up date that is due today or overdue.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Quotation Follow-up Due</h1>
+          <p className="text-sm text-ink-soft">Sent quotations whose linked Query has a follow-up date that is due today or overdue.</p>
+        </div>
+        <PrintPdfActions
+          printPath="/reports/quotation-followups/print"
+          filename="Quotation-Followups.pdf"
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-4">

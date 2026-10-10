@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 // Mirrors the Sales Order detail page's own status badge styling exactly —
 // this report shows the same sales_orders.status a Sales Order already
@@ -42,10 +43,13 @@ export default async function CompanyOrdersReportPage({
     .select("id, so_no, status, client_po_number, grand_total, created_at, parties(legal_name)", { count: "exact" });
   if (filter === "pending") query = query.not("status", "in", `(${DONE_STATUSES.join(",")})`);
 
-  const { data: orders, count } = await query
-    .order("legal_name", { referencedTable: "parties" })
-    .order("so_no")
-    .range(rangeFrom, rangeTo);
+  const [{ data: orders, count }, { data: company }] = await Promise.all([
+    query
+      .order("legal_name", { referencedTable: "parties" })
+      .order("so_no")
+      .range(rangeFrom, rangeTo),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
   const totalPages = computeTotalPages(count ?? 0);
 
   type Row = { id: string; so_no: string; status: string; client_po_number: string; grand_total: number; created_at: string; company: string };
@@ -71,12 +75,22 @@ export default async function CompanyOrdersReportPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
-          ← Reports
-        </Link>
-        <h1 className="text-lg font-semibold text-ink mt-1">Company-wise Order List</h1>
-        <p className="text-sm text-ink-soft">Every Sales Order, grouped under its Company — status shows where each one currently stands.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/reports" className="text-xs text-ink-faint hover:text-ink">
+            ← Reports
+          </Link>
+          <h1 className="text-lg font-semibold text-ink mt-1">Company-wise Order List</h1>
+          <p className="text-sm text-ink-soft">Every Sales Order, grouped under its Company — status shows where each one currently stands.</p>
+        </div>
+        <PrintPdfActions
+          printPath={`/reports/company-orders/print?filter=${filter}`}
+          filename={`Company-Orders-${filter === "pending" ? "Pending" : "All"}.pdf`}
+          hasSignature={!!company?.signature_path}
+          hasStamp={!!company?.stamp_path}
+          hasPhone={!!company?.phone}
+          hasEmail={!!company?.email}
+        />
       </div>
 
       <div className="flex gap-2 text-xs">

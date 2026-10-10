@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { parsePage, pageRange, totalPages as computeTotalPages, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 
 export default async function GeneralLedgerPage({ searchParams }: { searchParams: Promise<{ code?: string; page?: string }> }) {
   const user = await getCurrentUser();
@@ -14,7 +15,10 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
   const [rangeFrom] = pageRange(page);
 
   const supabase = await createClient();
-  const { data: accounts } = await supabase.from("chart_of_accounts").select("code, name, account_type").eq("is_active", true).order("code");
+  const [{ data: accounts }, { data: company }] = await Promise.all([
+    supabase.from("chart_of_accounts").select("code, name, account_type").eq("is_active", true).order("code"),
+    supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+  ]);
 
   // Was: fetch every line ever posted to this account and accumulate the
   // running balance here. An account like Bank or Sales collects a line from
@@ -69,13 +73,23 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
 
       {selectedAccount && (
         <div className="rounded-xl border border-line bg-surface overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-line flex items-center justify-between">
+          <div className="px-4 py-2.5 border-b border-line flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-ink font-mono">
               {selectedAccount.code} — {selectedAccount.name}
             </h2>
-            <span className="text-xs text-ink-faint tabular">
-              Dr {totalDebit.toLocaleString()} / Cr {totalCredit.toLocaleString()} / Balance {(totalDebit - totalCredit).toLocaleString()}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-ink-faint tabular">
+                Dr {totalDebit.toLocaleString()} / Cr {totalCredit.toLocaleString()} / Balance {(totalDebit - totalCredit).toLocaleString()}
+              </span>
+              <PrintPdfActions
+                printPath={`/reports/general-ledger/print?code=${selectedAccount.code}`}
+                filename={`Ledger-${selectedAccount.code}.pdf`}
+                hasSignature={!!company?.signature_path}
+                hasStamp={!!company?.stamp_path}
+                hasPhone={!!company?.phone}
+                hasEmail={!!company?.email}
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
