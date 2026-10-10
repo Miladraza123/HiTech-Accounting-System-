@@ -99,7 +99,15 @@ export function PrintPdfActions({
     if (hasPhone && includePhone) params.set("phone", "1");
     if (hasEmail && includeEmail) params.set("email", "1");
     const qs = params.toString();
-    return qs ? `${base}?${qs}` : base;
+    if (!qs) return base;
+    // `base` may already carry its own query string (every report print
+    // path does — e.g. `?party_id=...`), unlike the 5 original document
+    // print paths (`/invoices/[id]/print`) this component was first built
+    // for, which never had one. Appending another bare `?` there would
+    // corrupt the existing param (e.g. `?party_id=abc?signature=1` reads
+    // back as party_id="abc?signature=1") — use `&` once `base` already
+    // has a `?`.
+    return `${base}${base.includes("?") ? "&" : "?"}${qs}`;
   }
 
   return (
