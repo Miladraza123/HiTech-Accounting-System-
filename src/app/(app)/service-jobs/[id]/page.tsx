@@ -7,6 +7,7 @@ import { CompleteServiceJobButton } from "@/components/CompleteServiceJobButton"
 import { CancelWithReasonButton } from "@/components/CancelWithReasonButton";
 import { NewServiceDeliveryForm } from "@/components/NewServiceDeliveryForm";
 import { NewServiceInvoiceForm } from "@/components/NewServiceInvoiceForm";
+import { PrintPdfActions } from "@/components/PrintPdfActions";
 import { cancelServiceJobAction, cancelServiceDeliveryAction, cancelServiceInvoiceAction } from "@/app/actions/serviceJobs";
 
 const JOB_STATUS_STYLE: Record<string, string> = {
@@ -24,15 +25,16 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
   const canManageInvoice = await hasPermission(user, "service_invoice.manage");
 
   const supabase = await createClient();
-  const [{ data: job }, { data: deliveries }, { data: invoices }] = await Promise.all([
-    supabase.from("service_jobs").select("*, parties(legal_name, billing_address)").eq("id", id).maybeSingle(),
+  const [{ data: job }, { data: deliveries }, { data: invoices }, { data: company }] = await Promise.all([
+    supabase.from("service_jobs").select("*, parties(legal_name, billing_address, require_invoice_po)").eq("id", id).maybeSingle(),
     supabase.from("service_deliveries").select("*").eq("service_job_id", id).order("created_at", { ascending: false }),
     supabase.from("service_invoices").select("*, service_invoice_lines(*)").eq("service_job_id", id).order("created_at", { ascending: false }),
+    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
   ]);
 
   if (!job) notFound();
 
-  const party = job.parties as unknown as { legal_name: string; billing_address: string | null } | null;
+  const party = job.parties as unknown as { legal_name: string; billing_address: string | null; require_invoice_po: boolean } | null;
   const canComplete = canManageJob && job.status === "Received";
   const canCancelJob = isOwner(user) && job.status !== "Cancelled" && !deliveries?.some((d) => d.status !== "Cancelled") && !invoices?.some((i) => i.status !== "Cancelled");
   const canDeliver = canManageDelivery && job.status === "Completed";
@@ -113,8 +115,21 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                     <div key={inv.id} className="px-4 py-2.5 text-sm space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-xs text-ink">{inv.invoice_no}</span>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${inv.status === "Cancelled" ? "bg-bad-soft text-bad" : "bg-good-soft text-good"}`}>{inv.status}</span>
+                        <div className="flex items-center gap-3">
+                          {inv.status !== "Cancelled" && (
+                            <PrintPdfActions
+                              printPath={`/service-invoices/${inv.id}/print`}
+                              filename={`${inv.invoice_no}.pdf`}
+                              hasSignature={!!company?.signature_path}
+                              hasStamp={!!company?.stamp_path}
+                              hasPhone={false}
+                              hasEmail={false}
+                            />
+                          )}
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${inv.status === "Cancelled" ? "bg-bad-soft text-bad" : "bg-good-soft text-good"}`}>{inv.status}</span>
+                        </div>
                       </div>
+                      {inv.client_po_no && <p className="text-xs text-ink-soft">Client PO: {inv.client_po_no}</p>}
                       <ul className="text-xs text-ink-soft space-y-0.5">
                         {lines.map((l) => (
                           <li key={l.id} className="flex justify-between">
@@ -135,7 +150,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
             </div>
           )}
 
-          {canInvoice && <NewServiceInvoiceForm serviceJobId={id} />}
+          {canInvoice && <NewServiceInvoiceForm serviceJobId={id} requirePo={!!party?.require_invoice_po} />}
         </div>
 
         <div className="space-y-6">

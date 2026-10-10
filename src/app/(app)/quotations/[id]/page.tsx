@@ -9,6 +9,8 @@ import { CreateRevisionPanel } from "@/components/CreateRevisionPanel";
 import { QuotationRevisionView } from "@/components/QuotationRevisionView";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
+import { QuotationHeaderEditor } from "@/components/QuotationHeaderEditor";
+import { quotationRef } from "@/lib/docRef";
 import { DeleteMasterRowButton } from "@/components/DeleteMasterRowButton";
 import { deleteQuotationRevisionAction } from "@/app/actions/quotations";
 import { buttonClass } from "@/components/ui/Button";
@@ -36,12 +38,12 @@ export default async function QuotationDetailPage({
   const supabase = await createClient();
   const [{ data: quotation }, { data: revisions }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }] =
     await Promise.all([
-      supabase.from("quotations").select("*, parties(legal_name), queries(query_no)").eq("id", id).maybeSingle(),
+      supabase.from("quotations").select("*, parties(legal_name, short_code, require_quotation_attn), queries(query_no)").eq("id", id).maybeSingle(),
       supabase.from("quotation_revisions").select("*").eq("quotation_id", id).order("rev_no", { ascending: false }),
       supabase.from("units").select("*").order("code"),
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("sales_orders").select("id, so_no, status").eq("quotation_id", id).order("created_at", { ascending: false }),
-      supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+      supabase.from("company").select("signature_path, stamp_path, phone, email, short_code").maybeSingle(),
     ]);
 
   if (!quotation || !revisions?.length) notFound();
@@ -61,7 +63,8 @@ export default async function QuotationDetailPage({
   // sits far outside the first page.
   const items = await fetchLineItems(supabase, (lines ?? []).map((l) => l.item_id));
 
-  const party = quotation.parties as unknown as { legal_name: string } | null;
+  const party = quotation.parties as unknown as { legal_name: string; short_code: string | null; require_quotation_attn: boolean } | null;
+  const { data: partyContacts } = await supabase.from("party_contacts").select("id, name").eq("party_id", quotation.party_id).order("name");
   const query = quotation.queries as unknown as { query_no: string } | null;
   const showDraftEditor = canEdit && isViewingCurrent && quotation.status === "Draft";
 
@@ -84,8 +87,8 @@ export default async function QuotationDetailPage({
           filename={`${quotation.quotation_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
-          hasPhone={!!company?.phone}
-          hasEmail={!!company?.email}
+          hasPhone={false}
+          hasEmail={false}
         />
       </div>
 
@@ -131,6 +134,15 @@ export default async function QuotationDetailPage({
         </div>
 
         <div className="space-y-6">
+          <QuotationHeaderEditor
+            quotationId={id}
+            refNo={quotationRef(company?.short_code, party?.short_code, quotation.quotation_no)}
+            attn={quotation.attn}
+            subject={quotation.subject}
+            requireAttn={!!party?.require_quotation_attn}
+            canEdit={canEdit}
+            contacts={partyContacts ?? []}
+          />
           {canEdit && quotation.status !== "Draft" && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
               <h2 className="text-sm font-semibold text-ink mb-1">Sales Order</h2>

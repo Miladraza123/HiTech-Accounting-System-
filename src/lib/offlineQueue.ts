@@ -240,8 +240,8 @@ const CREATE_RPC: {
   // already noted for Query/Task only ever referencing an *existing*,
   // already-synced Party. See
   // supabase/migrations/20260914030000_phase29_02_offline_first_quotation_so_create.sql.
-  quotations: (supabase, write) =>
-    supabase.rpc("fn_create_quotation_idempotent", {
+  quotations: async (supabase, write) => {
+    const res = await supabase.rpc("fn_create_quotation_idempotent", {
       p_id: write.recordId,
       p_query_id: write.payload.query_id as string,
       p_terms: (write.payload.terms ?? null) as string,
@@ -249,7 +249,16 @@ const CREATE_RPC: {
       p_delivery_terms: (write.payload.delivery_terms ?? null) as string,
       p_payment_terms: (write.payload.payment_terms ?? null) as string,
       p_lines: write.payload.lines as Json,
-    }),
+    });
+    if (res.error) return res;
+    // Attn and Subject live on the quotation row itself (the RPC above has no
+    // parameter for them). Best effort: the quotation already exists, and both
+    // can be edited on its page.
+    const attn = (write.payload.attn as string | null) ?? null;
+    const subject = (write.payload.subject as string | null) ?? null;
+    if (attn || subject) await supabase.from("quotations").update({ attn, subject }).eq("id", write.recordId);
+    return res;
+  },
   sales_orders: (supabase, write) =>
     supabase.rpc("fn_create_sales_order_idempotent", {
       p_id: write.recordId,

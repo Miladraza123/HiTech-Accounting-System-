@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner, hasRole } from "@/lib/auth";
 import { EditCreditTermsForm } from "@/components/EditCreditTermsForm";
+import { PartyDocSettingsForm } from "@/components/PartyDocSettingsForm";
 import { AdjustPartyBalancePanel } from "@/components/AdjustPartyBalancePanel";
 import { agingBucket, dueDateFrom, emptyBuckets, bucketTotal } from "@/lib/aging";
 import { TasksPanel } from "@/components/TasksPanel";
@@ -146,6 +147,18 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
               ⚠ This client&apos;s outstanding balance exceeds their credit limit by {(totalReceivable - creditLimit).toLocaleString()}.
             </p>
           )}
+        </div>
+      )}
+
+      {isClient && (owner || hasRole(user, "sales")) && (
+        <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+          <h2 className="text-sm font-semibold text-ink">Document Settings</h2>
+          <PartyDocSettingsForm
+            partyId={id}
+            shortCode={party.short_code}
+            requireQuotationAttn={party.require_quotation_attn}
+            requireInvoicePo={party.require_invoice_po}
+          />
         </div>
       )}
 

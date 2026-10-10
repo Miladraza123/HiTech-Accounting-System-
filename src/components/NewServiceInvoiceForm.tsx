@@ -13,10 +13,11 @@ function blankLine(): Line {
   return { key: keySeq, description: "", qty: 1, rate: 0, tax_pct: 0 };
 }
 
-export function NewServiceInvoiceForm({ serviceJobId }: { serviceJobId: string }) {
+export function NewServiceInvoiceForm({ serviceJobId, requirePo = false }: { serviceJobId: string; requirePo?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(karachiToday());
+  const [clientPo, setClientPo] = useState("");
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -39,6 +40,10 @@ export function NewServiceInvoiceForm({ serviceJobId }: { serviceJobId: string }
   function submit() {
     setError(null);
     const validLines = lines.filter((l) => l.description.trim());
+    if (requirePo && !clientPo.trim()) {
+      setError("Client PO number is required for this client.");
+      return;
+    }
     if (!validLines.length) {
       setError("Add at least one line (e.g. Labor Charges).");
       return;
@@ -47,7 +52,8 @@ export function NewServiceInvoiceForm({ serviceJobId }: { serviceJobId: string }
       const res = await createServiceInvoiceAction(
         serviceJobId,
         invoiceDate || null,
-        validLines.map((l) => ({ description: l.description, qty: Number(l.qty) || 1, rate: Number(l.rate) || 0, tax_pct: Number(l.tax_pct) || 0 }))
+        validLines.map((l) => ({ description: l.description, qty: Number(l.qty) || 1, rate: Number(l.rate) || 0, tax_pct: Number(l.tax_pct) || 0 })),
+        clientPo
       );
       if (res.error) setError(res.error);
       else {
@@ -59,10 +65,18 @@ export function NewServiceInvoiceForm({ serviceJobId }: { serviceJobId: string }
 
   return (
     <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
-      <label className="block space-y-1 max-w-[10rem]">
-        <span className="text-xs text-ink-faint">Invoice Date</span>
-        <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="input !py-1 text-xs" />
-      </label>
+      <div className="flex flex-wrap gap-3">
+        <label className="block space-y-1 max-w-[10rem]">
+          <span className="text-xs text-ink-faint">Invoice Date</span>
+          <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="input !py-1 text-xs" />
+        </label>
+        <label className="block space-y-1 max-w-[14rem]">
+          <span className="text-xs text-ink-faint">
+            Client PO No. {requirePo && <span className="text-bad">*</span>}
+          </span>
+          <input value={clientPo} onChange={(e) => setClientPo(e.target.value)} placeholder="e.g. 4500101166" className="input !py-1 text-xs" />
+        </label>
+      </div>
 
       <div className="overflow-x-auto rounded-md border border-line">
         <table className="w-full text-sm">
@@ -80,7 +94,7 @@ export function NewServiceInvoiceForm({ serviceJobId }: { serviceJobId: string }
             {lines.map((l) => (
               <tr key={l.key} className="border-t border-line">
                 <td className="px-1.5 py-1">
-                  <input value={l.description} onChange={(e) => update(l.key, { description: e.target.value })} placeholder="e.g. Labor Charges" className="input !py-1 text-xs" />
+                  <textarea value={l.description} onChange={(e) => update(l.key, { description: e.target.value })} rows={2} placeholder="e.g. Service at Chiller C/T # 02 (Enter for extra lines)" className="input !py-1 text-xs resize-y" />
                 </td>
                 <td className="px-1.5 py-1">
                   <input type="number" step="0.001" min="0.001" value={l.qty} onChange={(e) => update(l.key, { qty: Number(e.target.value) })} className="input !py-1 text-xs text-right tabular" />

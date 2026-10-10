@@ -19,14 +19,25 @@ export default async function NewQuotationPage({
 
   const supabase = await createClient();
   const [{ data: query }, items, { data: units }, { data: company }] = await Promise.all([
-    supabase.from("queries").select("id, query_no, requirement, parties(legal_name)").eq("id", query_id).maybeSingle(),
+    supabase
+      .from("queries")
+      .select("id, query_no, requirement, party_id, parties(legal_name, short_code, require_quotation_attn)")
+      .eq("id", query_id)
+      .maybeSingle(),
     fetchLineItems(supabase),
     supabase.from("units").select("*").order("code"),
     supabase.from("company").select("default_sales_tax_pct").maybeSingle(),
   ]);
 
   if (!query) notFound();
-  const party = query.parties as unknown as { legal_name: string } | null;
+  const party = query.parties as unknown as { legal_name: string; short_code: string | null; require_quotation_attn: boolean } | null;
+  const { data: contacts } = await supabase
+    .from("party_contacts")
+    .select("id, name, designation, is_primary")
+    .eq("party_id", query.party_id)
+    .order("is_primary", { ascending: false })
+    .order("name");
+  const primary = contacts?.[0];
 
   return (
     <div className="space-y-4">
@@ -45,6 +56,11 @@ export default async function NewQuotationPage({
         items={items}
         units={units ?? []}
         defaultTaxPct={company?.default_sales_tax_pct ?? 18}
+        contacts={contacts ?? []}
+        defaultAttn={primary?.name ?? ""}
+        defaultSubject={`QUOTATION FOR ${query.requirement}`.toUpperCase()}
+        requireAttn={!!party?.require_quotation_attn}
+        missingPartyCode={!party?.short_code}
       />
     </div>
   );

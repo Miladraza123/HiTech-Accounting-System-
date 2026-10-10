@@ -25,7 +25,7 @@ export function QuotationRevisionView({
             <tbody>
               {lines.map((l) => (
                 <tr key={l.id} className="border-t border-line">
-                  <td className="px-3 py-2 text-ink">{l.description}</td>
+                  <td className="px-3 py-2 text-ink whitespace-pre-line">{l.description}</td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{l.qty}</td>
                   <td className="px-3 py-2 text-ink-soft">{l.unit ?? "—"}</td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{l.rate}</td>

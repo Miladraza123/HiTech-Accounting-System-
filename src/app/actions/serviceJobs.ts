@@ -81,15 +81,24 @@ export async function cancelServiceDeliveryAction(serviceDeliveryId: string, ser
 export async function createServiceInvoiceAction(
   serviceJobId: string,
   invoiceDate: string | null,
-  lines: ServiceInvoiceLineInput[]
+  lines: ServiceInvoiceLineInput[],
+  clientPoNo: string | null = null
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const poNo = clientPoNo?.trim() || null;
+
+  // Some clients need their PO number on every invoice.
+  const { data: job } = await supabase.from("service_jobs").select("parties(require_invoice_po)").eq("id", serviceJobId).maybeSingle();
+  const requirePo = (job?.parties as unknown as { require_invoice_po: boolean } | null)?.require_invoice_po;
+  if (requirePo && !poNo) return { error: "Client PO number is required for this client." };
+
   const { data, error } = await supabase.rpc("fn_create_service_invoice", {
     p_service_job_id: serviceJobId,
     p_invoice_date: invoiceDate as string,
     p_lines: lines,
   });
   if (error) return { error: error.message };
+  if (poNo) await supabase.from("service_invoices").update({ client_po_no: poNo }).eq("id", data as string);
   revalidatePath(`/service-jobs/${serviceJobId}`);
   return { error: null, id: data as string, success: true };
 }
