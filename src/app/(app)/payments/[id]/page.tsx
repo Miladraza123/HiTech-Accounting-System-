@@ -40,14 +40,17 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   const canEditPayment = isOwner(user) && payment.status === "Posted";
   const currentSource: "cash" | "bank" | "petty_cash" = payment.petty_cash_fund_id ? "petty_cash" : payment.bank_account_id ? "bank" : "cash";
 
-  let allocRows: { key: string; label: string; date: string; outstanding: number; poNo?: string | null }[] = [];
+  let allocRows: { key: string; kind?: string; label: string; date: string; outstanding: number; poNo?: string | null }[] = [];
   const invoiceIds = (allocations ?? []).map((a) => a.invoice_id).filter(Boolean) as string[];
+  const serviceInvoiceIds = (allocations ?? []).map((a) => a.service_invoice_id).filter(Boolean) as string[];
   const billIds = (allocations ?? []).map((a) => a.supplier_bill_id).filter(Boolean) as string[];
-  const [{ data: invoices }, { data: bills }] = await Promise.all([
+  const [{ data: invoices }, { data: serviceInvoices }, { data: bills }] = await Promise.all([
     invoiceIds.length ? supabase.from("invoices").select("id, invoice_no").in("id", invoiceIds) : Promise.resolve({ data: [] }),
+    serviceInvoiceIds.length ? supabase.from("service_invoices").select("id, invoice_no").in("id", serviceInvoiceIds) : Promise.resolve({ data: [] }),
     billIds.length ? supabase.from("supplier_bills").select("id, bill_no").in("id", billIds) : Promise.resolve({ data: [] }),
   ]);
   const invoiceNoById = new Map((invoices ?? []).map((i) => [i.id, i.invoice_no]));
+  const serviceInvoiceNoById = new Map((serviceInvoices ?? []).map((i) => [i.id, i.invoice_no]));
   const billNoById = new Map((bills ?? []).map((b) => [b.id, b.bill_no]));
 
   if (payment.status === "Posted" && payment.unallocated_amount > 0) {
@@ -64,22 +67,51 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         ? await supabase.from("purchase_orders").select("po_no, linked_sales_order_id").eq("purchase_type", "direct").in("linked_sales_order_id", soIds)
         : { data: [] };
       const poNoBySoId = new Map((linkedPos ?? []).map((p) => [p.linked_sales_order_id, p.po_no]));
-      allocRows = (outstanding ?? []).map((o) => {
+      const invoiceRows = (outstanding ?? []).map((o) => {
         const inv = invById.get(o.invoice_id!);
         return {
           key: o.invoice_id!,
+          kind: "invoice",
           label: inv?.invoice_no ?? "",
           date: inv?.invoice_date ?? "",
           outstanding: o.outstanding_amount ?? 0,
           poNo: inv?.sales_order_id ? poNoBySoId.get(inv.sales_order_id) ?? null : null,
         };
       });
+
+      // Service Invoices are a separate module/table from regular Invoices
+      // (no sales_order_id, so no PO reference to show) — merged in here so
+      // they're allocatable from the same panel as a regular Invoice.
+      const { data: serviceOutstanding } = await supabase
+        .from("service_invoice_outstanding")
+        .select("*")
+        .eq("party_id", payment.party_id)
+        .gt("outstanding_amount", 0);
+      const { data: allServiceInvoices } = await supabase
+        .from("service_invoices")
+        .select("id, invoice_no, invoice_date")
+        .eq("party_id", payment.party_id);
+      const svcInvById = new Map((allServiceInvoices ?? []).map((i) => [i.id, i]));
+      const serviceInvoiceRows = (serviceOutstanding ?? []).map((o) => {
+        const inv = svcInvById.get(o.service_invoice_id!);
+        return {
+          key: o.service_invoice_id!,
+          kind: "service_invoice",
+          label: inv?.invoice_no ?? "",
+          date: inv?.invoice_date ?? "",
+          outstanding: o.outstanding_amount ?? 0,
+          poNo: null,
+        };
+      });
+
+      allocRows = [...invoiceRows, ...serviceInvoiceRows];
     } else {
       const { data: outstanding } = await supabase.from("supplier_bill_outstanding").select("*").eq("supplier_id", payment.party_id).gt("outstanding_amount", 0);
       const { data: allBills } = await supabase.from("supplier_bills").select("id, bill_no, bill_date").eq("supplier_id", payment.party_id);
       const billById2 = new Map((allBills ?? []).map((b) => [b.id, b]));
       allocRows = (outstanding ?? []).map((o) => ({
         key: o.supplier_bill_id!,
+        kind: "supplier_bill",
         label: billById2.get(o.supplier_bill_id!)?.bill_no ?? "",
         date: billById2.get(o.supplier_bill_id!)?.bill_date ?? "",
         outstanding: o.outstanding_amount ?? 0,
@@ -149,7 +181,11 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
               {(allocations ?? []).map((a) => (
                 <li key={a.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
                   <span className="font-mono text-xs text-ink">
-                    {a.invoice_id ? invoiceNoById.get(a.invoice_id) : billNoById.get(a.supplier_bill_id!)}
+                    {a.invoice_id
+                      ? invoiceNoById.get(a.invoice_id)
+                      : a.service_invoice_id
+                        ? serviceInvoiceNoById.get(a.service_invoice_id)
+                        : billNoById.get(a.supplier_bill_id!)}
                   </span>
                   <span className="tabular text-ink">{a.amount.toLocaleString()}</span>
                 </li>

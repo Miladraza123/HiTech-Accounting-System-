@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { allocatePaymentAction, type PaymentAllocationInput } from "@/app/actions/payments";
 
-type Row = { key: string; label: string; date: string; outstanding: number; poNo?: string | null };
+type Row = { key: string; kind?: string; label: string; date: string; outstanding: number; poNo?: string | null };
 
 export function AllocatePaymentPanel({
   paymentId,
@@ -35,9 +35,15 @@ export function AllocatePaymentPanel({
       return;
     }
     const allocations: PaymentAllocationInput[] = rows
-      .map((r) => ({ key: r.key, amount: Number(amounts[r.key]) || 0 }))
+      .map((r) => ({ key: r.key, kind: r.kind, amount: Number(amounts[r.key]) || 0 }))
       .filter((r) => r.amount > 0)
-      .map((r) => (direction === "receipt" ? { invoice_id: r.key, amount: r.amount } : { supplier_bill_id: r.key, amount: r.amount }));
+      .map((r) =>
+        r.kind === "service_invoice"
+          ? { service_invoice_id: r.key, amount: r.amount }
+          : r.kind === "supplier_bill"
+            ? { supplier_bill_id: r.key, amount: r.amount }
+            : { invoice_id: r.key, amount: r.amount }
+      );
 
     startTransition(async () => {
       const res = await allocatePaymentAction(paymentId, allocations);
@@ -68,7 +74,7 @@ export function AllocatePaymentPanel({
         <table className="w-full text-sm">
           <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
             <tr>
-              <th className="text-left px-3 py-2">{direction === "receipt" ? "Invoice #" : "Bill #"}</th>
+              <th className="text-left px-3 py-2">{direction === "receipt" ? "Invoice / Service Invoice #" : "Bill #"}</th>
               <th className="text-right px-3 py-2">Outstanding</th>
               <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Allocate</th>
             </tr>
@@ -78,6 +84,9 @@ export function AllocatePaymentPanel({
               <tr key={r.key} className="border-t border-line">
                 <td className="px-3 py-2 font-mono text-xs text-ink">
                   {r.label}
+                  {r.kind === "service_invoice" && (
+                    <span className="ml-1.5 rounded bg-surface-2 px-1 py-0.5 text-[10px] font-sans normal-case text-ink-faint">Service</span>
+                  )}
                   {r.poNo && <span className="block text-ink-faint font-normal normal-case">PO: {r.poNo}</span>}
                 </td>
                 <td className="px-3 py-2 text-right tabular text-ink-soft">{r.outstanding.toLocaleString()}</td>

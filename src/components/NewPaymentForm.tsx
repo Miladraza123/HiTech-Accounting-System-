@@ -133,8 +133,15 @@ export function NewPaymentForm({
 
   const rows = useMemo(() => {
     const docs = outstandingKey ? outstandingByKey[outstandingKey] : undefined;
-    return (docs ?? []).map((o) => ({ key: o.doc_id, label: o.doc_no, date: o.doc_date, outstanding: o.outstanding_amount, poNo: o.po_no ?? null }));
-  }, [outstandingKey, outstandingByKey]);
+    return (docs ?? []).map((o) => ({
+      key: o.doc_id,
+      kind: o.kind ?? (direction === "receipt" ? "invoice" : "supplier_bill"),
+      label: o.doc_no,
+      date: o.doc_date,
+      outstanding: o.outstanding_amount,
+      poNo: o.po_no ?? null,
+    }));
+  }, [outstandingKey, outstandingByKey, direction]);
 
   const allocTotal = rows.reduce((s, r) => s + (Number(allocAmounts[r.key]) || 0), 0);
   const amountNum = Number(amount) || 0;
@@ -169,9 +176,15 @@ export function NewPaymentForm({
       return;
     }
     const allocations: PaymentAllocationInput[] = rows
-      .map((r) => ({ key: r.key, amount: Number(allocAmounts[r.key]) || 0 }))
+      .map((r) => ({ key: r.key, kind: r.kind, amount: Number(allocAmounts[r.key]) || 0 }))
       .filter((r) => r.amount > 0)
-      .map((r) => (direction === "receipt" ? { invoice_id: r.key, amount: r.amount } : { supplier_bill_id: r.key, amount: r.amount }));
+      .map((r) =>
+        r.kind === "service_invoice"
+          ? { service_invoice_id: r.key, amount: r.amount }
+          : r.kind === "supplier_bill"
+            ? { supplier_bill_id: r.key, amount: r.amount }
+            : { invoice_id: r.key, amount: r.amount }
+      );
 
     // Phase 5 (Master Offline-First Roadmap) — the plan's own "highest
     // financial-sensitivity phase": see this form's own RPC entry in
@@ -357,7 +370,7 @@ export function NewPaymentForm({
             <table className="w-full text-sm">
               <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                 <tr>
-                  <th className="text-left px-3 py-2">{direction === "receipt" ? "Invoice #" : "Bill #"}</th>
+                  <th className="text-left px-3 py-2">{direction === "receipt" ? "Invoice / Service Invoice #" : "Bill #"}</th>
                   <th className="text-left px-3 py-2">Date</th>
                   <th className="text-right px-3 py-2">Outstanding</th>
                   <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Allocate</th>
@@ -368,6 +381,9 @@ export function NewPaymentForm({
                   <tr key={r.key} className="border-t border-line">
                     <td className="px-3 py-2 font-mono text-xs text-ink">
                       {r.label}
+                      {r.kind === "service_invoice" && (
+                        <span className="ml-1.5 rounded bg-surface-2 px-1 py-0.5 text-[10px] font-sans normal-case text-ink-faint">Service</span>
+                      )}
                       {r.poNo && <span className="block text-ink-faint font-normal normal-case">PO: {r.poNo}</span>}
                     </td>
                     <td className="px-3 py-2 text-ink-soft text-xs">{r.date}</td>

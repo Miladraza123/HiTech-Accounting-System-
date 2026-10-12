@@ -6,6 +6,7 @@ export type OutstandingDocWithPo = {
   doc_no: string;
   doc_date: string;
   outstanding_amount: number;
+  kind?: string;
   po_no?: string | null;
 };
 
@@ -21,7 +22,7 @@ export type OutstandingDocWithPo = {
 export async function attachPoRefs(
   supabase: SupabaseClient<Database>,
   direction: "receipt" | "payment",
-  docs: { doc_id: string; doc_no: string; doc_date: string; outstanding_amount: number }[]
+  docs: { doc_id: string; doc_no: string; doc_date: string; outstanding_amount: number; kind?: string }[]
 ): Promise<OutstandingDocWithPo[]> {
   if (direction !== "receipt" || !docs.length) return docs;
 

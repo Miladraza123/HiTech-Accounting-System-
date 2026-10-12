@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -2987,6 +2987,7 @@ export type Database = {
           id: string
           invoice_id: string | null
           payment_id: string
+          service_invoice_id: string | null
           supplier_bill_id: string | null
         }
         Insert: {
@@ -2995,6 +2996,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           payment_id: string
+          service_invoice_id?: string | null
           supplier_bill_id?: string | null
         }
         Update: {
@@ -3003,6 +3005,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           payment_id?: string
+          service_invoice_id?: string | null
           supplier_bill_id?: string | null
         }
         Relationships: [
@@ -3025,6 +3028,20 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_service_invoice_id_fkey"
+            columns: ["service_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "service_invoice_outstanding"
+            referencedColumns: ["service_invoice_id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_service_invoice_id_fkey"
+            columns: ["service_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "service_invoices"
             referencedColumns: ["id"]
           },
           {
@@ -4527,6 +4544,13 @@ export type Database = {
             foreignKeyName: "service_invoice_lines_service_invoice_id_fkey"
             columns: ["service_invoice_id"]
             isOneToOne: false
+            referencedRelation: "service_invoice_outstanding"
+            referencedColumns: ["service_invoice_id"]
+          },
+          {
+            foreignKeyName: "service_invoice_lines_service_invoice_id_fkey"
+            columns: ["service_invoice_id"]
+            isOneToOne: false
             referencedRelation: "service_invoices"
             referencedColumns: ["id"]
           },
@@ -5687,6 +5711,38 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      service_invoice_outstanding: {
+        Row: {
+          allocated_amount: number | null
+          grand_total: number | null
+          outstanding_amount: number | null
+          party_id: string | null
+          service_invoice_id: string | null
+        }
+        Insert: {
+          allocated_amount?: never
+          grand_total?: number | null
+          outstanding_amount?: never
+          party_id?: string | null
+          service_invoice_id?: string | null
+        }
+        Update: {
+          allocated_amount?: never
+          grand_total?: number | null
+          outstanding_amount?: never
+          party_id?: string | null
+          service_invoice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_invoices_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_availability: {
         Row: {
@@ -7199,6 +7255,7 @@ export type Database = {
           doc_date: string
           doc_id: string
           doc_no: string
+          kind: string
           outstanding_amount: number
         }[]
       }
@@ -7336,6 +7393,10 @@ export type Database = {
         Returns: string
       }
       fn_revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
+      fn_service_invoice_allocated_amount: {
+        Args: { p_service_invoice_id: string }
+        Returns: number
+      }
       fn_set_period_lock: { Args: { p_lock_date: string }; Returns: undefined }
       fn_set_query_status: {
         Args: { p_note: string; p_query_id: string; p_status: string }

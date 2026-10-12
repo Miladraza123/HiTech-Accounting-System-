@@ -11,6 +11,7 @@ const NO_PERMISSION: ActionResult = { error: "You don't have permission to perfo
 
 export type PaymentAllocationInput =
   | { invoice_id: string; amount: number }
+  | { service_invoice_id: string; amount: number }
   | { supplier_bill_id: string; amount: number };
 
 export async function createPaymentAction(input: {
