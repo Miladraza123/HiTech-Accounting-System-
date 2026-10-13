@@ -126,7 +126,7 @@ describe("letterhead print documents", () => {
   it("delivery challan follows the pre-printed form: fields, ruled rows, watermark and the three sign-offs, no prices", () => {
     const html = renderToStaticMarkup(<DcDoc {...dc} />);
     if (process.env.DUMP_DIR) writeFileSync(`${process.env.DUMP_DIR}/dc.html`, `<!doctype html><meta charset="utf-8"><body style="margin:0">${html}`);
-    for (const t of ["DELIVERY CHALLAN", "DC-202627-0012", "10-October-2026", "DP World (QICT)", "26.24833", "Qty.", "Descriptions", "Remarks", "60 NOS", "Imported", "Quality &amp; Safety is our Priority", "Prepared By", "Authorized By", "Received By", "NTN: 8890257-3", "STRN: 8890257-3"]) {
+    for (const t of ["DELIVERY CHALLAN", "DC-202627-0012", "10-October-2026", "DP World (QICT)", "Ref/PO Number:", "26.24833", "Qty.", "Descriptions", "Remarks", "60 NOS", "Imported", "Quality &amp; Safety is our Priority", "Prepared By", "Authorized By", "Received By", "NTN: 8890257-3", "STRN: 8890257-3"]) {
       expect(html).toContain(t);
     }
     expect(html).not.toMatch(/Rate|Amount|Price/);
