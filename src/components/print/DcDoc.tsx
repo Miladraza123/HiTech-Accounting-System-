@@ -113,7 +113,7 @@ export function DcDoc(p: DcDocProps) {
               <span className="v">{p.date}</span>
             </div>
             <div className="f">
-              <span className="k">Ref. No.</span>
+              <span className="k">Ref/PO Number:</span>
               <span className="v">{p.refNo ?? ""}</span>
             </div>
           </div>

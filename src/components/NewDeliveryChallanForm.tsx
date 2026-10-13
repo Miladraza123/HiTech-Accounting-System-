@@ -219,7 +219,7 @@ export function NewDeliveryChallanForm({
         </div>
 
         <label className="block space-y-1.5 max-w-sm">
-          <span className="text-xs font-medium text-ink-soft">Ref. No. (printed on the challan; the client&apos;s PO number, you can change it)</span>
+          <span className="text-xs font-medium text-ink-soft">Ref/PO Number (printed on the challan; the client&apos;s PO number, you can change it)</span>
           <input value={refNo} onChange={(e) => setRefNo(e.target.value)} className="input" />
         </label>
 

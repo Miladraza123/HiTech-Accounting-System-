@@ -7,7 +7,7 @@ import { buttonClass } from "@/components/ui/Button";
 
 type Line = { sales_order_line_id: string; description: string; remarks: string | null };
 
-/** Ref. No. and the per-line Remarks printed on the Delivery Challan, editable after the challan is made. */
+/** Ref/PO Number and the per-line Remarks printed on the Delivery Challan, editable after the challan is made. */
 export function DcPrintDetailsEditor({
   dcId,
   refNo,
@@ -61,7 +61,7 @@ export function DcPrintDetailsEditor({
       {!editing ? (
         <>
           <p className="text-xs text-ink-soft">
-            Ref. No.: <span className="text-ink">{refNo || poNumber || "—"}</span>
+            Ref/PO Number: <span className="text-ink">{refNo || poNumber || "—"}</span>
             {!refNo && poNumber && <span className="text-ink-faint"> (client PO)</span>}
           </p>
           {lines.some((l) => l.remarks) && (
@@ -77,7 +77,7 @@ export function DcPrintDetailsEditor({
       ) : (
         <div className="space-y-2">
           <label className="block space-y-1">
-            <span className="text-[11px] text-ink-faint">Ref. No.</span>
+            <span className="text-[11px] text-ink-faint">Ref/PO Number</span>
             <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder={poNumber ?? ""} className="input !py-1 text-xs" />
           </label>
           {lines.map((l) => (
