@@ -20,6 +20,7 @@ type SoOption = {
   id: string;
   so_no: string;
   business_line: string;
+  client_po_number: string | null;
   parties: { legal_name: string } | null;
   lines: SoLine[];
 };
@@ -44,6 +45,8 @@ export function NewDeliveryChallanForm({
   const [vehicleNo, setVehicleNo] = useState("");
   const [driverName, setDriverName] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [refNo, setRefNo] = useState("");
+  const [lineRemarks, setLineRemarks] = useState<Record<string, string>>({});
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [issueFlags, setIssueFlags] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +73,9 @@ export function NewDeliveryChallanForm({
     }
 
     const lines: DeliveryChallanLineInput[] = [];
+    const lineRemarkList = candidateLines
+      .map((l) => ({ sales_order_line_id: l.id, remarks: (lineRemarks[l.id] ?? "").trim() }))
+      .filter((r) => r.remarks);
     for (const l of candidateLines) {
       const deliveredQty = Number(qtys[l.id] ?? 0);
       const issue = !!issueFlags[l.id];
@@ -121,6 +127,8 @@ export function NewDeliveryChallanForm({
             vehicle_no: vehicleNo || null,
             driver_name: driverName || null,
             remarks: remarks || null,
+            ref_no: refNo.trim() || null,
+            line_remarks: lineRemarkList,
             lines,
           },
         });
@@ -137,6 +145,8 @@ export function NewDeliveryChallanForm({
         vehicle_no: vehicleNo || null,
         driver_name: driverName || null,
         remarks: remarks || null,
+        ref_no: refNo.trim() || null,
+        line_remarks: lineRemarkList,
         lines,
       });
       if (res.error) setError(res.error);
@@ -161,7 +171,15 @@ export function NewDeliveryChallanForm({
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Sales Order *</span>
-          <select value={soId} onChange={(e) => setSoId(e.target.value)} className="input">
+          <select
+            value={soId}
+            onChange={(e) => {
+              setSoId(e.target.value);
+              // Ref. No. of the printed challan: the client's PO number, editable.
+              setRefNo(salesOrders.find((s) => s.id === e.target.value)?.client_po_number ?? "");
+            }}
+            className="input"
+          >
             <option value="">— Select —</option>
             {salesOrders.map((s) => (
               <option key={s.id} value={s.id}>
@@ -200,6 +218,11 @@ export function NewDeliveryChallanForm({
           </label>
         </div>
 
+        <label className="block space-y-1.5 max-w-sm">
+          <span className="text-xs font-medium text-ink-soft">Ref. No. (printed on the challan; the client&apos;s PO number, you can change it)</span>
+          <input value={refNo} onChange={(e) => setRefNo(e.target.value)} className="input" />
+        </label>
+
         <label className="block space-y-1.5">
           <span className="text-xs font-medium text-ink-soft">Remarks</span>
           <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={2} className="input resize-none" />
@@ -217,6 +240,7 @@ export function NewDeliveryChallanForm({
                   <th className="text-right px-3 py-2">Delivered so far</th>
                   <th className="text-right px-3 py-2">Pending</th>
                   <th className="text-right px-3 py-2 w-32 min-w-[8rem]">This Delivery</th>
+                  <th className="text-left px-3 py-2 w-44 min-w-[9rem]">Remarks (printed)</th>
                   <th className="text-center px-3 py-2 w-36">Issue from Stock?</th>
                 </tr>
               </thead>
@@ -253,6 +277,14 @@ export function NewDeliveryChallanForm({
                             {l.unit}→{item?.base_unit} conversion missing
                           </p>
                         )}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          value={lineRemarks[l.id] ?? ""}
+                          onChange={(e) => setLineRemarks((r) => ({ ...r, [l.id]: e.target.value }))}
+                          className="input !py-1 text-xs"
+                          placeholder="optional"
+                        />
                       </td>
                       <td className="px-3 py-1.5 text-center">
                         <input

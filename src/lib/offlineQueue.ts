@@ -307,8 +307,8 @@ const CREATE_RPC: {
   // first offline create that DEDUCTS stock, not just adds it) and
   // Invoice. Same reachability constraint as Phases 2-3 — see
   // supabase/migrations/20260914050000_phase29_04_offline_first_fulfillment_billing_create.sql.
-  delivery_challans: (supabase, write) =>
-    supabase.rpc("fn_create_delivery_challan_idempotent", {
+  delivery_challans: async (supabase, write) => {
+    const res = await supabase.rpc("fn_create_delivery_challan_idempotent", {
       p_id: write.recordId,
       p_sales_order_id: write.payload.sales_order_id as string,
       p_warehouse_id: write.payload.warehouse_id as string,
@@ -317,7 +317,16 @@ const CREATE_RPC: {
       p_driver_name: (write.payload.driver_name ?? null) as string,
       p_remarks: (write.payload.remarks ?? null) as string,
       p_lines: write.payload.lines as Json,
-    }),
+    });
+    if (res.error) return res;
+    // Ref. No. and line remarks (best effort: the challan already exists and both are editable on its page).
+    const refNo = (write.payload.ref_no as string | null) ?? null;
+    const lineRemarks = (write.payload.line_remarks as Json | undefined) ?? [];
+    if (refNo || (Array.isArray(lineRemarks) && lineRemarks.length)) {
+      await supabase.rpc("fn_set_dc_print_details", { p_dc_id: write.recordId, p_ref_no: (refNo ?? "") as string, p_line_remarks: lineRemarks });
+    }
+    return res;
+  },
   invoices: (supabase, write) =>
     supabase.rpc("fn_create_invoice_idempotent", {
       p_id: write.recordId,

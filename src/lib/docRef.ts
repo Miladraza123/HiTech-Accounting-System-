@@ -59,3 +59,10 @@ export function validityDays(createdAt: string, validityDate: string | null | un
   if (Number.isNaN(from) || Number.isNaN(to)) return null;
   return Math.max(Math.round((to - from) / 86400000), 0);
 }
+
+/** "2026-10-10" -> "10-October-2026" (Delivery Challan date). */
+export function formatDcDate(iso: string): string {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  const mon = d.toLocaleString("en-GB", { month: "long", timeZone: "UTC" });
+  return `${d.getUTCDate()}-${mon}-${d.getUTCFullYear()}`;
+}
