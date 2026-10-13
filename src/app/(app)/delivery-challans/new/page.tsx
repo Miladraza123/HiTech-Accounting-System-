@@ -108,6 +108,7 @@ export default async function NewDeliveryChallanPage({ searchParams }: { searchP
             id: so.id,
             so_no: so.so_no,
             business_line: so.business_line,
+            client_po_number: so.client_po_number,
             parties: so.parties as unknown as { legal_name: string } | null,
             lines: (so.sales_order_lines as unknown as {
               id: string;

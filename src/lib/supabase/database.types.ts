@@ -208,6 +208,7 @@ export type Database = {
       }
       company: {
         Row: {
+          print_tagline: string | null
           address: string | null
           base_currency: string
           created_at: string
@@ -234,6 +235,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          print_tagline?: string | null
           address?: string | null
           base_currency?: string
           created_at?: string
@@ -260,6 +262,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          print_tagline?: string | null
           address?: string | null
           base_currency?: string
           created_at?: string
@@ -475,6 +478,7 @@ export type Database = {
       }
       delivery_challan_lines: {
         Row: {
+          remarks: string | null
           dc_id: string
           delivered_qty: number
           description: string
@@ -487,6 +491,7 @@ export type Database = {
           unit: string | null
         }
         Insert: {
+          remarks?: string | null
           dc_id: string
           delivered_qty: number
           description: string
@@ -499,6 +504,7 @@ export type Database = {
           unit?: string | null
         }
         Update: {
+          remarks?: string | null
           dc_id?: string
           delivered_qty?: number
           description?: string
@@ -543,6 +549,7 @@ export type Database = {
       }
       delivery_challans: {
         Row: {
+          ref_no: string | null
           acceptance_status: string
           accepted_at: string | null
           accepted_by_name: string | null
@@ -565,6 +572,7 @@ export type Database = {
           warehouse_id: string
         }
         Insert: {
+          ref_no?: string | null
           acceptance_status?: string
           accepted_at?: string | null
           accepted_by_name?: string | null
@@ -587,6 +595,7 @@ export type Database = {
           warehouse_id: string
         }
         Update: {
+          ref_no?: string | null
           acceptance_status?: string
           accepted_at?: string | null
           accepted_by_name?: string | null
@@ -7326,6 +7335,10 @@ export type Database = {
       }
       fn_record_dispute: {
         Args: { p_dc_id: string; p_note: string }
+        Returns: undefined
+      }
+      fn_set_dc_print_details: {
+        Args: { p_dc_id: string; p_line_remarks: Json; p_ref_no: string }
         Returns: undefined
       }
       fn_record_pod: {

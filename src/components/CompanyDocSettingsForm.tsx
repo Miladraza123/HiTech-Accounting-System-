@@ -13,12 +13,14 @@ export function CompanyDocSettingsForm({
   serviceInvoiceNote,
   phone2,
   email2,
+  printTagline,
 }: {
   shortCode: string | null;
   signatoryName: string | null;
   serviceInvoiceNote: string | null;
   phone2: string | null;
   email2: string | null;
+  printTagline: string | null;
 }) {
   const [state, formAction, pending] = useActionState(saveCompanyDocSettingsAction, initialState);
   const showSuccess = useAutoDismissSuccess(state);
@@ -47,6 +49,10 @@ export function CompanyDocSettingsForm({
         </label>
       </div>
       <p className="text-[11px] text-ink-faint -mt-1">The first phone, email, address, NTN and STRN come from the Company Profile above. All of these print in the header of the Quotation and Service Invoice.</p>
+      <label className="block space-y-1.5">
+        <span className="text-xs font-medium text-ink-soft">Watermark line on the Delivery Challan</span>
+        <input name="print_tagline" defaultValue={printTagline ?? ""} placeholder="Quality & Safety is our Priority" className="input" />
+      </label>
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Note printed at the bottom of every Service Invoice</span>
         <textarea name="service_invoice_note" defaultValue={serviceInvoiceNote ?? ""} rows={3} className="input resize-none" />

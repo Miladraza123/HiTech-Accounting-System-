@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { writeFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QuotationDoc, type QuotationDocProps } from "@/components/print/QuotationDoc";
+import { DcDoc, type DcDocProps } from "@/components/print/DcDoc";
 import { ServiceInvoiceDoc, type ServiceInvoiceDocProps } from "@/components/print/ServiceInvoiceDoc";
 
 const headerCompany = {
@@ -102,5 +103,41 @@ describe("letterhead print documents", () => {
     expect(html).not.toContain("STRN:");
     expect(html).toContain("NTN: 8890257-3");
     expect(html).not.toContain('class="lh-footer"');
+  });
+
+  const dc: DcDocProps = {
+    dcNo: "DC-202627-0012",
+    date: "10-October-2026",
+    partyName: "DP World (QICT)",
+    refNo: "26.24833",
+    lines: [
+      { qty: 1, unit: "NOS", description: "Color", remarks: null },
+      { qty: 1, unit: "NOS", description: "Brush", remarks: "Imported" },
+      { qty: 60, unit: "NOS", description: "Nut\nSize: 60mm", remarks: null },
+    ],
+    remarks: null,
+    company: headerCompany,
+    logoUrl: process.env.LOGO ?? null,
+    tagline: "Quality & Safety is our Priority",
+    signatureUrl: process.env.SIG ?? null,
+    stampUrl: null,
+  };
+
+  it("delivery challan follows the pre-printed form: fields, ruled rows, watermark and the three sign-offs, no prices", () => {
+    const html = renderToStaticMarkup(<DcDoc {...dc} />);
+    if (process.env.DUMP_DIR) writeFileSync(`${process.env.DUMP_DIR}/dc.html`, `<!doctype html><meta charset="utf-8"><body style="margin:0">${html}`);
+    for (const t of ["DELIVERY CHALLAN", "DC-202627-0012", "10-October-2026", "DP World (QICT)", "26.24833", "Qty.", "Descriptions", "Remarks", "60 NOS", "Imported", "Quality &amp; Safety is our Priority", "Prepared By", "Authorized By", "Received By", "NTN: 8890257-3", "STRN: 8890257-3"]) {
+      expect(html).toContain(t);
+    }
+    expect(html).not.toMatch(/Rate|Amount|Price/);
+    // 3 filled + 12 blank rows to reach the 15 ruled rows of the form
+    expect((html.match(/class="r"/g) ?? []).length).toBe(15);
+  });
+
+  it("delivery challan grows past 15 rows when the challan has more lines, and omits the watermark text when there is no tagline", () => {
+    const many = Array.from({ length: 18 }, (_, i) => ({ qty: i + 1, unit: null, description: `Item ${i + 1}`, remarks: null }));
+    const html = renderToStaticMarkup(<DcDoc {...dc} lines={many} tagline={null} refNo={null} />);
+    expect((html.match(/class="r"/g) ?? []).length).toBe(18);
+    expect(html).not.toContain('class="wm-text"');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatInvoiceDate, formatQuoteDate, isValidShortCode, normalizeShortCode, quotationRef, serialOf, validityDays } from "./docRef";
+import { formatAmount, formatDcDate, formatInvoiceDate, formatQuoteDate, isValidShortCode, normalizeShortCode, quotationRef, serialOf, validityDays } from "./docRef";
 
 describe("docRef", () => {
   it("builds the quotation reference from the codes and the running serial", () => {
@@ -31,6 +31,7 @@ describe("docRef", () => {
     expect(formatAmount(3456.5)).toBe("3,456.50");
     expect(formatQuoteDate("2026-10-06")).toBe("6-Oct-26");
     expect(formatInvoiceDate("2026-10-06")).toBe("6/10/2026");
+    expect(formatDcDate("2026-10-10")).toBe("10-October-2026");
   });
   it("counts validity in days", () => {
     expect(validityDays("2026-10-06T08:00:00Z", "2026-10-13")).toBe(7);

@@ -27,6 +27,7 @@ export async function saveCompanyDocSettingsAction(_prev: DocSettingsResult, for
       service_invoice_note: String(formData.get("service_invoice_note") ?? "").trim() || null,
       phone2: String(formData.get("phone2") ?? "").trim() || null,
       email2: String(formData.get("email2") ?? "").trim() || null,
+      print_tagline: String(formData.get("print_tagline") ?? "").trim() || null,
     })
     .eq("id", COMPANY_ID);
   if (error) return { error: error.message };

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import type { Json } from "@/lib/supabase/database.types";
 
 export type ActionResult = { error: string | null; id?: string };
 
@@ -21,6 +22,9 @@ export type DeliveryChallanLineInput = {
   stock_qty?: number;
 };
 
+/** Ref. No. and per-line Remarks printed on the challan (see fn_set_dc_print_details). */
+export type DcLineRemark = { sales_order_line_id: string; remarks: string };
+
 export async function createDeliveryChallanAction(input: {
   sales_order_id: string;
   warehouse_id: string;
@@ -28,6 +32,8 @@ export async function createDeliveryChallanAction(input: {
   vehicle_no: string | null;
   driver_name: string | null;
   remarks: string | null;
+  ref_no?: string | null;
+  line_remarks?: DcLineRemark[];
   lines: DeliveryChallanLineInput[];
 }): Promise<ActionResult> {
   const user = await getCurrentUser();
@@ -44,9 +50,33 @@ export async function createDeliveryChallanAction(input: {
     p_lines: input.lines,
   });
   if (error) return { error: error.message };
+  // The challan exists now; Ref. No. and line remarks are print details on top of it.
+  if (input.ref_no?.trim() || input.line_remarks?.some((r) => r.remarks.trim())) {
+    await supabase.rpc("fn_set_dc_print_details", {
+      p_dc_id: data as string,
+      p_ref_no: (input.ref_no ?? "") as string,
+      p_line_remarks: (input.line_remarks ?? []) as unknown as Json,
+    });
+  }
   revalidatePath("/delivery-challans");
   revalidatePath("/inventory");
   return { error: null, id: data as string };
+}
+
+/** Edit the Ref. No. and the per-line Remarks of an issued challan. */
+export async function updateDcPrintDetailsAction(dcId: string, refNo: string, lineRemarks: DcLineRemark[]): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "delivery_challan.manage"))) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_dc_print_details", {
+    p_dc_id: dcId,
+    p_ref_no: refNo,
+    p_line_remarks: lineRemarks as unknown as Json,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/delivery-challans/${dcId}`);
+  return { error: null };
 }
 
 export async function recordPodAction(dcId: string, acceptedByName: string, note: string | null): Promise<ActionResult> {

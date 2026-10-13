@@ -7,6 +7,7 @@ import { PodPanel } from "@/components/PodPanel";
 import { CancelDeliveryChallanButton } from "@/components/CancelDeliveryChallanButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
+import { DcPrintDetailsEditor } from "@/components/DcPrintDetailsEditor";
 import { DispatchGoAheadPanel, type GoAheadRow } from "@/components/DispatchGoAheadPanel";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -83,8 +84,8 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
           filename={`${dc.dc_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
-          hasPhone={!!company?.phone}
-          hasEmail={!!company?.email}
+          hasPhone={false}
+          hasEmail={false}
         />
       </div>
 
@@ -160,6 +161,13 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
         </div>
 
         <div className="space-y-6">
+          <DcPrintDetailsEditor
+            dcId={id}
+            refNo={dc.ref_no}
+            poNumber={so?.client_po_number ?? null}
+            lines={(lines ?? []).map((l) => ({ sales_order_line_id: l.sales_order_line_id, description: l.description, remarks: l.remarks }))}
+            canEdit={canManage && dc.status === "Issued"}
+          />
           {dc.status === "Issued" && dc.acceptance_status === "Pending" && canDispute && <PodPanel dcId={id} canDispute={canDispute} canAccept={canManage} />}
           {dc.status === "Issued" && dc.acceptance_status === "Disputed" && canDispute && <PodPanel dcId={id} canDispute={canDispute} canAccept={canManage} />}
 
