@@ -319,7 +319,9 @@ const CREATE_RPC: {
       p_lines: write.payload.lines as Json,
     });
     if (res.error) return res;
-    // Ref. No. and line remarks (best effort: the challan already exists and both are editable on its page).
+    // Project, Ref. No. and line remarks (best effort: the challan already exists and all are editable on its page).
+    const project = (write.payload.project as string | null) ?? null;
+    if (project) await supabase.rpc("fn_set_dc_project", { p_dc_id: write.recordId, p_project: project });
     const refNo = (write.payload.ref_no as string | null) ?? null;
     const lineRemarks = (write.payload.line_remarks as Json | undefined) ?? [];
     if (refNo || (Array.isArray(lineRemarks) && lineRemarks.length)) {

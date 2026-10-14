@@ -549,6 +549,7 @@ export type Database = {
       }
       delivery_challans: {
         Row: {
+          project: string | null
           ref_no: string | null
           acceptance_status: string
           accepted_at: string | null
@@ -572,6 +573,7 @@ export type Database = {
           warehouse_id: string
         }
         Insert: {
+          project?: string | null
           ref_no?: string | null
           acceptance_status?: string
           accepted_at?: string | null
@@ -595,6 +597,7 @@ export type Database = {
           warehouse_id: string
         }
         Update: {
+          project?: string | null
           ref_no?: string | null
           acceptance_status?: string
           accepted_at?: string | null
@@ -7335,6 +7338,10 @@ export type Database = {
       }
       fn_record_dispute: {
         Args: { p_dc_id: string; p_note: string }
+        Returns: undefined
+      }
+      fn_set_dc_project: {
+        Args: { p_dc_id: string; p_project: string }
         Returns: undefined
       }
       fn_set_dc_print_details: {

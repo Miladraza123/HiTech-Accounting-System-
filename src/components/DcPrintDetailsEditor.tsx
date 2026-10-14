@@ -12,18 +12,23 @@ export function DcPrintDetailsEditor({
   dcId,
   refNo,
   poNumber,
+  project,
+  projectSuggestions,
   lines,
   canEdit,
 }: {
   dcId: string;
   refNo: string | null;
   poNumber: string | null;
+  project: string | null;
+  projectSuggestions: string[];
   lines: Line[];
   canEdit: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [ref, setRef] = useState(refNo ?? "");
+  const [projectValue, setProjectValue] = useState(project ?? "");
   const [remarks, setRemarks] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((l) => [l.sales_order_line_id, l.remarks ?? ""])));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -35,7 +40,8 @@ export function DcPrintDetailsEditor({
         const res = await updateDcPrintDetailsAction(
           dcId,
           ref,
-          lines.map((l) => ({ sales_order_line_id: l.sales_order_line_id, remarks: remarks[l.sales_order_line_id] ?? "" }))
+          lines.map((l) => ({ sales_order_line_id: l.sales_order_line_id, remarks: remarks[l.sales_order_line_id] ?? "" })),
+          projectValue
         );
         if (res.error) setError(res.error);
         else {
@@ -64,6 +70,9 @@ export function DcPrintDetailsEditor({
             Ref/PO Number: <span className="text-ink">{refNo || poNumber || "—"}</span>
             {!refNo && poNumber && <span className="text-ink-faint"> (client PO)</span>}
           </p>
+          <p className="text-xs text-ink-soft">
+            Project: <span className="text-ink">{project || "—"}</span>
+          </p>
           {lines.some((l) => l.remarks) && (
             <ul className="text-xs text-ink-soft space-y-0.5">
               {lines.filter((l) => l.remarks).map((l) => (
@@ -79,6 +88,15 @@ export function DcPrintDetailsEditor({
           <label className="block space-y-1">
             <span className="text-[11px] text-ink-faint">Ref/PO Number</span>
             <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder={poNumber ?? ""} className="input !py-1 text-xs" />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[11px] text-ink-faint">Project (optional)</span>
+            <input value={projectValue} onChange={(e) => setProjectValue(e.target.value)} list={`dc-project-${dcId}`} className="input !py-1 text-xs" />
+            <datalist id={`dc-project-${dcId}`}>
+              {projectSuggestions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </label>
           {lines.map((l) => (
             <label key={l.sales_order_line_id} className="block space-y-1">

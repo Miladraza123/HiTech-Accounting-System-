@@ -20,6 +20,7 @@ type SoOption = {
   id: string;
   so_no: string;
   business_line: string;
+  party_id: string;
   client_po_number: string | null;
   parties: { legal_name: string } | null;
   lines: SoLine[];
@@ -30,7 +31,10 @@ export function NewDeliveryChallanForm({
   salesOrders,
   warehouses,
   items,
+  projectSuggestions = {},
 }: {
+  /** Project names used on earlier challans, per client (party id). */
+  projectSuggestions?: Record<string, string[]>;
   salesOrders: SoOption[];
   warehouses: Tables<"warehouses">[];
   // Only the items this screen's own delivered lines reference — there is
@@ -46,6 +50,7 @@ export function NewDeliveryChallanForm({
   const [driverName, setDriverName] = useState("");
   const [remarks, setRemarks] = useState("");
   const [refNo, setRefNo] = useState("");
+  const [project, setProject] = useState("");
   const [lineRemarks, setLineRemarks] = useState<Record<string, string>>({});
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [issueFlags, setIssueFlags] = useState<Record<string, boolean>>({});
@@ -128,6 +133,7 @@ export function NewDeliveryChallanForm({
             driver_name: driverName || null,
             remarks: remarks || null,
             ref_no: refNo.trim() || null,
+            project: project.trim() || null,
             line_remarks: lineRemarkList,
             lines,
           },
@@ -146,6 +152,7 @@ export function NewDeliveryChallanForm({
         driver_name: driverName || null,
         remarks: remarks || null,
         ref_no: refNo.trim() || null,
+        project: project.trim() || null,
         line_remarks: lineRemarkList,
         lines,
       });
@@ -217,6 +224,16 @@ export function NewDeliveryChallanForm({
             <input value={driverName} onChange={(e) => setDriverName(e.target.value)} className="input" />
           </label>
         </div>
+
+        <label className="block space-y-1.5 max-w-sm">
+          <span className="text-xs font-medium text-ink-soft">Project (optional; pick an earlier one or type a new one)</span>
+          <input value={project} onChange={(e) => setProject(e.target.value)} list="dc-project-options" className="input" />
+          <datalist id="dc-project-options">
+            {(projectSuggestions[so?.party_id ?? ""] ?? []).map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </label>
 
         <label className="block space-y-1.5 max-w-sm">
           <span className="text-xs font-medium text-ink-soft">Ref/PO Number (printed on the challan; the client&apos;s PO number, you can change it)</span>

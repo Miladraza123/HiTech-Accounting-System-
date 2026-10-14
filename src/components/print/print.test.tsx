@@ -110,6 +110,7 @@ describe("letterhead print documents", () => {
     date: "10-October-2026",
     partyName: "DP World (QICT)",
     refNo: "26.24833",
+    project: "Berth 5 Crane Repair",
     lines: [
       { qty: 1, unit: "NOS", description: "Color", remarks: null },
       { qty: 1, unit: "NOS", description: "Brush", remarks: "Imported" },
@@ -126,12 +127,18 @@ describe("letterhead print documents", () => {
   it("delivery challan follows the pre-printed form: fields, ruled rows, watermark and the three sign-offs, no prices", () => {
     const html = renderToStaticMarkup(<DcDoc {...dc} />);
     if (process.env.DUMP_DIR) writeFileSync(`${process.env.DUMP_DIR}/dc.html`, `<!doctype html><meta charset="utf-8"><body style="margin:0">${html}`);
-    for (const t of ["DELIVERY CHALLAN", "DC-202627-0012", "10-October-2026", "DP World (QICT)", "Ref/PO Number:", "26.24833", "Qty.", "Descriptions", "Remarks", "60 NOS", "Imported", "Quality &amp; Safety is our Priority", "Prepared By", "Authorized By", "Received By", "NTN: 8890257-3", "STRN: 8890257-3"]) {
+    for (const t of ["DELIVERY CHALLAN", "DC-202627-0012", "10-October-2026", "DP World (QICT)", "Ref/PO Number:", "26.24833", "Project:", "Berth 5 Crane Repair", "Qty.", "Descriptions", "Remarks", "60 NOS", "Imported", "Quality &amp; Safety is our Priority", "Prepared By", "Authorized By", "Received By", "NTN: 8890257-3", "STRN: 8890257-3"]) {
       expect(html).toContain(t);
     }
     expect(html).not.toMatch(/Rate|Amount|Price/);
     // 3 filled + 12 blank rows to reach the 15 ruled rows of the form
     expect((html.match(/class="r"/g) ?? []).length).toBe(15);
+  });
+
+  it("delivery challan prints the Project line empty when there is no project", () => {
+    const html = renderToStaticMarkup(<DcDoc {...dc} project={null} />);
+    expect(html).toContain("Project:");
+    expect(html).not.toContain("Berth 5 Crane Repair");
   });
 
   it("delivery challan grows past 15 rows when the challan has more lines, and omits the watermark text when there is no tagline", () => {

@@ -49,6 +49,7 @@ export default async function DeliveryChallanPrintPage({
         date={formatDcDate(dc.delivery_date)}
         partyName={party?.legal_name ?? ""}
         refNo={dc.ref_no ?? so?.client_po_number ?? null}
+        project={dc.project}
         lines={(lines ?? []).map((l) => ({
           qty: Number(l.delivered_qty),
           unit: l.unit,
