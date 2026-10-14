@@ -5,6 +5,7 @@ import { fetchItemsByIds } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { NewDeliveryChallanForm } from "@/components/NewDeliveryChallanForm";
+import { distinctProjects } from "@/lib/dcProjects";
 
 // See /invoices/new: the whole eligible id set used to travel back to
 // PostgREST inside the request URL, so a large enough backlog made the request
@@ -44,6 +45,22 @@ export default async function NewDeliveryChallanPage({ searchParams }: { searchP
   ]);
 
   const eligible = salesOrders ?? [];
+
+  // Project names already used on earlier challans of these clients: the suggestions of the Project box.
+  const partyIds = [...new Set(eligible.map((so) => so.party_id))];
+  const { data: usedProjects } = partyIds.length
+    ? await supabase
+        .from("delivery_challans")
+        .select("party_id, project, created_at")
+        .in("party_id", partyIds)
+        .not("project", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(500)
+    : { data: [] };
+  const projectSuggestions: Record<string, string[]> = {};
+  for (const pid of partyIds) {
+    projectSuggestions[pid] = distinctProjects((usedProjects ?? []).filter((r) => r.party_id === pid));
+  }
 
   // This screen has no item dropdown — it only needs each delivered line's
   // own item, to read its base unit. So look up exactly those, instead of
@@ -108,6 +125,7 @@ export default async function NewDeliveryChallanPage({ searchParams }: { searchP
             id: so.id,
             so_no: so.so_no,
             business_line: so.business_line,
+            party_id: so.party_id,
             client_po_number: so.client_po_number,
             parties: so.parties as unknown as { legal_name: string } | null,
             lines: (so.sales_order_lines as unknown as {
@@ -121,6 +139,7 @@ export default async function NewDeliveryChallanPage({ searchParams }: { searchP
           }))}
           warehouses={warehouses}
           items={items}
+          projectSuggestions={projectSuggestions}
         />
       )}
     </div>

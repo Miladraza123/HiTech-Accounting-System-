@@ -8,6 +8,7 @@ import { CancelDeliveryChallanButton } from "@/components/CancelDeliveryChallanB
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
 import { DcPrintDetailsEditor } from "@/components/DcPrintDetailsEditor";
+import { distinctProjects } from "@/lib/dcProjects";
 import { DispatchGoAheadPanel, type GoAheadRow } from "@/components/DispatchGoAheadPanel";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -57,6 +58,15 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
     status: g.status,
     created_at: g.created_at,
   }));
+
+  const { data: usedProjects } = await supabase
+    .from("delivery_challans")
+    .select("project, created_at")
+    .eq("party_id", dc.party_id)
+    .not("project", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const projectSuggestions = distinctProjects(usedProjects ?? []);
 
   const party = dc.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const so = dc.sales_orders as unknown as { so_no: string; client_po_number: string } | null;
@@ -165,6 +175,8 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
             dcId={id}
             refNo={dc.ref_no}
             poNumber={so?.client_po_number ?? null}
+            project={dc.project}
+            projectSuggestions={projectSuggestions}
             lines={(lines ?? []).map((l) => ({ sales_order_line_id: l.sales_order_line_id, description: l.description, remarks: l.remarks }))}
             canEdit={canManage && dc.status === "Issued"}
           />

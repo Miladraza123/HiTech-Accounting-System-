@@ -24,8 +24,9 @@ export function dcPrintStyles(scope: string): string {
     .${scope} .f { align-self: start; display: flex; align-items: baseline; gap: 6px; border-bottom: 1px solid #000; min-height: 8mm; padding: 0 2px 1px; }
     .${scope} .f .k { font-weight: 700; white-space: nowrap; }
     .${scope} .f .v { flex: 1; font-size: 14px; }
+    .${scope} .left-col { display: flex; flex-direction: column; justify-content: space-between; }
     .${scope} .right-col { display: flex; flex-direction: column; gap: 2mm; }
-    .${scope} .right-col .f { align-self: stretch; }
+    .${scope} .right-col .f, .${scope} .left-col .f { align-self: stretch; }
     .${scope} .grid-head { display: grid; grid-template-columns: 11% 1fr 25%; gap: 3px; margin-top: 4mm; }
     .${scope} .grid-head > div { border: 1.5px solid #000; border-radius: 9px 9px 0 0; text-align: center; font-weight: 700; font-size: 14px; padding: 3px 4px; background: #fff; }
     .${scope} .rows { border: 1px solid #000; border-top: none; margin-top: 2px; }

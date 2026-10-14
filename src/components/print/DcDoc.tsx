@@ -9,6 +9,7 @@ export type DcDocProps = {
   date: string; // formatted, e.g. "10-October-2026"
   partyName: string;
   refNo: string | null;
+  project: string | null;
   lines: DcDocLine[];
   remarks: string | null;
   company: LetterheadCompany;
@@ -99,9 +100,15 @@ export function DcDoc(p: DcDocProps) {
         </div>
 
         <div className="fields">
-          <div className="f">
-            <span className="k">M/s:</span>
-            <span className="v">{p.partyName}</span>
+          <div className="left-col">
+            <div className="f">
+              <span className="k">M/s:</span>
+              <span className="v">{p.partyName}</span>
+            </div>
+            <div className="f">
+              <span className="k">Project:</span>
+              <span className="v">{p.project ?? ""}</span>
+            </div>
           </div>
           <div className="right-col">
             <div className="f">

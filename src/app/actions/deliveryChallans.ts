@@ -33,6 +33,7 @@ export async function createDeliveryChallanAction(input: {
   driver_name: string | null;
   remarks: string | null;
   ref_no?: string | null;
+  project?: string | null;
   line_remarks?: DcLineRemark[];
   lines: DeliveryChallanLineInput[];
 }): Promise<ActionResult> {
@@ -50,6 +51,9 @@ export async function createDeliveryChallanAction(input: {
     p_lines: input.lines,
   });
   if (error) return { error: error.message };
+  if (input.project?.trim()) {
+    await supabase.rpc("fn_set_dc_project", { p_dc_id: data as string, p_project: input.project });
+  }
   // The challan exists now; Ref. No. and line remarks are print details on top of it.
   if (input.ref_no?.trim() || input.line_remarks?.some((r) => r.remarks.trim())) {
     await supabase.rpc("fn_set_dc_print_details", {
@@ -63,8 +67,8 @@ export async function createDeliveryChallanAction(input: {
   return { error: null, id: data as string };
 }
 
-/** Edit the Ref. No. and the per-line Remarks of an issued challan. */
-export async function updateDcPrintDetailsAction(dcId: string, refNo: string, lineRemarks: DcLineRemark[]): Promise<ActionResult> {
+/** Edit the Ref/PO Number, Project and per-line Remarks of an issued challan. */
+export async function updateDcPrintDetailsAction(dcId: string, refNo: string, lineRemarks: DcLineRemark[], project: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "delivery_challan.manage"))) return NO_PERMISSION;
 
@@ -75,6 +79,8 @@ export async function updateDcPrintDetailsAction(dcId: string, refNo: string, li
     p_line_remarks: lineRemarks as unknown as Json,
   });
   if (error) return { error: error.message };
+  const projectRes = await supabase.rpc("fn_set_dc_project", { p_dc_id: dcId, p_project: project });
+  if (projectRes.error) return { error: projectRes.error.message };
   revalidatePath(`/delivery-challans/${dcId}`);
   return { error: null };
 }
