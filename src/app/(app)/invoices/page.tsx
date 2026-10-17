@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -16,11 +18,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   Cancelled: "bad",
 };
 
-export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string }> }) {
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ page?: string; status?: string; q?: string }> }) {
   const user = await getCurrentUser();
   if (!canSeeInvoices(user)) redirect("/");
   const canCreate = await hasPermission(user, "invoice.manage");
-  const { page: pageParam, status: statusParam } = await searchParams;
+  const { page: pageParam, status: statusParam, q } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
   // Cancelled Invoices are deliberately excluded from the Party Ledger (see
@@ -29,11 +31,15 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const status = statusParam === "Cancelled" ? "Cancelled" : statusParam === "Posted" ? "Posted" : "all";
 
   const supabase = await createClient();
+  const term = cleanSearchTerm(q);
+  const partyIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
+  const soIds = term ? await idsMatching(supabase, "sales_orders", "client_po_number", term) : [];
   let query = supabase
     .from("invoices")
     .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (status !== "all") query = query.eq("status", status);
+  if (term) query = query.or(searchOr(["invoice_no"], term, [{ col: "party_id", ids: partyIds }, { col: "sales_order_id", ids: soIds }]));
   const { data: invoices, count } = await query.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -63,6 +69,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         )}
       </div>
 
+      <ListSearch basePath="/invoices" q={term} keep={{ status: status === "all" ? undefined : status }} count={count} placeholder="Search invoice number, client or client PO…" />
+
       <div className="flex gap-2">
         {([
           { key: "all", label: "All" },
@@ -71,7 +79,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         ] as const).map((t) => (
           <Link
             key={t.key}
-            href={t.key === "all" ? "/invoices" : `/invoices?status=${t.key}`}
+            href={`/invoices${t.key === "all" && !term ? "" : "?"}${[t.key === "all" ? "" : `status=${t.key}`, term ? `q=${encodeURIComponent(term)}` : ""].filter(Boolean).join("&")}`}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               status === t.key ? "bg-accent text-white" : "bg-surface-2 text-ink-soft hover:bg-surface-2/80"
             }`}
@@ -140,7 +148,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
 
       <PaginationControls
         basePath="/invoices"
-        searchParams={status === "all" ? {} : { status }}
+        searchParams={{ status: status === "all" ? undefined : status, q: term || undefined }}
         currentPage={page}
         totalPages={totalPages}
         totalCount={count ?? 0}

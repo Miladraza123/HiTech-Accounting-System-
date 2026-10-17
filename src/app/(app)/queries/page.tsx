@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -13,20 +15,23 @@ import { HelpCircle } from "lucide-react";
 export default async function QueriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; q?: string; page?: string }>;
 }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "query.manage");
-  const { from, to, page: pageParam } = await searchParams;
+  const { from, to, q, page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
+  const term = cleanSearchTerm(q);
+  const partyIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
   let query = supabase
     .from("queries")
     .select("*, parties(legal_name)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
+  if (term) query = query.or(searchOr(["query_no", "requirement"], term, [{ col: "party_id", ids: partyIds }]));
   const { data: queries, count } = await query.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -55,6 +60,8 @@ export default async function QueriesPage({
         )}
       </div>
 
+      <ListSearch basePath="/queries" q={term} keep={{ from, to }} count={count} placeholder="Search query number, client or requirement…" />
+
       {queries?.length ? (
         <QueriesTable queries={queries.map((q) => ({ ...q, parties: q.parties as unknown as { legal_name: string } | null }))} />
       ) : (
@@ -74,7 +81,7 @@ export default async function QueriesPage({
         </div>
       )}
 
-      <PaginationControls basePath="/queries" searchParams={{ from, to }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls basePath="/queries" searchParams={{ from, to, q: term || undefined }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

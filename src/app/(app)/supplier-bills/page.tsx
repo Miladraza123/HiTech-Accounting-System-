@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -16,20 +18,23 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   Cancelled: "bad",
 };
 
-export default async function SupplierBillsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function SupplierBillsPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string }> }) {
   const user = await getCurrentUser();
   if (!canSeeSupplierBills(user)) redirect("/");
   const canCreate = await hasPermission(user, "supplier_bill.manage");
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, q } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
-  const { data: bills, count } = await supabase
+  const term = cleanSearchTerm(q);
+  const supplierIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
+  let billsQuery = supabase
     .from("supplier_bills")
     .select("*, parties(legal_name), grns(grn_no)", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(rangeFrom, rangeTo);
+    .order("created_at", { ascending: false });
+  if (term) billsQuery = billsQuery.or(searchOr(["bill_no", "supplier_bill_ref"], term, [{ col: "supplier_id", ids: supplierIds }]));
+  const { data: bills, count } = await billsQuery.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
   // Outstanding for exactly the bills on this page, not the whole
@@ -56,6 +61,8 @@ export default async function SupplierBillsPage({ searchParams }: { searchParams
           </Link>
         )}
       </div>
+
+      <ListSearch basePath="/supplier-bills" q={term} keep={{}} count={count} placeholder="Search bill number, supplier ref or supplier…" />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         {bills?.length ? (
@@ -114,7 +121,7 @@ export default async function SupplierBillsPage({ searchParams }: { searchParams
         )}
       </div>
 
-      <PaginationControls basePath="/supplier-bills" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls basePath="/supplier-bills" searchParams={{ q: term || undefined }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

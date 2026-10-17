@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -23,20 +25,23 @@ const TYPE_LABEL: Record<string, string> = { direct: "Direct", stock: "Stock", g
 export default async function PurchaseOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ open?: string; page?: string }>;
+  searchParams: Promise<{ open?: string; q?: string; page?: string }>;
 }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "purchase_order.manage");
-  const { open, page: pageParam } = await searchParams;
+  const { open, q, page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
+  const term = cleanSearchTerm(q);
+  const supplierIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
   let query = supabase
     .from("purchase_orders")
     .select("*, parties(legal_name)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (open === "1") query = query.not("status", "in", "(Received,Closed,Cancelled)");
+  if (term) query = query.or(searchOr(["po_no"], term, [{ col: "supplier_id", ids: supplierIds }]));
   const { data: orders, count } = await query.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -64,6 +69,8 @@ export default async function PurchaseOrdersPage({
           </Link>
         )}
       </div>
+
+      <ListSearch basePath="/purchase-orders" q={term} keep={{ open }} count={count} placeholder="Search PO number or supplier…" />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         {orders?.length ? (
@@ -128,7 +135,7 @@ export default async function PurchaseOrdersPage({
         )}
       </div>
 
-      <PaginationControls basePath="/purchase-orders" searchParams={{ open }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls basePath="/purchase-orders" searchParams={{ open, q: term || undefined }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

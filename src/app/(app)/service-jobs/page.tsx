@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -13,21 +15,35 @@ const STATUS_STYLE: Record<string, string> = {
   Cancelled: "bg-bad-soft text-bad",
 };
 
-export default async function ServiceJobsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function ServiceJobsPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string }> }) {
   const user = await getCurrentUser();
   const canManage = await hasPermission(user, "service_job.manage");
 
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, q } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
+  const term = cleanSearchTerm(q);
+  const partyIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
+  // An SRB invoice hangs off its Service Job, so searching "SRB 012" lands on the job that holds it.
+  const srbJobIds = term
+    ? ((await supabase.from("service_invoices").select("service_job_id").ilike("invoice_no", `%${term}%`).limit(300)).data ?? []).map((r) => r.service_job_id)
+    : [];
+  let jobsQuery = supabase
+    .from("service_jobs")
+    .select("*, parties(legal_name)", { count: "exact" })
+    .order("created_at", { ascending: false });
+  if (term) {
+    jobsQuery = jobsQuery.or(
+      searchOr(["job_no", "asset_description", "client_po_no", "customer_dc_no"], term, [
+        { col: "party_id", ids: partyIds },
+        { col: "id", ids: srbJobIds },
+      ]),
+    );
+  }
   const [{ data: jobs, count }, { data: clientParties }] = await Promise.all([
-    supabase
-      .from("service_jobs")
-      .select("*, parties(legal_name)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(rangeFrom, rangeTo),
+    jobsQuery.range(rangeFrom, rangeTo),
     canManage
       ? supabase.from("parties").select("id, legal_name").eq("is_active", true).in("party_type", ["client", "both"]).order("legal_name").limit(20)
       : Promise.resolve({ data: [] }),
@@ -42,6 +58,8 @@ export default async function ServiceJobsPage({ searchParams }: { searchParams: 
       </div>
 
       {canManage && <NewServiceJobForm clientParties={clientParties ?? []} />}
+
+      <ListSearch basePath="/service-jobs" q={term} keep={{}} count={count} placeholder="Search job number, client, asset, PO or SRB invoice no…" />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         <div className="overflow-x-auto">
@@ -86,7 +104,7 @@ export default async function ServiceJobsPage({ searchParams }: { searchParams: 
         </div>
       </div>
 
-      <PaginationControls basePath="/service-jobs" searchParams={{}} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls basePath="/service-jobs" searchParams={{ q: term || undefined }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -23,20 +25,24 @@ const ACCEPTANCE_TONE: Record<string, BadgeTone> = {
 export default async function DeliveryChallansPage({
   searchParams,
 }: {
-  searchParams: Promise<{ acceptance?: string; page?: string }>;
+  searchParams: Promise<{ acceptance?: string; q?: string; page?: string }>;
 }) {
   const user = await getCurrentUser();
   const canCreate = await hasPermission(user, "delivery_challan.manage");
-  const { acceptance, page: pageParam } = await searchParams;
+  const { acceptance, q, page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
   const supabase = await createClient();
+  const term = cleanSearchTerm(q);
+  const partyIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
+  const soIds = term ? await idsMatching(supabase, "sales_orders", "client_po_number", term) : [];
   let query = supabase
     .from("delivery_challans")
     .select("*, parties(legal_name), sales_orders(so_no)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (acceptance) query = query.eq("acceptance_status", acceptance);
+  if (term) query = query.or(searchOr(["dc_no", "ref_no", "project"], term, [{ col: "party_id", ids: partyIds }, { col: "sales_order_id", ids: soIds }]));
   const { data: dcs, count } = await query.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -64,6 +70,8 @@ export default async function DeliveryChallansPage({
           </Link>
         )}
       </div>
+
+      <ListSearch basePath="/delivery-challans" q={term} keep={{ acceptance }} count={count} placeholder="Search DC number, client, PO/Ref or project…" />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         {dcs?.length ? (
@@ -121,7 +129,7 @@ export default async function DeliveryChallansPage({
         )}
       </div>
 
-      <PaginationControls basePath="/delivery-challans" searchParams={{ acceptance }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls basePath="/delivery-challans" searchParams={{ acceptance, q: term || undefined }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }
