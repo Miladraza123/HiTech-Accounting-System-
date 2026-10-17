@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { cleanSearchTerm, searchOr, idsMatching } from "@/lib/listSearch";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -28,9 +30,9 @@ const BUSINESS_LINE_LABEL: Record<string, string> = {
 export default async function SalesOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; q?: string; page?: string }>;
 }) {
-  const { from, to, page: pageParam } = await searchParams;
+  const { from, to, q, page: pageParam } = await searchParams;
   const page = parsePage(pageParam);
   const [rangeFrom, rangeTo] = pageRange(page);
 
@@ -38,11 +40,14 @@ export default async function SalesOrdersPage({
   const canCreate = await hasPermission(user, "sales_order.manage");
 
   const supabase = await createClient();
+  const term = cleanSearchTerm(q);
+  const partyIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
   let query = supabase
     .from("sales_orders")
     .select("*, parties(legal_name)", { count: "exact" })
     .order("created_at", { ascending: false });
   if (from && to) query = query.gte("created_at", from).lt("created_at", toExclusiveUpperBound(to));
+  if (term) query = query.or(searchOr(["so_no", "client_po_number"], term, [{ col: "party_id", ids: partyIds }]));
   const { data: orders, count } = await query.range(rangeFrom, rangeTo);
   const totalPages = computeTotalPages(count ?? 0);
 
@@ -74,6 +79,8 @@ export default async function SalesOrdersPage({
           </Link>
         )}
       </div>
+
+      <ListSearch basePath="/sales-orders" q={term} keep={{ from, to }} count={count} placeholder="Search SO number, client or client PO…" />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         {orders?.length ? (
@@ -133,7 +140,7 @@ export default async function SalesOrdersPage({
         )}
       </div>
 
-      <PaginationControls basePath="/sales-orders" searchParams={{ from, to }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
+      <PaginationControls basePath="/sales-orders" searchParams={{ from, to, q: term || undefined }} currentPage={page} totalPages={totalPages} totalCount={count ?? 0} />
     </div>
   );
 }
