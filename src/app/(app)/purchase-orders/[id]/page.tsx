@@ -9,6 +9,9 @@ import { ClosePurchaseOrderButton } from "@/components/ClosePurchaseOrderButton"
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
+import { PurchaseOrderRevisions, type PoRevisionRow } from "@/components/PurchaseOrderRevisions";
+import { isPurchaseOrderEditable } from "@/lib/poEdit";
+import { buttonClass } from "@/components/ui/Button";
 
 const STATUS_STYLE: Record<string, string> = {
   Confirmed: "bg-ledger-soft text-ledger",
@@ -26,7 +29,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const canEdit = await hasPermission(user, "purchase_order.manage");
 
   const supabase = await createClient();
-  const [{ data: po }, { data: lines }, { data: warehouses }, { data: units }, { data: items }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }, { data: company }] = await Promise.all([
+  const [{ data: po }, { data: lines }, { data: warehouses }, { data: units }, { data: items }, { data: grns }, { data: attachments }, { data: tasks }, { data: profiles }, { data: company }, { data: revisionRows }] = await Promise.all([
     supabase
       .from("purchase_orders")
       .select("*, parties(legal_name, billing_address), sales_orders(so_no)")
@@ -44,6 +47,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
     supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "purchase_orders").eq("related_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
     supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+    supabase.from("purchase_order_revisions").select("*").eq("purchase_order_id", id).order("rev_no", { ascending: false }),
   ]);
 
   if (!po) notFound();
@@ -53,6 +57,23 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   const canReceive = canEdit && !["Cancelled", "Closed"].includes(po.status);
   const canCancel = isOwner(user) && po.status === "Confirmed" && !grns?.length;
   const canClose = isOwner(user) && po.status === "PartiallyReceived";
+  const canEditPo = canEdit && isPurchaseOrderEditable(po.status);
+
+  // Names of whoever made each edit (inactive users included, so history never shows a blank).
+  const editorIds = [...new Set((revisionRows ?? []).map((r) => r.changed_by).filter((v): v is string => !!v))];
+  const { data: editors } = editorIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", editorIds)
+    : { data: [] as { id: string; full_name: string }[] };
+  const editorName = new Map((editors ?? []).map((e) => [e.id, e.full_name]));
+  const revisions: PoRevisionRow[] = (revisionRows ?? []).map((r) => ({
+    id: r.id,
+    rev_no: r.rev_no,
+    summary: r.summary,
+    reason: r.reason,
+    changed_at: r.changed_at,
+    changed_by_name: (r.changed_by && editorName.get(r.changed_by)) || "Unknown user",
+    snapshot: r.snapshot,
+  }));
 
   return (
     <div className="space-y-6">
@@ -65,10 +86,17 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
             <h1 className="text-lg font-semibold text-ink font-mono">{po.po_no}</h1>
             <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[po.status] ?? ""}`}>{po.status}</span>
             <span className="rounded-full bg-ledger-soft px-2 py-0.5 text-xs font-mono text-ledger">{TYPE_LABEL[po.purchase_type]}</span>
+            {po.revision_no > 0 && <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-mono text-ink-soft">Rev {po.revision_no}</span>}
           </div>
           <p className="text-sm text-ink-soft mt-0.5">{party?.legal_name}</p>
         </div>
-        <PrintPdfActions
+        <div className="flex items-start gap-2">
+          {canEditPo && (
+            <Link href={`/purchase-orders/${id}/edit`} className={buttonClass("secondary")}>
+              Edit
+            </Link>
+          )}
+          <PrintPdfActions
           printPath={`/purchase-orders/${id}/print`}
           filename={`${po.po_no}.pdf`}
           hasSignature={!!company?.signature_path}
@@ -76,6 +104,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
           hasPhone={!!company?.phone}
           hasEmail={!!company?.email}
         />
+        </div>
       </div>
 
       {po.status === "Cancelled" && po.cancel_reason && (
@@ -192,6 +221,8 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
               {canClose && <ClosePurchaseOrderButton purchaseOrderId={id} />}
             </div>
           )}
+
+          <PurchaseOrderRevisions currentRevision={po.revision_no} revisions={revisions} />
 
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
             <h2 className="text-sm font-semibold text-ink mb-1">Tasks &amp; Follow-ups</h2>

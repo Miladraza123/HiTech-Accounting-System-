@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { NavLink, type NavCategory } from "@/components/SidebarNav";
+import { NavGroups, type NavCategory } from "@/components/SidebarNav";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -87,25 +87,7 @@ export function MobileNav({
             </form>
 
             <nav className="flex-1 px-3 py-3 space-y-0.5">
-              {categories.map((cat) => {
-                const visible = cat.items.filter((n) => n.show);
-                if (visible.length === 0) return null;
-                return (
-                  <div key={cat.label || "_root"}>
-                    {cat.label && (
-                      <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{cat.label}</div>
-                    )}
-                    {visible.map((n) => (
-                      <NavLink
-                        key={n.href}
-                        item={n}
-                        active={pathname === n.href || (n.href !== "/" && pathname.startsWith(n.href + "/"))}
-                        onClick={() => setOpen(false)}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
+              <NavGroups categories={categories} pathname={pathname} onNavigate={() => setOpen(false)} />
             </nav>
 
             <div className="border-t border-line px-3 py-4 space-y-3">

@@ -3469,6 +3469,47 @@ export type Database = {
           },
         ]
       }
+      purchase_order_revisions: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          purchase_order_id: string
+          reason: string | null
+          rev_no: number
+          snapshot: Json
+          summary: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          purchase_order_id: string
+          reason?: string | null
+          rev_no: number
+          snapshot: Json
+          summary: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          purchase_order_id?: string
+          reason?: string | null
+          rev_no?: number
+          snapshot?: Json
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_revisions_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_orders: {
         Row: {
           cancel_reason: string | null
@@ -3481,6 +3522,7 @@ export type Database = {
           po_no: string
           purchase_type: string
           responsible_user_id: string | null
+          revision_no: number
           row_version: number
           status: string
           subtotal: number
@@ -3501,6 +3543,7 @@ export type Database = {
           po_no: string
           purchase_type: string
           responsible_user_id?: string | null
+          revision_no?: number
           row_version?: number
           status?: string
           subtotal?: number
@@ -3521,6 +3564,7 @@ export type Database = {
           po_no?: string
           purchase_type?: string
           responsible_user_id?: string | null
+          revision_no?: number
           row_version?: number
           status?: string
           subtotal?: number
@@ -6840,6 +6884,18 @@ export type Database = {
       fn_delete_master_row: {
         Args: { p_id: string; p_table: string }
         Returns: undefined
+      }
+      fn_edit_purchase_order: {
+        Args: {
+          p_expected_delivery: string
+          p_expected_revision: number
+          p_lines: Json
+          p_purchase_order_id: string
+          p_reason: string
+          p_supplier_id: string
+          p_warehouse_id: string
+        }
+        Returns: number
       }
       fn_deliverable_sales_order_ids: {
         Args: never
