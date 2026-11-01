@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import type { EditedLineInput } from "@/lib/poEdit";
 
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
@@ -102,4 +103,32 @@ export async function createGrnAction(input: {
   revalidatePath("/inventory");
   if (error) return { error: error.message };
   return { error: null, id: data as string };
+}
+
+export async function editPurchaseOrderAction(input: {
+  purchase_order_id: string;
+  expected_revision: number;
+  supplier_id: string;
+  warehouse_id: string | null;
+  expected_delivery: string | null;
+  reason: string;
+  lines: EditedLineInput[];
+}): Promise<ActionResult & { revision?: number }> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "purchase_order.manage"))) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_edit_purchase_order", {
+    p_purchase_order_id: input.purchase_order_id,
+    p_expected_revision: input.expected_revision,
+    p_supplier_id: input.supplier_id,
+    p_warehouse_id: input.warehouse_id as string,
+    p_expected_delivery: input.expected_delivery as string,
+    p_lines: input.lines,
+    p_reason: input.reason,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/purchase-orders/${input.purchase_order_id}`);
+  revalidatePath("/purchase-orders");
+  return { error: null, id: input.purchase_order_id, revision: data as number };
 }
