@@ -133,6 +133,12 @@
 // offline fallback keeps working. The version bump itself also drops any
 // such pages already sitting on devices from before this fix.
 const CACHE_VERSION = "v15";
+// Stamped with the deploy's commit by scripts/stamp-sw.mjs during the build, so this
+// file's bytes differ on EVERY deploy — that is what makes an already-installed app
+// notice an update and show its "new version available" toast, without anyone having
+// to bump CACHE_VERSION by hand. It is deliberately NOT part of CACHE_NAME: the offline
+// cache is only wiped when CACHE_VERSION (the strategy) changes.
+const BUILD_ID = "dev";
 const CACHE_NAME = `hitech-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
