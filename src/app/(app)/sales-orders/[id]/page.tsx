@@ -167,7 +167,7 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
         </div>
 
         <div className="space-y-6">
-          {costSummary && <SalesOrderCostPanel salesOrderId={id} summary={costSummary} canEdit={canAmend} />}
+          {costSummary && <SalesOrderCostPanel salesOrderId={id} summary={costSummary} canEdit={so.status !== "Cancelled"} />}
 
           {canAmend && (
             <div className="rounded-xl border border-line bg-surface p-4">
