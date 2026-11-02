@@ -15,6 +15,8 @@ export type InvoiceLineInput = {
   rate: number;
   tax_pct: number;
   hs_code?: string;
+  /** Wording for this invoice line; omitted/blank = keep the Sales Order line's own description. */
+  description?: string;
 };
 
 export async function createInvoiceAction(input: {
@@ -62,4 +64,18 @@ export async function cancelInvoiceAction(invoiceId: string, reason: string): Pr
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");
   return { error: error?.message ?? null };
+}
+
+export async function updateInvoiceLineDescriptionAction(invoiceLineId: string, invoiceId: string, description: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "invoice.manage"))) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_update_invoice_line_description", {
+    p_invoice_line_id: invoiceLineId,
+    p_description: description,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/invoices/${invoiceId}`);
+  return { error: null, id: invoiceId };
 }
