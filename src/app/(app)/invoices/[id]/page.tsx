@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EditInvoiceLineDescription } from "@/components/EditInvoiceLineDescription";
+import { InvoiceDetailsEditor } from "@/components/InvoiceDetailsEditor";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { canSeeInvoices } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
@@ -273,6 +274,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               </Link>
             )}
           </div>
+
+          <InvoiceDetailsEditor
+            key={`${invoice.row_version}-${invoice.updated_at}`}
+            invoiceId={id}
+            canEdit={canEditDescriptions}
+            initial={{
+              dc_refs: invoice.dc_refs ?? "",
+              payment_terms: invoice.payment_terms ?? "",
+              due_date: invoice.due_date,
+              contact_person: invoice.contact_person ?? "",
+              total_weight: invoice.total_weight ?? "",
+              print_note: invoice.print_note ?? "",
+            }}
+          />
 
           {!!descEdits?.length && (
             <div className="rounded-xl border border-line bg-surface p-4 space-y-2">

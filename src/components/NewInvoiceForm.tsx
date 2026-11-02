@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createInvoiceAction, getAvailableInvoiceNumbersAction, type InvoiceLineInput, type InvoiceNumberOption } from "@/app/actions/invoices";
+import { createInvoiceAction, getAvailableInvoiceNumbersAction, type InvoiceDetailsInput, type InvoiceLineInput, type InvoiceNumberOption } from "@/app/actions/invoices";
+import { EMPTY_INVOICE_DETAILS, InvoiceDetailsFields } from "@/components/InvoiceDetailsFields";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { karachiToday } from "@/lib/karachiTime";
 
@@ -16,9 +17,18 @@ type SoLine = {
   tax_pct: number;
   hs_code: string | null;
 };
-type SoOption = { id: string; so_no: string; business_line: string; parties: { legal_name: string } | null; lines: SoLine[] };
+/** Values the print details start with once a Sales Order is picked — all still editable. */
+export type SoPrintDefaults = { payment_terms: string | null; dc_refs: string; contact_person: string | null };
+type SoOption = {
+  id: string;
+  so_no: string;
+  business_line: string;
+  parties: { legal_name: string } | null;
+  lines: SoLine[];
+  defaults: SoPrintDefaults;
+};
 
-export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
+export function NewInvoiceForm({ salesOrders, defaultNote }: { salesOrders: SoOption[]; /** Company-wide default note (Company settings); copied onto the invoice, then editable. */ defaultNote: string | null }) {
   const router = useRouter();
   const [soId, setSoId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(karachiToday());
@@ -30,6 +40,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   const [hsCodes, setHsCodes] = useState<Record<string, string>>({});
   // Starts as the Sales Order line's wording; the user may reword it for this invoice only.
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  const [details, setDetails] = useState<InvoiceDetailsInput>({ ...EMPTY_INVOICE_DETAILS, print_note: defaultNote ?? "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
@@ -120,7 +131,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
     }
 
     startTransition(async () => {
-      const res = await createInvoiceAction({ sales_order_id: soId, invoice_date: invoiceDate, lines, invoice_no: invoiceNo || undefined });
+      const res = await createInvoiceAction({ sales_order_id: soId, invoice_date: invoiceDate, lines, invoice_no: invoiceNo || undefined, details });
       if (res.error) setError(res.error);
       else router.push(`/invoices/${res.id}`);
     });
@@ -143,7 +154,22 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-ink-soft">Sales Order *</span>
-            <select value={soId} onChange={(e) => setSoId(e.target.value)} className="input">
+            <select
+              value={soId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSoId(id);
+                // Start the print details from what the order already knows; the user can change any of it.
+                const d = salesOrders.find((s) => s.id === id)?.defaults;
+                setDetails((prev) => ({
+                  ...prev,
+                  payment_terms: d?.payment_terms ?? "",
+                  dc_refs: d?.dc_refs ?? "",
+                  contact_person: d?.contact_person ?? "",
+                }));
+              }}
+              className="input"
+            >
               <option value="">— Select —</option>
               {salesOrders.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -183,7 +209,7 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
               <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
                 <tr>
                   <th className="text-left px-3 py-2">Description</th>
-                  <th className="text-left px-3 py-2 w-28 min-w-[7rem]">HS Code</th>
+                  <th className="text-left px-3 py-2 w-32 min-w-[8rem]">HS Code(s)</th>
                   <th className="text-right px-3 py-2">Deliverable</th>
                   <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Qty</th>
                   <th className="text-right px-3 py-2 w-28 min-w-[7rem]">Rate</th>
@@ -209,12 +235,13 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          type="text"
+                        <textarea
                           value={hsCodeFor(l)}
                           onChange={(e) => setHsCodes((h2) => ({ ...h2, [l.id]: e.target.value }))}
                           placeholder="—"
-                          className="input !py-1 text-xs"
+                          rows={2}
+                          aria-label="HS codes (one per line)"
+                          className="input !py-1 text-xs resize-y"
                         />
                       </td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">
@@ -267,10 +294,22 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         </div>
       )}
 
+      {so && (
+        <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ink">Print details (optional)</h2>
+            <p className="text-[11px] text-ink-faint">
+              Shown on the printed invoice only — they don&apos;t affect amounts. You can also change them later on the invoice page.
+            </p>
+          </div>
+          <InvoiceDetailsFields value={details} onChange={setDetails} disabled={!isOnline} />
+        </div>
+      )}
+
       {!isOnline && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">
           ⏳ You&apos;re offline — this Invoice will be saved on this device and synced automatically once you&apos;re
-          back online.
+          back online. Add its print details from the invoice page afterwards.
         </p>
       )}
 

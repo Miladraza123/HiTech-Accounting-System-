@@ -11,7 +11,7 @@ export type DocSettingsResult = { error: string | null; success?: boolean };
 const COMPANY_ID = "00000000-0000-0000-0000-000000000001";
 const NO_PERMISSION: DocSettingsResult = { error: "You don't have permission to perform this action." };
 
-/** Company-wide print settings: short code (HTE), name under the signature, FBR note on service invoices. */
+/** Company-wide print settings: short code (HTE), name under the signature, the notes on service and GST invoices. */
 export async function saveCompanyDocSettingsAction(_prev: DocSettingsResult, formData: FormData): Promise<DocSettingsResult> {
   if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
 
@@ -25,6 +25,7 @@ export async function saveCompanyDocSettingsAction(_prev: DocSettingsResult, for
       short_code: shortCode || null,
       signatory_name: String(formData.get("signatory_name") ?? "").trim() || null,
       service_invoice_note: String(formData.get("service_invoice_note") ?? "").trim() || null,
+      gst_invoice_note: String(formData.get("gst_invoice_note") ?? "").trim() || null,
       phone2: String(formData.get("phone2") ?? "").trim() || null,
       email2: String(formData.get("email2") ?? "").trim() || null,
       print_tagline: String(formData.get("print_tagline") ?? "").trim() || null,

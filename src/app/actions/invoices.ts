@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
-export type ActionResult = { error: string | null; id?: string };
+export type ActionResult = { error: string | null; id?: string; warning?: string };
 
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
@@ -19,11 +19,38 @@ export type InvoiceLineInput = {
   description?: string;
 };
 
+/** The printed header facts of a GST invoice. All optional; blank means "not printed". */
+export type InvoiceDetailsInput = {
+  dc_refs: string;
+  payment_terms: string;
+  due_date: string | null;
+  contact_person: string;
+  total_weight: string;
+  print_note: string;
+};
+
+function hasAnyDetail(d: InvoiceDetailsInput | undefined): d is InvoiceDetailsInput {
+  return !!d && !!(d.dc_refs.trim() || d.payment_terms.trim() || d.due_date || d.contact_person.trim() || d.total_weight.trim() || d.print_note.trim());
+}
+
+async function saveInvoiceDetails(supabase: Awaited<ReturnType<typeof createClient>>, invoiceId: string, d: InvoiceDetailsInput) {
+  return supabase.rpc("fn_set_invoice_details", {
+    p_invoice_id: invoiceId,
+    p_dc_refs: d.dc_refs,
+    p_payment_terms: d.payment_terms,
+    p_due_date: d.due_date as string,
+    p_contact_person: d.contact_person,
+    p_total_weight: d.total_weight,
+    p_print_note: d.print_note,
+  });
+}
+
 export async function createInvoiceAction(input: {
   sales_order_id: string;
   invoice_date: string;
   lines: InvoiceLineInput[];
   invoice_no?: string;
+  details?: InvoiceDetailsInput;
 }): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "invoice.manage"))) return NO_PERMISSION;
@@ -37,7 +64,27 @@ export async function createInvoiceAction(input: {
   });
   if (error) return { error: error.message };
   revalidatePath("/invoices");
-  return { error: null, id: data as string };
+
+  // A separate step on purpose: a problem with a print detail must never lose a posted invoice,
+  // so it only comes back as a warning (the details can be fixed on the invoice page).
+  let warning: string | undefined;
+  if (hasAnyDetail(input.details)) {
+    const { error: detailsError } = await saveInvoiceDetails(supabase, data as string, input.details);
+    if (detailsError) warning = `The invoice was saved, but its print details were not: ${detailsError.message}`;
+  }
+  return { error: null, id: data as string, warning };
+}
+
+/** Owner/Accounts: change the printed details (D.C #, terms, due date, contact, weight, note) of a Posted invoice. */
+export async function updateInvoiceDetailsAction(invoiceId: string, details: InvoiceDetailsInput): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!(await hasPermission(user, "invoice.manage"))) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { error } = await saveInvoiceDetails(supabase, invoiceId, details);
+  if (error) return { error: error.message };
+  revalidatePath(`/invoices/${invoiceId}`);
+  return { error: null, id: invoiceId };
 }
 
 export type InvoiceNumberOption = { invoice_no: string; kind: "sequential" | "reclaimed" };

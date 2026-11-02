@@ -115,8 +115,8 @@ export function ItemForm({
           <Field label="Spec">
             <input name="spec" placeholder="e.g. 6mm MS Sheet" className="input" />
           </Field>
-          <Field label="HS Code">
-            <input name="hs_code" className="input" />
+          <Field label="HS Code(s)">
+            <textarea name="hs_code" rows={2} placeholder="One code per line if there are several" className="input resize-y" />
           </Field>
         </div>
       </div>

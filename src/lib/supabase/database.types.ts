@@ -216,6 +216,7 @@ export type Database = {
           email: string | null
           email2: string | null
           fiscal_year_start_month: number
+          gst_invoice_note: string | null
           id: string
           legal_name: string
           letterhead_footer_path: string | null
@@ -243,6 +244,7 @@ export type Database = {
           email?: string | null
           email2?: string | null
           fiscal_year_start_month?: number
+          gst_invoice_note?: string | null
           id?: string
           legal_name: string
           letterhead_footer_path?: string | null
@@ -270,6 +272,7 @@ export type Database = {
           email?: string | null
           email2?: string | null
           fiscal_year_start_month?: number
+          gst_invoice_note?: string | null
           id?: string
           legal_name?: string
           letterhead_footer_path?: string | null
@@ -2205,51 +2208,69 @@ export type Database = {
         Row: {
           cancel_reason: string | null
           created_at: string
+          contact_person: string | null
           created_by: string | null
+          dc_refs: string | null
+          due_date: string | null
           grand_total: number
           id: string
           invoice_date: string
           invoice_no: string
           party_id: string
+          payment_terms: string | null
+          print_note: string | null
           row_version: number
           sales_order_id: string
           status: string
           subtotal: number
           tax_total: number
+          total_weight: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           cancel_reason?: string | null
           created_at?: string
+          contact_person?: string | null
           created_by?: string | null
+          dc_refs?: string | null
+          due_date?: string | null
           grand_total?: number
           id?: string
           invoice_date?: string
           invoice_no: string
           party_id: string
+          payment_terms?: string | null
+          print_note?: string | null
           row_version?: number
           sales_order_id: string
           status?: string
           subtotal?: number
           tax_total?: number
+          total_weight?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           cancel_reason?: string | null
           created_at?: string
+          contact_person?: string | null
           created_by?: string | null
+          dc_refs?: string | null
+          due_date?: string | null
           grand_total?: number
           id?: string
           invoice_date?: string
           invoice_no?: string
           party_id?: string
+          payment_terms?: string | null
+          print_note?: string | null
           row_version?: number
           sales_order_id?: string
           status?: string
           subtotal?: number
           tax_total?: number
+          total_weight?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -7533,6 +7554,18 @@ export type Database = {
       fn_sales_order_cost_summary: {
         Args: { p_sales_order_id: string }
         Returns: Json
+      }
+      fn_set_invoice_details: {
+        Args: {
+          p_contact_person: string
+          p_dc_refs: string
+          p_due_date: string
+          p_invoice_id: string
+          p_payment_terms: string
+          p_print_note: string
+          p_total_weight: string
+        }
+        Returns: undefined
       }
       fn_set_sales_order_estimated_cost: {
         Args: { p_cost: number; p_sales_order_id: string }

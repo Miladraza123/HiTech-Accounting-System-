@@ -226,11 +226,12 @@ export function EditItemForm({
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-[11px] text-ink-faint">HS Code</span>
-          <input
+          <span className="text-[11px] text-ink-faint">HS Code(s) — one per line if there are several</span>
+          <textarea
             value={form.hs_code ?? ""}
             onChange={(e) => setForm((f) => ({ ...f, hs_code: e.target.value }))}
-            className="input !py-1.5 text-sm"
+            rows={2}
+            className="input !py-1.5 text-sm resize-y"
           />
         </label>
       </div>
