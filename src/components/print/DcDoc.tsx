@@ -162,11 +162,11 @@ export function DcDoc(p: DcDocProps) {
             <div className="box">
               {p.signatureUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- see above
-                <img src={p.signatureUrl} alt="Authorized signature" style={{ position: "absolute", left: "8mm", bottom: 0, height: "17mm", objectFit: "contain" }} />
+                <img src={p.signatureUrl} alt="Authorized signature" style={{ position: "absolute", left: "8mm", bottom: 0, height: "17mm", objectFit: "contain", mixBlendMode: "multiply" }} />
               )}
               {p.stampUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- see above
-                <img src={p.stampUrl} alt="Company stamp" style={{ position: "absolute", left: "26mm", bottom: "-2mm", height: "21mm", objectFit: "contain", opacity: 0.92 }} />
+                <img src={p.stampUrl} alt="Company stamp" style={{ position: "absolute", left: "26mm", bottom: 0, height: "21mm", objectFit: "contain", opacity: 0.92, mixBlendMode: "multiply" }} />
               )}
             </div>
             <div className="line">Authorized By</div>

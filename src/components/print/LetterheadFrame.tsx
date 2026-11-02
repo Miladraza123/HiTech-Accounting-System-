@@ -48,11 +48,11 @@ export function SignatureBlock({
       <div className="imgs">
         {signatureUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- see LetterheadFrame
-          <img src={signatureUrl} alt="Authorized signature" style={{ position: "absolute", left: 0, bottom: 0, height: "17mm", objectFit: "contain" }} />
+          <img src={signatureUrl} alt="Authorized signature" style={{ position: "absolute", left: 0, bottom: 0, height: "17mm", objectFit: "contain", mixBlendMode: "multiply" }} />
         )}
         {stampUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- see LetterheadFrame
-          <img src={stampUrl} alt="Company stamp" style={{ position: "absolute", left: "22mm", bottom: "-2mm", height: "21mm", objectFit: "contain", opacity: 0.92 }} />
+          <img src={stampUrl} alt="Company stamp" style={{ position: "absolute", left: "22mm", bottom: 0, height: "21mm", objectFit: "contain", opacity: 0.92, mixBlendMode: "multiply" }} />
         )}
       </div>
       <div className="line">{name ?? ""}</div>

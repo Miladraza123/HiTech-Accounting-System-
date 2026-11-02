@@ -31,7 +31,7 @@ export function PrintSignoff({
               <img
                 src={signatureUrl}
                 alt="Authorized signature"
-                style={{ height: 50, objectFit: "contain", position: "absolute", left: 0, bottom: 0 }}
+                style={{ height: 50, objectFit: "contain", position: "absolute", left: 0, bottom: 0, mixBlendMode: "multiply" }}
               />
             )}
             {stampUrl && (
@@ -39,7 +39,7 @@ export function PrintSignoff({
               <img
                 src={stampUrl}
                 alt="Company stamp"
-                style={{ height: 60, objectFit: "contain", position: "absolute", left: 95, bottom: -5, opacity: 0.92 }}
+                style={{ height: 58, objectFit: "contain", position: "absolute", left: 95, bottom: 0, opacity: 0.92, mixBlendMode: "multiply" }}
               />
             )}
           </div>
