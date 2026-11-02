@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { uploadCompanyImageAction, removeCompanyImageAction, getCompanyImagePreviewUrlAction, type BrandingKind } from "@/app/actions/companyBranding";
 import { autoCropLogo } from "@/lib/logoAutoCrop";
 import { shrinkImageToFit } from "@/lib/shrinkImage";
+import { removeLightBackground } from "@/lib/removeLightBackground";
 import { buttonClass } from "@/components/ui/Button";
 
 // Roughly enough to stay sharp printed at the sizes these are actually
@@ -75,6 +76,22 @@ function BrandingSlot({ kind, label, hint, path }: { kind: BrandingKind; label: 
         // in. Only applied to Logo, matching the reference approach this
         // was confirmed against.
         file = await autoCropLogo(file);
+        formData.set("file", file);
+      }
+      if (kind === "signature" || kind === "stamp") {
+        // A scanned or photographed signature/stamp keeps its light page behind it and would print as a
+        // pale box over the signature line. Make that background transparent before it is stored.
+        // (Skipped when the file already has transparency or would come out blank.)
+        file = await removeLightBackground(file);
+        if (file.size > MAX_UPLOAD_BYTES) {
+          // The transparent PNG can be larger than the JPG it came from; scale it down again if so.
+          const smaller = await shrinkImageToFit(file, MAX_UPLOAD_BYTES);
+          if (!smaller) {
+            setError("This image is too large and could not be reduced. Use a PNG or JPEG under 2MB.");
+            return;
+          }
+          file = smaller;
+        }
         formData.set("file", file);
       }
       // A correctly-sized print box can't fix a source image that's
