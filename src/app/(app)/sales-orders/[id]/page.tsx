@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { canSeeOrderCost } from "@/lib/orderCostAccess";
+import { parseCostSummary } from "@/lib/orderCost";
+import { SalesOrderCostPanel } from "@/components/SalesOrderCostPanel";
 import { SalesOrderAmendPanel } from "@/components/SalesOrderAmendPanel";
 import { CancelSalesOrderButton } from "@/components/CancelSalesOrderButton";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
@@ -53,6 +56,11 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
   const items = await fetchLineItems(supabase, (lines ?? []).map((l) => l.item_id));
 
   if (!so) notFound();
+
+  // Cost & profit is for Owner/Accounts only; the function enforces it too, so anyone else never even asks.
+  const costSummary = canSeeOrderCost(user)
+    ? parseCostSummary((await supabase.rpc("fn_sales_order_cost_summary", { p_sales_order_id: id })).data)
+    : null;
 
   const party = so.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const query = so.queries as unknown as { query_no: string } | null;
@@ -159,6 +167,8 @@ export default async function SalesOrderDetailPage({ params }: { params: Promise
         </div>
 
         <div className="space-y-6">
+          {costSummary && <SalesOrderCostPanel salesOrderId={id} summary={costSummary} canEdit={canAmend} />}
+
           {canAmend && (
             <div className="rounded-xl border border-line bg-surface p-4">
               <h2 className="text-sm font-semibold text-ink mb-2">Actions</h2>

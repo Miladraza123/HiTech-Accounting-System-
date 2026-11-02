@@ -4126,6 +4126,35 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_order_costs: {
+        Row: {
+          estimated_cost: number
+          sales_order_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          estimated_cost: number
+          sales_order_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          estimated_cost?: number
+          sales_order_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_costs_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: true
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_order_lines: {
         Row: {
           amount: number | null
@@ -7500,6 +7529,14 @@ export type Database = {
         Returns: {
           id: string
         }[]
+      }
+      fn_sales_order_cost_summary: {
+        Args: { p_sales_order_id: string }
+        Returns: Json
+      }
+      fn_set_sales_order_estimated_cost: {
+        Args: { p_cost: number; p_sales_order_id: string }
+        Returns: undefined
       }
       fn_update_draft_quotation: {
         Args: {

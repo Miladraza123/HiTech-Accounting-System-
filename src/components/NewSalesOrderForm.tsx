@@ -6,6 +6,7 @@ import { createSalesOrderAction, type SalesOrderLineInput } from "@/app/actions/
 import { QuotationLineEditor, blankLine, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
+import { EstimatedCostField, parseEstimatedCost } from "@/components/EstimatedCostField";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 import { karachiToday } from "@/lib/karachiTime";
 
@@ -44,6 +45,7 @@ export function NewSalesOrderForm({
   defaultTaxPct,
   creditWarning,
   fromIncomingDocumentId,
+  canSetCost = false,
 }: {
   quotationId: string;
   quotationLines: Tables<"quotation_lines">[];
@@ -54,6 +56,8 @@ export function NewSalesOrderForm({
   defaultPaymentTerms: string | null;
   defaultTaxPct: number;
   creditWarning?: string | null;
+  /** Owner/Accounts: show the optional "estimated cost" field. */
+  canSetCost?: boolean;
   /**
    * Set when this page was reached from Incoming Documents' "PO Received"
    * action — carries the email's attachment over to this Sales Order and
@@ -74,6 +78,7 @@ export function NewSalesOrderForm({
   const [deliverySchedule, setDeliverySchedule] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(defaultPaymentTerms ?? "");
   const [businessLine, setBusinessLine] = useState<"material_supply" | "fabrication">("material_supply");
+  const [estimatedCost, setEstimatedCost] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -91,6 +96,11 @@ export function NewSalesOrderForm({
   // confirm_duplicate left at whatever the user already decided.
   function submit(confirmDuplicate: boolean) {
     setError(null);
+    const estCost = canSetCost ? parseEstimatedCost(estimatedCost) : null;
+    if (estCost === undefined) {
+      setError("Estimated cost must be a number (0 or more), or left empty.");
+      return;
+    }
     if (!clientPoNumber.trim()) {
       setError("Client PO Number is required.");
       return;
@@ -135,6 +145,7 @@ export function NewSalesOrderForm({
         lines: serialize(lines),
         confirm_duplicate: confirmDuplicate,
         from_incoming_document_id: fromIncomingDocumentId,
+        estimated_cost: estCost,
       });
       if (res.error === "DUPLICATE_PO") {
         setDuplicateWarning(true);
@@ -254,6 +265,8 @@ export function NewSalesOrderForm({
       )}
 
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
+
+      {canSetCost && <EstimatedCostField value={estimatedCost} onChange={setEstimatedCost} disabled={!isOnline} />}
 
       <button
         type="button"
