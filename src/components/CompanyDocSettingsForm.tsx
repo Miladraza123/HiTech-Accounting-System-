@@ -11,6 +11,7 @@ export function CompanyDocSettingsForm({
   shortCode,
   signatoryName,
   serviceInvoiceNote,
+  gstInvoiceNote,
   phone2,
   email2,
   printTagline,
@@ -18,6 +19,7 @@ export function CompanyDocSettingsForm({
   shortCode: string | null;
   signatoryName: string | null;
   serviceInvoiceNote: string | null;
+  gstInvoiceNote: string | null;
   phone2: string | null;
   email2: string | null;
   printTagline: string | null;
@@ -56,6 +58,19 @@ export function CompanyDocSettingsForm({
       <label className="block space-y-1.5">
         <span className="text-xs font-medium text-ink-soft">Note printed at the bottom of every Service Invoice</span>
         <textarea name="service_invoice_note" defaultValue={serviceInvoiceNote ?? ""} rows={3} className="input resize-none" />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-xs font-medium text-ink-soft">Default note for the GST (Sales Tax) Invoice</span>
+        <textarea
+          name="gst_invoice_note"
+          defaultValue={gstInvoiceNote ?? ""}
+          rows={3}
+          placeholder="Note: According to FBR Income Tax Laws 153 (1) (a), Please deduct 5.5% Income tax and deposit FBR Government Treasury."
+          className="input resize-none"
+        />
+        <span className="text-[11px] text-ink-faint">
+          Copied onto each new GST invoice, where it can be edited or removed (an empty note is not printed). Changing it here does not change invoices already made.
+        </span>
       </label>
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
       {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Saved.</p>}

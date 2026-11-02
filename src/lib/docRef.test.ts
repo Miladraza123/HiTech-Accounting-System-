@@ -39,3 +39,13 @@ describe("docRef", () => {
     expect(validityDays("2026-10-06T08:00:00Z", null)).toBeNull();
   });
 });
+
+import { formatLongDate } from "./docRef";
+
+describe("formatLongDate", () => {
+  it("writes the day, full month name and year", () => {
+    expect(formatLongDate("2026-10-05")).toBe("5 October 2026");
+    expect(formatLongDate("2026-12-31T10:00:00Z")).toBe("31 December 2026");
+    expect(formatLongDate("2027-01-09")).toBe("9 January 2027");
+  });
+});

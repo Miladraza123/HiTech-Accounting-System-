@@ -87,7 +87,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
         {item.hs_code && (
           <div>
             <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">HS Code</p>
-            <p className="text-ink mt-0.5 font-mono">{item.hs_code}</p>
+            <p className="text-ink mt-0.5 font-mono whitespace-pre-line">{item.hs_code}</p>
           </div>
         )}
         <div>

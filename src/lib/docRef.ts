@@ -51,6 +51,13 @@ export function formatInvoiceDate(iso: string): string {
   return `${d.getUTCDate()}/${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
 }
 
+/** "2026-10-05" -> "5 October 2026" (GST Sales Tax Invoice). */
+export function formatLongDate(iso: string): string {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  const mon = d.toLocaleString("en-GB", { month: "long", timeZone: "UTC" });
+  return `${d.getUTCDate()} ${mon} ${d.getUTCFullYear()}`;
+}
+
 /** Whole days from the quotation date to the validity date, never negative. Null when there is no validity date. */
 export function validityDays(createdAt: string, validityDate: string | null | undefined): number | null {
   if (!validityDate) return null;

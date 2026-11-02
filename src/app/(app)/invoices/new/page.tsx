@@ -45,6 +45,24 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
 
   const eligible = salesOrders ?? [];
 
+  // What the print details can start with: the order's challan numbers, its payment terms, the client's
+  // primary contact, and the company-wide default note. All editable on the form; nothing is saved from here.
+  const eligibleSoIds = eligible.map((so) => so.id);
+  const partyIds = [...new Set(eligible.map((so) => so.party_id))];
+  const [{ data: challans }, { data: contacts }, { data: company }] = await Promise.all([
+    eligibleSoIds.length
+      ? supabase.from("delivery_challans").select("sales_order_id, dc_no, status").in("sales_order_id", eligibleSoIds).neq("status", "Cancelled").order("created_at")
+      : Promise.resolve({ data: [] as { sales_order_id: string; dc_no: string; status: string }[] }),
+    partyIds.length
+      ? supabase.from("party_contacts").select("party_id, name, is_primary").in("party_id", partyIds).order("is_primary", { ascending: false })
+      : Promise.resolve({ data: [] as { party_id: string; name: string; is_primary: boolean }[] }),
+    supabase.from("company").select("gst_invoice_note").maybeSingle(),
+  ]);
+  const dcBySo = new Map<string, string[]>();
+  for (const c of challans ?? []) dcBySo.set(c.sales_order_id, [...(dcBySo.get(c.sales_order_id) ?? []), c.dc_no]);
+  const contactByParty = new Map<string, string>();
+  for (const c of contacts ?? []) if (!contactByParty.has(c.party_id)) contactByParty.set(c.party_id, c.name);
+
   return (
     <div className="space-y-4">
       <div>
@@ -91,6 +109,11 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
             id: so.id,
             so_no: so.so_no,
             business_line: so.business_line,
+            defaults: {
+              payment_terms: so.payment_terms,
+              dc_refs: (dcBySo.get(so.id) ?? []).join(" & "),
+              contact_person: contactByParty.get(so.party_id) ?? null,
+            },
             parties: so.parties as unknown as { legal_name: string } | null,
             lines: (so.sales_order_lines as unknown as {
               id: string;
@@ -105,6 +128,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
               .filter((l) => l.invoiced_qty < l.delivered_qty)
               .map((l) => ({ ...l, hs_code: l.items?.hs_code ?? null })),
           }))}
+          defaultNote={company?.gst_invoice_note ?? null}
         />
       )}
     </div>

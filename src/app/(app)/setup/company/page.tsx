@@ -43,7 +43,7 @@ export default async function CompanySetupPage() {
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-ink">Quotation, Service Invoice &amp; Delivery Challan Print</h2>
+          <h2 className="text-sm font-semibold text-ink">Quotation, Invoice &amp; Delivery Challan Print</h2>
           <p className="mt-1 text-xs text-ink-soft">
             The header of the Quotation, Service Invoice and Delivery Challan is built from the Company Profile above (logo, phones, emails, address, NTN, STRN). The company code builds the quotation reference (HTE/TPFL/0012). Each client&apos;s own code is set on the client&apos;s page.
           </p>
@@ -52,6 +52,7 @@ export default async function CompanySetupPage() {
           shortCode={company?.short_code ?? null}
           signatoryName={company?.signatory_name ?? null}
           serviceInvoiceNote={company?.service_invoice_note ?? null}
+          gstInvoiceNote={company?.gst_invoice_note ?? null}
           phone2={company?.phone2 ?? null}
           email2={company?.email2 ?? null}
           printTagline={company?.print_tagline ?? null}
