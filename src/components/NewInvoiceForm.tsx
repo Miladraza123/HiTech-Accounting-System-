@@ -28,6 +28,8 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   // Pre-filled from the Item's own hs_code (see src/app/(app)/invoices/new/page.tsx),
   // always editable here — the Item master's value is only a starting point.
   const [hsCodes, setHsCodes] = useState<Record<string, string>>({});
+  // Starts as the Sales Order line's wording; the user may reword it for this invoice only.
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
@@ -60,6 +62,9 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
   function taxPctFor(l: SoLine) {
     return taxPcts[l.id] ?? String(l.tax_pct);
   }
+  function descriptionFor(l: SoLine) {
+    return descriptions[l.id] ?? l.description;
+  }
   function hsCodeFor(l: SoLine) {
     return hsCodes[l.id] ?? l.hs_code ?? "";
   }
@@ -89,6 +94,8 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
         rate: Number(rateFor(l)),
         tax_pct: Number(taxPctFor(l)),
         hs_code: hsCodeFor(l).trim() || undefined,
+        // Only sent when it differs from the Sales Order wording; blank means "keep the original".
+        description: descriptionFor(l).trim() !== l.description.trim() ? descriptionFor(l).trim() || undefined : undefined,
       }))
       .filter((l) => l.qty > 0);
     if (!lines.length) {
@@ -191,7 +198,16 @@ export function NewInvoiceForm({ salesOrders }: { salesOrders: SoOption[] }) {
                   const r = Number(rateFor(l));
                   return (
                     <tr key={l.id} className="border-t border-line">
-                      <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-2 py-1.5 min-w-[14rem]">
+                        <textarea
+                          value={descriptionFor(l)}
+                          onChange={(e) => setDescriptions((d) => ({ ...d, [l.id]: e.target.value }))}
+                          rows={2}
+                          maxLength={2000}
+                          aria-label="Line description"
+                          className="input !py-1 text-xs resize-y"
+                        />
+                      </td>
                       <td className="px-2 py-1.5">
                         <input
                           type="text"

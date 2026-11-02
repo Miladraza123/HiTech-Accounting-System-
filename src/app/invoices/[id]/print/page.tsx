@@ -105,7 +105,7 @@ export default async function InvoicePrintPage({
               const item = l.items as unknown as { item_code: string; hs_code: string | null } | null;
               return (
                 <tr key={l.id}>
-                  <td>{l.description}</td>
+                  <td style={{ whiteSpace: "pre-line" }}>{l.description}</td>
                   <td>{item?.hs_code ?? "—"}</td>
                   <td className="num">{l.qty}</td>
                   <td>{l.unit ?? "—"}</td>

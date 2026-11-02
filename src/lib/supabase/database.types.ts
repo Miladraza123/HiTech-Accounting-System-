@@ -7512,6 +7512,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      fn_update_invoice_line_description: {
+        Args: { p_description: string; p_invoice_line_id: string }
+        Returns: undefined
+      }
       fn_update_job_progress: {
         Args: { p_job_id: string; p_note: string; p_progress_pct: number }
         Returns: undefined

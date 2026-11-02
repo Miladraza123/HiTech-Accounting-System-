@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { EditInvoiceLineDescription } from "@/components/EditInvoiceLineDescription";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { canSeeInvoices } from "@/lib/financeAccess";
 import { hasPermission } from "@/lib/permissions";
@@ -21,7 +22,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const canManage = await hasPermission(user, "invoice.manage");
 
   const supabase = await createClient();
-  const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }, { data: company }] = await Promise.all([
+  const [{ data: invoice }, { data: lines }, { data: outstandingRow }, { data: allocations }, { data: warehouses }, { data: returns }, { data: company }, { data: descEdits }] = await Promise.all([
     supabase
       .from("invoices")
       .select(
@@ -35,9 +36,25 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     supabase.from("warehouses").select("*").eq("is_active", true).order("name"),
     supabase.from("sales_returns").select("*").eq("invoice_id", id).order("created_at", { ascending: false }),
     supabase.from("company").select("signature_path, stamp_path, phone, email").maybeSingle(),
+    supabase
+      .from("activity_timeline")
+      .select("id, note, at, actor_id")
+      .eq("owner_table", "invoices")
+      .eq("owner_id", id)
+      .eq("event_type", "system")
+      .like("note", "Line description changed:%")
+      .order("at", { ascending: false }),
   ]);
 
   if (!invoice) notFound();
+
+  // Who reworded a line description (inactive users included, so history never shows a blank).
+  const editorIds = [...new Set((descEdits ?? []).map((e) => e.actor_id).filter((v): v is string => !!v))];
+  const { data: editors } = editorIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", editorIds)
+    : { data: [] as { id: string; full_name: string }[] };
+  const editorName = new Map((editors ?? []).map((e) => [e.id, e.full_name]));
+  const canEditDescriptions = canManage && invoice.status === "Posted";
 
   const party = invoice.parties as unknown as { legal_name: string; billing_address: string | null; ntn: string | null; strn: string | null; cnic: string | null } | null;
   const so = invoice.sales_orders as unknown as {
@@ -173,7 +190,9 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 <tbody>
                   {(lines ?? []).map((l) => (
                     <tr key={l.id} className="border-t border-line">
-                      <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-3 py-2 text-ink">
+                        <EditInvoiceLineDescription lineId={l.id} invoiceId={id} description={l.description} canEdit={canEditDescriptions} />
+                      </td>
                       <td className="px-3 py-2 text-ink-soft">{l.hs_code || "—"}</td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">
                         {l.qty} {l.unit}
@@ -254,6 +273,22 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               </Link>
             )}
           </div>
+
+          {!!descEdits?.length && (
+            <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+              <h2 className="text-sm font-semibold text-ink mb-1">Description changes</h2>
+              <ul className="space-y-2">
+                {descEdits.map((e) => (
+                  <li key={e.id} className="text-xs">
+                    <p className="whitespace-pre-line text-ink-soft">{e.note?.replace(/^Line description changed: /, "")}</p>
+                    <p className="text-ink-faint mt-0.5">
+                      {(e.actor_id && editorName.get(e.actor_id)) || "Unknown user"} · {new Date(e.at).toLocaleString("en-PK")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {canCancel && (
             <div className="rounded-xl border border-line bg-surface p-4">
