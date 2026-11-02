@@ -7,6 +7,7 @@ import { QuotationLineEditor, blankLine, type EditableLine, type LineItem } from
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import { SearchablePicker, PARTY_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
 import type { Tables } from "@/lib/supabase/database.types";
+import { EstimatedCostField, parseEstimatedCost } from "@/components/EstimatedCostField";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
 
 function serialize(lines: EditableLine[]): SalesOrderLineInput[] {
@@ -36,11 +37,14 @@ export function NewDirectSalesOrderForm({
   items: itemsProp,
   units,
   defaultTaxPct,
+  canSetCost = false,
 }: {
   parties: Pick<Tables<"parties">, "id" | "legal_name">[];
   items: LineItem[];
   units: Tables<"units">[];
   defaultTaxPct: number;
+  /** Owner/Accounts: show the optional "estimated cost" field. */
+  canSetCost?: boolean;
 }) {
   const { items, addItem } = useItemCatalog(itemsProp);
   const router = useRouter();
@@ -53,12 +57,18 @@ export function NewDirectSalesOrderForm({
   const [deliverySchedule, setDeliverySchedule] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [businessLine, setBusinessLine] = useState<"material_supply" | "fabrication">("material_supply");
+  const [estimatedCost, setEstimatedCost] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function submit(confirmDuplicate: boolean) {
     setError(null);
+    const estCost = canSetCost ? parseEstimatedCost(estimatedCost) : null;
+    if (estCost === undefined) {
+      setError("Estimated cost must be a number (0 or more), or left empty.");
+      return;
+    }
     if (!partyId) {
       setError("Select a Client.");
       return;
@@ -82,6 +92,7 @@ export function NewDirectSalesOrderForm({
         business_line: businessLine,
         lines: serialize(lines),
         confirm_duplicate: confirmDuplicate,
+        estimated_cost: estCost,
       });
       if (res.error === "DUPLICATE_PO") {
         setDuplicateWarning(true);
@@ -184,6 +195,8 @@ export function NewDirectSalesOrderForm({
       )}
 
       {error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
+
+      {canSetCost && <EstimatedCostField value={estimatedCost} onChange={setEstimatedCost} disabled={!isOnline} />}
 
       <button
         type="button"

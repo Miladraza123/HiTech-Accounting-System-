@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchLineItems } from "@/lib/itemOptions";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { canSeeOrderCost } from "@/lib/orderCostAccess";
 import { NewDirectSalesOrderForm } from "@/components/NewDirectSalesOrderForm";
 
 export default async function NewDirectSalesOrderPage() {
@@ -51,6 +52,7 @@ export default async function NewDirectSalesOrderPage() {
           items={items}
           units={units ?? []}
           defaultTaxPct={company?.default_sales_tax_pct ?? 18}
+          canSetCost={canSeeOrderCost(user)}
         />
       )}
     </div>

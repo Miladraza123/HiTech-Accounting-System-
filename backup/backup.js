@@ -69,7 +69,7 @@ const TABLE_ORDER = [
   "unit_conversions", "user_roles", "vehicles", "contra_transfers", "item_alt_units", "journal_lines",
   "party_contacts", "payments", "product_templates", "queries", "stock_adjustments", "stock_ledger",
   "stock_transfer_lines", "product_template_lines", "quotations", "quotation_revisions", "sales_orders",
-  "delivery_challans", "invoices", "purchase_orders", "quotation_lines", "sales_order_lines",
+  "delivery_challans", "invoices", "purchase_orders", "quotation_lines", "sales_order_lines", "sales_order_costs",
   "sales_order_revisions", "delivery_challan_lines", "grns", "invoice_lines", "jobs",
   "purchase_order_lines", "purchase_order_revisions", "sales_returns", "expenses", "grn_lines", "job_cost_ledger",
   "job_material_requirements", "sales_return_lines", "stock_reservations", "supplier_bills",

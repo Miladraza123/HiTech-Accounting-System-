@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { convertIncomingDocument } from "@/lib/incomingConversion";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
+import { canSeeOrderCost } from "@/lib/orderCostAccess";
 import { hasPermission } from "@/lib/permissions";
 
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
@@ -29,9 +30,11 @@ export type CreateSalesOrderInput = {
   confirm_duplicate?: boolean;
   /** Set when reached from Incoming Documents' "PO Received" action — see the conversion block below. */
   from_incoming_document_id?: string;
+  /** What we expect this order to cost us — only honoured for Owner/Accounts (see setEstimatedCost). */
+  estimated_cost?: number | null;
 };
 
-export type ActionResult = { error: string | null; id?: string };
+export type ActionResult = { error: string | null; id?: string; warning?: string };
 
 export async function createSalesOrderAction(input: CreateSalesOrderInput): Promise<ActionResult> {
   const user = await getCurrentUser();
@@ -52,6 +55,7 @@ export async function createSalesOrderAction(input: CreateSalesOrderInput): Prom
   if (error) return { error: error.message };
   const soId = data as string;
   revalidatePath("/sales-orders");
+  const costWarning = await setEstimatedCost(supabase, user, soId, input.estimated_cost);
 
   // Converting an Incoming Document that turned out to be a PO (not a fresh
   // RFQ/PR — see src/components/PoQuotationPicker.tsx): carry its
@@ -69,7 +73,22 @@ export async function createSalesOrderAction(input: CreateSalesOrderInput): Prom
     });
   }
 
-  return { error: null, id: soId };
+  return { error: null, id: soId, warning: costWarning };
+}
+
+/**
+ * Saves the optional estimated cost right after the order is created. It is a separate step on
+ * purpose: a problem with the cost must never lose a saved order, so it only returns a warning.
+ */
+async function setEstimatedCost(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  salesOrderId: string,
+  cost: number | null | undefined
+): Promise<string | undefined> {
+  if (cost === null || cost === undefined || !canSeeOrderCost(user)) return undefined;
+  const { error } = await supabase.rpc("fn_set_sales_order_estimated_cost", { p_sales_order_id: salesOrderId, p_cost: cost });
+  return error ? `The order was saved, but its estimated cost was not: ${error.message}` : undefined;
 }
 
 export type CreateDirectSalesOrderInput = {
@@ -81,6 +100,7 @@ export type CreateDirectSalesOrderInput = {
   business_line: string;
   lines: SalesOrderLineInput[];
   confirm_duplicate?: boolean;
+  estimated_cost?: number | null;
 };
 
 // For a client PO that arrives with no prior RFQ/Quotation at all (e.g. by
@@ -106,7 +126,8 @@ export async function createDirectSalesOrderAction(input: CreateDirectSalesOrder
 
   if (error) return { error: error.message };
   revalidatePath("/sales-orders");
-  return { error: null, id: data as string };
+  const costWarning = await setEstimatedCost(supabase, user, data as string, input.estimated_cost);
+  return { error: null, id: data as string, warning: costWarning };
 }
 
 export async function amendSalesOrderAction(
@@ -164,4 +185,16 @@ export async function cancelSalesOrderAction(salesOrderId: string, reason: strin
   revalidatePath(`/sales-orders/${salesOrderId}`);
   revalidatePath("/sales-orders");
   return { error: error?.message ?? null };
+}
+
+/** Owner/Accounts: set or change the order's estimated cost (null clears it). */
+export async function setSalesOrderEstimatedCostAction(salesOrderId: string, cost: number | null): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canSeeOrderCost(user)) return NO_PERMISSION;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_sales_order_estimated_cost", { p_sales_order_id: salesOrderId, p_cost: cost as number });
+  if (error) return { error: error.message };
+  revalidatePath(`/sales-orders/${salesOrderId}`);
+  return { error: null, id: salesOrderId };
 }
