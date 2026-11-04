@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ensurePrintFontLoaded, isPrintFontLoaded, switchToSystemFonts } from "@/lib/printFontClient";
+import { renderPrintDocument } from "@/lib/pdfRender";
 
 /**
  * A real one-click PDF download, next to the existing "Print / PDF"
@@ -30,7 +31,7 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
 
     const iframe = document.createElement("iframe");
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const { jsPDF } = await import("jspdf");
 
       iframe.style.position = "fixed";
       iframe.style.left = "-10000px";
@@ -60,10 +61,9 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
       if (!isPrintFontLoaded() && iframe.contentDocument) switchToSystemFonts(iframe.contentDocument);
       await new Promise((resolve) => setTimeout(resolve, 400));
 
-      const body = iframe.contentDocument?.body;
-      if (!body) throw new Error("Couldn't read the document content.");
-
-      const canvas = await html2canvas(body, { scale: 2, useCORS: true, windowWidth: body.scrollWidth, windowHeight: body.scrollHeight });
+      // The browser draws the page itself (same engine as Print View), so text sits where the page puts it;
+      // html2canvas is only the fallback — see pdfRender.ts.
+      const { canvas } = await renderPrintDocument(iframe);
 
       const pdf = new jsPDF({ unit: "pt", format: "a4" });
       const pageWidth = pdf.internal.pageSize.getWidth();
