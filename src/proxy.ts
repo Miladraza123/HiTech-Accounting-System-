@@ -97,6 +97,6 @@ export const config = {
   // handler's own ?token= check ever ran. That check (and the admin
   // client it writes through) is this route's real gate.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|api/company-logo|api/inbound-email|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|api/ping|api/company-logo|api/inbound-email|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2)$).*)",
   ],
 };

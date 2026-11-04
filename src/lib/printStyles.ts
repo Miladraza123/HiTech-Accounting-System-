@@ -52,5 +52,7 @@ export function printStyles(scopeClass: string): string {
  */
 export const AUTO_PRINT_SCRIPT = `window.addEventListener('load', () => {
   if (new URLSearchParams(location.search).get('autoprint') === '0') return;
-  setTimeout(() => window.print(), 300);
+  // wait for any web font the page uses, so the printout is not drawn in a fallback font
+  const fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  fontsReady.then(() => setTimeout(() => window.print(), 300));
 });`;
