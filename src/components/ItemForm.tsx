@@ -66,7 +66,7 @@ export function ItemForm({
         recordId: crypto.randomUUID(),
         label: "Item",
         payload: {
-          item_code: String(formData.get("item_code") ?? "").trim(),
+          item_code: "", // assigned by the database when the item is saved
           description: String(formData.get("description") ?? "").trim(),
           base_unit: String(formData.get("base_unit") ?? ""),
           category: String(formData.get("category") ?? "").trim() || null,
@@ -101,8 +101,8 @@ export function ItemForm({
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Basic Info</p>
         <div className="grid grid-cols-[140px_1fr] gap-3">
-          <Field label="Item Code" required>
-            <input name="item_code" required className="input font-mono" />
+          <Field label="Item Code">
+            <input value="Auto" readOnly disabled aria-label="Item code is assigned automatically" className="input font-mono text-ink-faint" />
           </Field>
           <Field label="Description" required>
             <input name="description" required className="input" />
@@ -212,7 +212,7 @@ export function ItemForm({
 
       {state.error && <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>}
       {state.warning && <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">{state.warning}</p>}
-      {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added.</p>}
+      {showSuccess && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">Added{state.itemCode ? ` — item code ${state.itemCode}` : ""}.</p>}
 
       <div className="border-t border-line pt-4">
         <button type="submit" disabled={pending || isSubmitting} className={buttonClass("primary", "md", "disabled:opacity-60")}>

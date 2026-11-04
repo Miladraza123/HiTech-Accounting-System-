@@ -86,14 +86,14 @@ export function EditItemForm({
     setError(null);
     const next: ItemEditableFields = {
       ...form,
-      item_code: form.item_code.trim(),
+      item_code: base.item_code, // the code is fixed once the item exists
       description: form.description.trim(),
       category: form.category?.trim() || null,
       spec: form.spec?.trim() || null,
       hs_code: form.hs_code?.trim() || null,
     };
-    if (!next.item_code || !next.description || !next.base_unit) {
-      setError("Item code, description, and unit are required.");
+    if (!next.description || !next.base_unit) {
+      setError("Description and unit are required.");
       return;
     }
 
@@ -193,11 +193,7 @@ export function EditItemForm({
       <div className="grid grid-cols-[140px_1fr] gap-3">
         <label className="block space-y-1">
           <span className="text-[11px] text-ink-faint">Item Code</span>
-          <input
-            value={form.item_code}
-            onChange={(e) => setForm((f) => ({ ...f, item_code: e.target.value }))}
-            className="input !py-1.5 text-sm font-mono"
-          />
+          <input value={base.item_code} readOnly disabled title="An item's code cannot be changed" className="input !py-1.5 text-sm font-mono text-ink-faint" />
         </label>
         <label className="block space-y-1">
           <span className="text-[11px] text-ink-faint">Description</span>

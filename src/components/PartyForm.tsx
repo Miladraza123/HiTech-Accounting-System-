@@ -154,6 +154,24 @@ export function PartyForm({
         </Field>
       </div>
 
+      {isOnline && (
+        <div className="space-y-3 border-t border-line pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Contact Person (optional)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Name">
+              <input name="contact_name" maxLength={150} className="input" />
+            </Field>
+            <Field label="Phone">
+              <input name="contact_phone" maxLength={60} className="input" />
+            </Field>
+            <Field label="Email">
+              <input name="contact_email" type="email" maxLength={150} className="input" />
+            </Field>
+          </div>
+          <p className="text-xs text-ink-faint">Saved as the primary contact; more contacts can be added later from the client&apos;s page.</p>
+        </div>
+      )}
+
       <div className="space-y-3 border-t border-line pt-4">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Credit Terms</p>
         <div className="grid grid-cols-2 gap-3">

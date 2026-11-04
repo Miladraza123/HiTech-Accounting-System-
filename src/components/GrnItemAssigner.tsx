@@ -27,7 +27,6 @@ export function GrnItemAssigner({
 }) {
   const { isOnline } = useOfflineQueue();
   const [creating, setCreating] = useState(false);
-  const [itemCode, setItemCode] = useState("");
   const [description, setDescription] = useState("");
   const [baseUnit, setBaseUnit] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,27 +34,25 @@ export function GrnItemAssigner({
 
   function createNew() {
     setError(null);
-    if (!itemCode.trim() || !description.trim() || !baseUnit) {
-      setError("Code, description and unit are required.");
+    if (!description.trim() || !baseUnit) {
+      setError("Description and unit are required.");
       return;
     }
     startTransition(async () => {
-      const res = await quickCreateItemAction({ item_code: itemCode.trim(), description: description.trim(), base_unit: baseUnit });
+      const res = await quickCreateItemAction({ description: description.trim(), base_unit: baseUnit });
       if (res.error || !res.id) {
         setError(res.error ?? "Could not create the Item.");
         return;
       }
-      onAssign(res.id, itemCode.trim());
+      onAssign(res.id, res.item_code ?? description.trim());
     });
   }
 
   if (creating) {
     return (
       <div className="space-y-1.5 rounded-md border border-line bg-bg p-2">
-        <div className="grid grid-cols-3 gap-1.5">
-          <input value={itemCode} onChange={(e) => setItemCode(e.target.value)} placeholder="Item Code" className="input !py-1 text-xs" />
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="input !py-1 text-xs col-span-2" />
-        </div>
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="input !py-1 text-xs" />
+        <p className="text-[11px] text-ink-faint">The item code is assigned automatically.</p>
         <select value={baseUnit} onChange={(e) => setBaseUnit(e.target.value)} className="input !py-1 text-xs">
           <option value="">— Unit —</option>
           {units.map((u) => (

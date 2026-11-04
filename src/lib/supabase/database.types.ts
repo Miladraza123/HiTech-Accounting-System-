@@ -6947,6 +6947,30 @@ export type Database = {
         }
         Returns: number
       }
+      fn_change_party_type: {
+        Args: { p_new_type: string; p_party_id: string }
+        Returns: undefined
+      }
+      fn_delete_party_contact: {
+        Args: { p_contact_id: string }
+        Returns: undefined
+      }
+      fn_save_party_contact: {
+        Args: {
+          p_contact_id: string
+          p_designation: string
+          p_email: string
+          p_is_primary: boolean
+          p_name: string
+          p_party_id: string
+          p_phone: string
+        }
+        Returns: string
+      }
+      fn_next_item_code: {
+        Args: never
+        Returns: string
+      }
       fn_deliverable_sales_order_ids: {
         Args: never
         Returns: {
