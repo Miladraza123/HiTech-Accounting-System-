@@ -75,7 +75,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   c jsonb;
   v_id uuid;
@@ -128,7 +128,7 @@ begin
 
   delete from public.hr_fixed_charges where employee_id = p_employee_id and not (id = any (v_keep));
 end;
-$$;
+$fn$;
 
 -- One charge (e.g. Lunch) for several employees at once: adds it, or updates the amount when
 -- the employee already has a charge of that name.
@@ -137,7 +137,7 @@ returns int
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   v_name text := btrim(coalesce(p_name, ''));
   v_amount numeric := round(coalesce(p_amount, 0), 2);
@@ -167,7 +167,7 @@ begin
   end loop;
   return v_count;
 end;
-$$;
+$fn$;
 
 -- ---------------------------------------------------------------------------
 -- 3. Salary line: totals from its charges
@@ -178,7 +178,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   l public.hr_salary_lines;
   v_charges numeric;
@@ -202,7 +202,7 @@ begin
       net_total = coalesce((select sum(net) from public.hr_salary_lines where sheet_id = l.sheet_id), 0)
   where id = l.sheet_id;
 end;
-$$;
+$fn$;
 
 -- Copies the employee's ACTIVE set charges onto a line (replacing what the line holds).
 create or replace function public._fn_hr_copy_charges_to_line(p_line_id uuid, p_employee_id uuid)
@@ -210,7 +210,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 begin
   delete from public.hr_salary_line_charges where line_id = p_line_id;
   insert into public.hr_salary_line_charges (line_id, name, amount, source_amount)
@@ -220,7 +220,7 @@ begin
   order by c.created_at, c.name;
   update public.hr_salary_lines set charges_loaded = true where id = p_line_id;
 end;
-$$;
+$fn$;
 
 -- "Load fixed charges": pulls the set charges again onto one line (p_line_id) or every line of the
 -- Draft sheet (p_line_id null). Replaces what those lines hold, edits included.
@@ -229,7 +229,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   v_status text;
   x record;
@@ -259,7 +259,7 @@ begin
       net_total = coalesce((select sum(net) from public.hr_salary_lines where sheet_id = p_sheet_id), 0)
   where id = p_sheet_id;
 end;
-$$;
+$fn$;
 
 -- Edit the charges of one line of a Draft sheet. p_charges: [{id?, name, amount, note?}].
 -- Listed rows with an id keep their name and set amount; a note is required when the amount of
@@ -269,7 +269,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   l public.hr_salary_lines;
   v_status text;
@@ -344,7 +344,7 @@ begin
   end if;
   perform public._fn_hr_refresh_line_totals(l.id);
 end;
-$$;
+$fn$;
 
 -- ---------------------------------------------------------------------------
 -- 4. Existing salary functions: fixed charges join the gross
@@ -354,7 +354,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   s public.hr_salary_sheets;
   e record;
@@ -432,7 +432,7 @@ begin
       net_total = coalesce((select sum(net) from public.hr_salary_lines where sheet_id = s.id), 0)
   where id = s.id;
 end;
-$$;
+$fn$;
 
 create or replace function public.fn_hr_set_salary_adjustment(
   p_line_id uuid,
@@ -445,7 +445,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $fn$
 declare
   l public.hr_salary_lines;
   v_status text;
@@ -495,7 +495,7 @@ begin
       net_total = coalesce((select sum(net) from public.hr_salary_lines where sheet_id = l.sheet_id), 0)
   where id = l.sheet_id;
 end;
-$$;
+$fn$;
 
 -- ---------------------------------------------------------------------------
 -- 5. Permissions on the new functions
