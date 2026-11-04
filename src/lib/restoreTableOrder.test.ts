@@ -13,7 +13,7 @@ describe("RESTORE_TABLE_ORDER", () => {
 
   it("lists every HR table once", () => {
     const hr = RESTORE_TABLE_ORDER.filter((t) => t.startsWith("hr_"));
-    expect(hr).toHaveLength(13);
+    expect(hr).toHaveLength(15);
     expect(new Set(RESTORE_TABLE_ORDER).size).toBe(RESTORE_TABLE_ORDER.length);
   });
 });

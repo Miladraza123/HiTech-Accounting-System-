@@ -53,6 +53,7 @@ export default async function PayslipPage({
     status: string;
     paid_on: string | null;
   };
+  const { data: lineCharges } = await supabase.from("hr_salary_line_charges").select("id, name, amount").eq("line_id", lineId).order("created_at");
   const dayRows = (line.days as unknown as SalaryDay[]) ?? [];
 
   const earnings: [string, number][] = [
@@ -65,6 +66,7 @@ export default async function PayslipPage({
     ["Early leaving", Number(line.early_deduction)],
     [`Sandwich rule (${line.sandwich_days} day)`, Number(line.sandwich_deduction)],
     ["Other deduction", Number(line.other_deduction)],
+    ...((lineCharges ?? []).filter((c) => Number(c.amount) > 0).map((c) => [c.name, Number(c.amount)] as [string, number])),
     ["Advance recovered", Number(line.advance_recovery)],
   ];
 

@@ -517,3 +517,73 @@ export async function cancelAdvanceAction(advanceId: string, reason: string): Pr
   revalidateSalary();
   return { error: null };
 }
+
+// ---------------------------------------------------------------------------
+// Fixed charges (lunch, uniform, ...): set per employee, copied onto each salary sheet
+// ---------------------------------------------------------------------------
+export type FixedChargeInput = { id?: string; name: string; amount: number; is_active: boolean };
+
+function revalidateCharges(employeeId?: string) {
+  revalidatePath("/hr/fixed-charges");
+  if (employeeId) revalidatePath(`/hr/employees/${employeeId}`);
+}
+
+export async function setFixedChargesAction(employeeId: string, charges: FixedChargeInput[]): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  const seen = new Set<string>();
+  for (const c of charges) {
+    const name = c.name.trim();
+    if (!name) return { error: "Every fixed charge needs a name." };
+    if (!Number.isFinite(c.amount) || c.amount <= 0) return { error: `The amount of "${name}" must be more than zero.` };
+    if (seen.has(name.toLowerCase())) return { error: `"${name}" is listed twice.` };
+    seen.add(name.toLowerCase());
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_set_fixed_charges", {
+    p_employee_id: employeeId,
+    p_charges: charges.map((c) => ({ id: c.id ?? null, name: c.name.trim(), amount: c.amount, is_active: c.is_active })) as unknown as Json,
+  });
+  if (error) return { error: error.message };
+  revalidateCharges(employeeId);
+  return { error: null };
+}
+
+export async function applyFixedChargeAction(name: string, amount: number, employeeIds: string[]): Promise<ActionResult & { count?: number }> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  if (!name.trim()) return { error: "Enter a charge name." };
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "The amount must be more than zero." };
+  if (!employeeIds.length) return { error: "Choose at least one employee." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_hr_apply_fixed_charge", { p_name: name.trim(), p_amount: amount, p_employee_ids: employeeIds });
+  if (error) return { error: error.message };
+  revalidateCharges();
+  return { error: null, count: Number(data ?? 0) };
+}
+
+export type LineChargeInput = { id?: string; name: string; amount: number; note: string };
+
+export async function setLineChargesAction(sheetId: string, lineId: string, charges: LineChargeInput[]): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  for (const c of charges) {
+    if (!c.name.trim()) return { error: "Every charge needs a name." };
+    if (!Number.isFinite(c.amount) || c.amount < 0) return { error: `The amount of "${c.name.trim()}" must be 0 or more.` };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_set_line_charges", {
+    p_line_id: lineId,
+    p_charges: charges.map((c) => ({ id: c.id ?? null, name: c.name.trim(), amount: c.amount, note: c.note.trim() })) as unknown as Json,
+  });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  return { error: null };
+}
+
+/** Pulls the set fixed charges onto one line (lineId) or every line of the draft sheet (lineId null). */
+export async function reloadLineChargesAction(sheetId: string, lineId: string | null): Promise<ActionResult> {
+  if (!(await canPrepareSalary())) return NO_SALARY_PERMISSION;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_hr_reload_line_charges", { p_sheet_id: sheetId, p_line_id: lineId as unknown as string });
+  if (error) return { error: error.message };
+  revalidateSalary(sheetId);
+  return { error: null };
+}
