@@ -3,10 +3,13 @@
 // bottom of the page, and plain black-on-white text between them, like the
 // documents HiTech sends to clients. Scoped under one class (`all: initial`)
 // exactly like printStyles(), so nothing from the app shell leaks in.
+import { PRINT_FONT_STACK, printFontFaces } from "@/lib/printFont";
+
 export function letterheadPrintStyles(scope: string): string {
   return `
+    ${printFontFaces()}
     @page { size: A4; margin: 0; }
-    .${scope} { all: initial; box-sizing: border-box; display: flex; flex-direction: column; font-family: Calibri, Carlito, "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1.35; color: #000; background: #fff; max-width: 210mm; min-height: 297mm; margin: 0 auto; }
+    .${scope} { all: initial; box-sizing: border-box; display: flex; flex-direction: column; font-family: ${PRINT_FONT_STACK}; font-size: 13px; line-height: 1.35; color: #000; background: #fff; max-width: 210mm; min-height: 297mm; margin: 0 auto; }
     .${scope} * { box-sizing: border-box; }
     .${scope} .lh-footer { display: block; width: 100%; height: auto; }
     .${scope} .lh-hdr { display: block; width: 100%; }

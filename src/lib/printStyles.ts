@@ -6,14 +6,17 @@
 // Tailwind tokens, and pins the physical page size to A4 via `@page`
 // so "Print" from the browser (or a save-as-PDF) comes out consistent
 // regardless of the visiting browser's own default paper size.
+import { PRINT_FONT_STACK, printFontFaces } from "@/lib/printFont";
+
 export function printStyles(scopeClass: string): string {
   return `
+    ${printFontFaces()}
     @page { size: A4; margin: 15mm; }
     /* box-sizing and min-height together make the sheet exactly one A4 page
        tall even when the content is short, so the footer below can sit at
        the true bottom of the page instead of just under the last line.
        padding-bottom reserves its strip so content can never run into it. */
-    .${scopeClass} { all: initial; box-sizing: border-box; position: relative; display: block; font-family: ui-sans-serif, system-ui, sans-serif; color: #20242E; background: #fff; padding: 32px 32px 64px; max-width: 210mm; min-height: 297mm; margin: 0 auto; overflow: hidden; }
+    .${scopeClass} { all: initial; box-sizing: border-box; position: relative; display: block; font-family: ${PRINT_FONT_STACK}; color: #20242E; background: #fff; padding: 32px 32px 64px; max-width: 210mm; min-height: 297mm; margin: 0 auto; overflow: hidden; }
     .${scopeClass} * { box-sizing: border-box; }
     .${scopeClass} .watermark { position: absolute; right: 24px; bottom: 96px; opacity: 0.12; pointer-events: none; z-index: 0; }
     .${scopeClass} .hdr { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #A85A28; padding-bottom: 16px; margin-bottom: 20px; }

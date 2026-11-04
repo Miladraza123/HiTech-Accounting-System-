@@ -3,21 +3,8 @@
 // Same scoping as the other print stylesheets so nothing from the app shell leaks in.
 const GREEN = "#92d050";
 
-// Carlito (a free, Calibri-metric font, SIL OFL licence, files in /public/fonts) is shipped with the page so the
-// invoice looks and measures the same on every device. Without it each phone/PC falls back to its own system font,
-// and the PDF download (which redraws the page with html2canvas) then placed the text a few pixels off its cells.
-const FONT = "HiTech Carlito";
-
-function fontFaces(): string {
-  const face = (weight: number, style: "normal" | "italic") =>
-    `@font-face { font-family: "${FONT}"; font-style: ${style}; font-weight: ${weight}; font-display: block; src: url("/fonts/carlito-latin-${weight}-${style}.woff2") format("woff2"); }`;
-  return [face(400, "normal"), face(700, "normal"), face(400, "italic"), face(700, "italic")].join("\n    ");
-}
-
 export function gstInvoicePrintStyles(scope: string): string {
   return `
-    ${fontFaces()}
-    .${scope} { font-family: "${FONT}", Calibri, Carlito, "Segoe UI", ui-sans-serif, system-ui, sans-serif; }
     .${scope} .lh-body { padding: 3mm 9mm 4mm; }
     .${scope} .gst-title { text-align: center; font-size: 22px; font-weight: 700; margin: 5mm 0 4mm; }
     .${scope} .gst-cap { font-weight: 700; font-size: 12px; margin-bottom: 1mm; }

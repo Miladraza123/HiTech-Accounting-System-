@@ -3,10 +3,13 @@
 // Ref. fields; Qty / Descriptions / Remarks with ruled rows; faint logo and
 // tagline watermark; Prepared / Authorized / Received By). Scoped under one
 // class (`all: initial`) like printStyles().
+import { PRINT_FONT_STACK, printFontFaces } from "@/lib/printFont";
+
 export function dcPrintStyles(scope: string): string {
   return `
+    ${printFontFaces()}
     @page { size: A4; margin: 0; }
-    .${scope} { all: initial; box-sizing: border-box; position: relative; display: flex; flex-direction: column; overflow: hidden; font-family: Calibri, Carlito, "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1.3; color: #000; background: #fff; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 11mm 13mm 9mm; }
+    .${scope} { all: initial; box-sizing: border-box; position: relative; display: flex; flex-direction: column; overflow: hidden; font-family: ${PRINT_FONT_STACK}; font-size: 13px; line-height: 1.3; color: #000; background: #fff; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 11mm 13mm 9mm; }
     .${scope} * { box-sizing: border-box; }
     .${scope} .wm { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
     .${scope} .wm-logo { position: absolute; right: 8mm; bottom: 30mm; width: 62mm; opacity: 0.1; }
