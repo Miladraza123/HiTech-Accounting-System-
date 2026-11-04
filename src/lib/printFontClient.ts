@@ -30,3 +30,28 @@ export async function ensurePrintFontLoaded(doc: Document = document): Promise<v
     })
   );
 }
+
+type FaceInfo = { family: string; weight: string; style: string; status: string };
+
+/** True when both the regular and the bold upright face of the print font are loaded in this page. */
+export function printFontReady(faces: FaceInfo[]): boolean {
+  const loaded = faces.filter((f) => f.family.replace(/["']/g, "") === PRINT_FONT && f.status === "loaded" && f.style === "normal");
+  const has = (w: string) => loaded.some((f) => f.weight === w);
+  return has("400") && has("700");
+}
+
+/** Whether this page can really draw text in the print font (see ensurePrintFontLoaded). */
+export function isPrintFontLoaded(doc: Document = document): boolean {
+  return !!doc.fonts && printFontReady([...doc.fonts]);
+}
+
+/**
+ * Last resort when the print font could not be loaded into this page: switch the print document to plain
+ * system fonts, so the PDF is drawn in the very font the page was laid out with. A mismatch between the two
+ * is what makes words run together; consistent system fonts at worst leave the text a pixel or two off.
+ */
+export function switchToSystemFonts(printDoc: Document): void {
+  const style = printDoc.createElement("style");
+  style.textContent = 'html, body, body * { font-family: Arial, Helvetica, sans-serif !important; }';
+  printDoc.head.appendChild(style);
+}

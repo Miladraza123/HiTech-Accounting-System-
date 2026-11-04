@@ -18,6 +18,7 @@ export function MobileNav({
   signOutAction,
   notifications,
   hasCompanyLogo,
+  buildVersion,
 }: {
   categories: NavCategory[];
   userFullName: string;
@@ -25,6 +26,8 @@ export function MobileNav({
   signOutAction: () => Promise<void>;
   hasCompanyLogo: boolean;
   notifications: NotificationItem[];
+  /** Short commit id of the running deploy, shown under the user name so a screenshot says which version it is. */
+  buildVersion?: string;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -99,6 +102,7 @@ export function MobileNav({
                 <Link href="/account" onClick={() => setOpen(false)} className="text-[11px] text-accent-ink underline underline-offset-2">
                   Change Password
                 </Link>
+                {buildVersion && <p className="mt-1 text-[10px] font-mono text-ink-faint">Version {buildVersion}</p>}
               </div>
               <LogoutButton signOutAction={signOutAction} />
             </div>
