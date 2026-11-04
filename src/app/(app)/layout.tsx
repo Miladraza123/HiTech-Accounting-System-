@@ -308,6 +308,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           signOutAction={signOutAction}
           notifications={notifications}
           hasCompanyLogo={hasCompanyLogo}
+          buildVersion={process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)}
         />
         <div className="flex">
           <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-line bg-surface min-h-screen sticky top-0">
@@ -342,6 +343,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <Link href="/account" className="text-[11px] text-accent-ink underline underline-offset-2">
                   Change Password
                 </Link>
+                <p className="mt-1 text-[10px] font-mono text-ink-faint">Version {process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "dev"}</p>
               </div>
               <LogoutButton signOutAction={signOutAction} />
             </div>

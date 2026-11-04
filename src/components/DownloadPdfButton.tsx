@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ensurePrintFontLoaded } from "@/lib/printFontClient";
+import { ensurePrintFontLoaded, isPrintFontLoaded, switchToSystemFonts } from "@/lib/printFontClient";
 
 /**
  * A real one-click PDF download, next to the existing "Print / PDF"
@@ -55,6 +55,9 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
       // html2canvas draws on a canvas made in THIS page, which cannot see the iframe's @font-face: load the
       // print font here too, or words run together in the PDF.
       await ensurePrintFontLoaded();
+      // If the font still is not usable here, draw the document in plain system fonts instead (consistent
+      // between page and PDF) rather than risk words running together.
+      if (!isPrintFontLoaded() && iframe.contentDocument) switchToSystemFonts(iframe.contentDocument);
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       const body = iframe.contentDocument?.body;

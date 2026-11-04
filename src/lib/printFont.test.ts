@@ -34,3 +34,24 @@ describe("AUTO_PRINT_SCRIPT", () => {
     expect(AUTO_PRINT_SCRIPT).toContain("window.print()");
   });
 });
+
+import { printFontReady } from "./printFontClient";
+
+describe("printFontReady", () => {
+  const face = (weight: string, style = "normal", status = "loaded", family = '"HiTech Carlito"') => ({ family, weight, style, status });
+  it("needs both the regular and the bold upright face to be loaded", () => {
+    expect(printFontReady([face("400"), face("700")])).toBe(true);
+    expect(printFontReady([face("400")])).toBe(false);
+    expect(printFontReady([face("700")])).toBe(false);
+  });
+  it("ignores faces that are still loading, failed, italic or another family", () => {
+    expect(printFontReady([face("400", "normal", "loading"), face("700")])).toBe(false);
+    expect(printFontReady([face("400", "normal", "error"), face("700")])).toBe(false);
+    expect(printFontReady([face("400", "italic"), face("700", "italic")])).toBe(false);
+    expect(printFontReady([face("400", "normal", "loaded", "Roboto"), face("700", "normal", "loaded", "Roboto")])).toBe(false);
+    expect(printFontReady([])).toBe(false);
+  });
+  it("accepts the family name with or without quotes", () => {
+    expect(printFontReady([face("400", "normal", "loaded", "HiTech Carlito"), face("700", "normal", "loaded", "HiTech Carlito")])).toBe(true);
+  });
+});
