@@ -1431,6 +1431,47 @@ export type Database = {
           },
         ]
       }
+      hr_fixed_charges: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_fixed_charges_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "hr_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hr_holidays: {
         Row: {
           created_at: string
@@ -1665,6 +1706,44 @@ export type Database = {
           },
         ]
       }
+      hr_salary_line_charges: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          line_id: string
+          name: string
+          note: string | null
+          source_amount: number | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          line_id: string
+          name: string
+          note?: string | null
+          source_amount?: number | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          line_id?: string
+          name?: string
+          note?: string | null
+          source_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_salary_line_charges_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "hr_salary_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hr_salary_lines: {
         Row: {
           absent_days: number
@@ -1672,11 +1751,13 @@ export type Database = {
           advance_recovery: number
           base_pay: number
           bonus: number
+          charges_loaded: boolean
           days: Json
           days_count: number
           early_deduction: number
           employee_id: string
           employee_type: string
+          fixed_charges_total: number
           gross: number
           id: string
           late_count: number
@@ -1701,11 +1782,13 @@ export type Database = {
           advance_recovery?: number
           base_pay?: number
           bonus?: number
+          charges_loaded?: boolean
           days?: Json
           days_count?: number
           early_deduction?: number
           employee_id: string
           employee_type: string
+          fixed_charges_total?: number
           gross?: number
           id?: string
           late_count?: number
@@ -1730,11 +1813,13 @@ export type Database = {
           advance_recovery?: number
           base_pay?: number
           bonus?: number
+          charges_loaded?: boolean
           days?: Json
           days_count?: number
           early_deduction?: number
           employee_id?: string
           employee_type?: string
+          fixed_charges_total?: number
           gross?: number
           id?: string
           late_count?: number
@@ -7194,6 +7279,22 @@ export type Database = {
           p_rules: Json
         }
         Returns: string
+      }
+      fn_hr_apply_fixed_charge: {
+        Args: { p_amount: number; p_employee_ids: string[]; p_name: string }
+        Returns: number
+      }
+      fn_hr_reload_line_charges: {
+        Args: { p_line_id: string; p_sheet_id: string }
+        Returns: undefined
+      }
+      fn_hr_set_fixed_charges: {
+        Args: { p_charges: Json; p_employee_id: string }
+        Returns: undefined
+      }
+      fn_hr_set_line_charges: {
+        Args: { p_charges: Json; p_line_id: string }
+        Returns: undefined
       }
       fn_hr_set_salary_adjustment: {
         Args: {

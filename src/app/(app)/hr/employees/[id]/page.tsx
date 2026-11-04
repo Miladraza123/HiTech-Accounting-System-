@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hasRole, isOwner } from "@/lib/auth";
 import { canManageHr, canReadHr, loadPolicyGroupOptions } from "@/lib/hrAccess";
 import { EMPLOYEE_TYPE_LABELS, RULE_LABELS, asOverrides, asRules, formatPay, formatRuleValue, summarizeRules, type RuleKey } from "@/lib/hrRules";
 import { karachiToday } from "@/lib/karachiTime";
@@ -10,6 +10,7 @@ import { deleteEmployeeTermsAction } from "@/app/actions/hr";
 import { EmployeeForm } from "@/components/EmployeeForm";
 import { EmployeeTermsForm } from "@/components/EmployeeTermsForm";
 import { EmployeeStatusPanel } from "@/components/EmployeeStatusPanel";
+import { FixedChargesEditor } from "@/components/FixedChargesEditor";
 import { ConfirmActionButton } from "@/components/ConfirmActionButton";
 import type { TermsDraft } from "@/components/EmployeeTermsFields";
 
@@ -20,10 +21,12 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const { id } = await params;
 
   const supabase = await createClient();
-  const [{ data: emp }, { data: terms }, groups] = await Promise.all([
+  const canCharges = isOwner(user) || hasRole(user, "hr") || hasRole(user, "accounts");
+  const [{ data: emp }, { data: terms }, groups, { data: fixedCharges }] = await Promise.all([
     supabase.from("hr_employees").select("*").eq("id", id).maybeSingle(),
     supabase.from("hr_employee_terms").select("*, hr_policy_groups(name), profiles(full_name)").eq("employee_id", id).order("effective_from", { ascending: false }),
     loadPolicyGroupOptions(supabase),
+    supabase.from("hr_fixed_charges").select("id, name, amount, is_active").eq("employee_id", id).order("created_at"),
   ]);
   if (!emp) notFound();
 
@@ -131,6 +134,17 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
             )}
           </div>
         )}
+      </section>
+
+      <section className="rounded-xl border border-line bg-surface p-4 sm:p-5 space-y-2">
+        <h2 className="text-sm font-semibold text-ink">Fixed Charges (cut from salary every month)</h2>
+        <p className="text-xs text-ink-soft">Lunch, uniform and similar. Each new salary sheet copies the active ones; the amount can be changed on the sheet for that month.</p>
+        <FixedChargesEditor
+          key={(fixedCharges ?? []).map((c) => `${c.id}:${c.name}:${c.amount}:${c.is_active}`).join("|")}
+          employeeId={emp.id}
+          canEdit={canCharges}
+          initial={(fixedCharges ?? []).map((c) => ({ id: c.id, name: c.name, amount: Number(c.amount), is_active: c.is_active }))}
+        />
       </section>
 
       {canManage && latestDraft && emp.status === "Active" && (

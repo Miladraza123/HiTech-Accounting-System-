@@ -9,6 +9,8 @@ import { EMPLOYEE_TYPE_LABELS } from "@/lib/hrRules";
 import { SHEET_STATUS_STYLE, days, money, sheetLabel } from "@/lib/hrSalary";
 import { SalarySheetActions } from "@/components/SalarySheetActions";
 import { SalaryLineAdjust } from "@/components/SalaryLineAdjust";
+import { SalaryLineCharges } from "@/components/SalaryLineCharges";
+import { ReloadSheetChargesButton } from "@/components/ReloadSheetChargesButton";
 
 export default async function SalarySheetPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -28,6 +30,13 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
   ]);
   if (!sheet) notFound();
 
+  const lineIds = (lines ?? []).map((l) => l.id);
+  const { data: lineCharges } = lineIds.length
+    ? await supabase.from("hr_salary_line_charges").select("id, line_id, name, amount, source_amount, note").in("line_id", lineIds).order("created_at")
+    : { data: [] };
+  const chargesByLine = new Map<string, NonNullable<typeof lineCharges>>();
+  for (const c of lineCharges ?? []) chargesByLine.set(c.line_id, [...(chargesByLine.get(c.line_id) ?? []), c]);
+
   const jeIds = [sheet.journal_entry_id, sheet.payment_journal_entry_id].filter((x): x is string => !!x);
   const { data: entries } = jeIds.length ? await supabase.from("journal_entries").select("id, entry_no").in("id", jeIds) : { data: [] };
   const entryNo = new Map((entries ?? []).map((e) => [e.id, e.entry_no]));
@@ -39,7 +48,7 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
     (a.hr_employees as unknown as Emp).full_name.localeCompare((b.hr_employees as unknown as Emp).full_name)
   );
   const editable = sheet.status === "Draft" && canPrepare;
-  const sum = (k: "base_pay" | "ot_pay" | "late_deduction" | "early_deduction" | "sandwich_deduction" | "bonus" | "other_deduction") =>
+  const sum = (k: "base_pay" | "ot_pay" | "late_deduction" | "early_deduction" | "sandwich_deduction" | "bonus" | "other_deduction" | "fixed_charges_total") =>
     sorted.reduce((t, l) => t + Number(l[k]), 0);
 
   return (
@@ -107,7 +116,7 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
                 <th className="text-right px-3 py-2" title="Late + early leaving + sandwich">
                   Cuts
                 </th>
-                <th className="text-right px-3 py-2">Bonus / other</th>
+                <th className="text-right px-3 py-2">Bonus / other / fixed</th>
                 <th className="text-right px-3 py-2">Gross</th>
                 <th className="text-right px-3 py-2">Advance</th>
                 <th className="text-right px-3 py-2">Net</th>
@@ -143,6 +152,11 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
                     <td className="px-3 py-2 text-right tabular text-xs">
                       {Number(l.bonus) > 0 && <span className="text-good">+{money(l.bonus)}</span>}
                       {Number(l.other_deduction) > 0 && <span className="block text-bad">−{money(l.other_deduction)}</span>}
+                      {(chargesByLine.get(l.id) ?? []).map((c) => (
+                        <span key={c.id} className="block text-bad" title={c.note ?? (c.source_amount !== null && Number(c.source_amount) !== Number(c.amount) ? `Set amount ${money(c.source_amount)}` : undefined)}>
+                          −{money(c.amount)} <span className="text-[10px] text-ink-faint">{c.name}{c.source_amount !== null && Number(c.source_amount) !== Number(c.amount) ? " (changed)" : ""}</span>
+                        </span>
+                      ))}
                       {l.adjustment_note && <span className="block text-[10px] text-ink-faint">{l.adjustment_note}</span>}
                     </td>
                     <td className="px-3 py-2 text-right tabular">{money(l.gross)}</td>
@@ -158,6 +172,13 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
                           advanceRecovery={Number(l.advance_recovery)}
                           note={l.adjustment_note}
                           advanceOwed={owed.get(l.employee_id) ?? 0}
+                        />
+                      )}
+                      {editable && (
+                        <SalaryLineCharges
+                          sheetId={sheet.id}
+                          lineId={l.id}
+                          charges={(chargesByLine.get(l.id) ?? []).map((c) => ({ id: c.id, name: c.name, amount: Number(c.amount), source_amount: c.source_amount === null ? null : Number(c.source_amount), note: c.note }))}
                         />
                       )}
                       <a href={`/hr/salary/${sheet.id}/payslip/${l.id}`} target="_blank" className="block text-xs text-accent-ink underline underline-offset-2">
@@ -185,7 +206,7 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
                   <td className="px-3 py-2 text-right tabular">{money(sum("ot_pay"))}</td>
                   <td className="px-3 py-2 text-right tabular text-bad">−{money(sum("late_deduction") + sum("early_deduction") + sum("sandwich_deduction"))}</td>
                   <td className="px-3 py-2 text-right tabular text-xs">
-                    +{money(sum("bonus"))} / −{money(sum("other_deduction"))}
+                    +{money(sum("bonus"))} / −{money(sum("other_deduction"))} / −{money(sum("fixed_charges_total"))}
                   </td>
                   <td className="px-3 py-2 text-right tabular">{money(sheet.gross_total)}</td>
                   <td className="px-3 py-2 text-right tabular">−{money(sheet.advance_total)}</td>
@@ -197,6 +218,11 @@ export default async function SalarySheetPage({ params }: { params: Promise<{ id
           </table>
         </div>
       </div>
+      {editable && (
+        <div>
+          <ReloadSheetChargesButton sheetId={sheet.id} />
+        </div>
+      )}
       {sheet.status === "Draft" && (
         <p className="text-xs text-ink-faint">
           Draft figures were worked out when the sheet was created or last recalculated. Attendance entered since then shows after

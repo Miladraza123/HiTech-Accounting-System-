@@ -13,6 +13,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     supabase.from("hr_salary_sheets").select("sheet_no, period_from, period_to, status").eq("id", id).maybeSingle(),
     supabase.from("hr_salary_lines").select("*, hr_employees(code, full_name, designation)").eq("sheet_id", id),
   ]);
+  const lineIds = (lines ?? []).map((l) => l.id);
+  const { data: lineCharges } = lineIds.length ? await supabase.from("hr_salary_line_charges").select("line_id, name, amount").in("line_id", lineIds).order("created_at") : { data: [] };
+  const chargeText = new Map<string, string>();
+  for (const c of lineCharges ?? []) {
+    if (Number(c.amount) <= 0) continue;
+    chargeText.set(c.line_id, [chargeText.get(c.line_id), `${c.name} ${Number(c.amount)}`].filter(Boolean).join(", "));
+  }
   if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });
   if (!sheet) return new Response("Not found", { status: 404 });
 
@@ -40,6 +47,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         sandwich_cut: Number(l.sandwich_deduction),
         bonus: Number(l.bonus),
         other_cut: Number(l.other_deduction),
+        fixed_charges: Number(l.fixed_charges_total),
+        fixed_detail: chargeText.get(l.id) ?? "",
         gross: Number(l.gross),
         advance: Number(l.advance_recovery),
         net: Number(l.net),
@@ -70,6 +79,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       { header: "Sandwich Cut", key: "sandwich_cut" },
       { header: "Bonus", key: "bonus" },
       { header: "Other Cut", key: "other_cut" },
+      { header: "Fixed Charges", key: "fixed_charges" },
+      { header: "Fixed Charges Detail", key: "fixed_detail", width: 28 },
       { header: "Gross", key: "gross" },
       { header: "Advance Recovered", key: "advance" },
       { header: "Net Pay", key: "net" },
