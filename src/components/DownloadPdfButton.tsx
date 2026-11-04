@@ -47,7 +47,10 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
       });
 
       // Same short settle time the print page itself waits before
-      // calling window.print() — lets fonts/layout finish first.
+      // calling window.print() — lets fonts/layout finish first. A page
+      // that ships its own web font (the GST invoice) must have it loaded
+      // before it is redrawn, or the text lands in a fallback font.
+      await iframe.contentDocument?.fonts?.ready;
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       const body = iframe.contentDocument?.body;
