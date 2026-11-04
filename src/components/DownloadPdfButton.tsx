@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ensurePrintFontLoaded } from "@/lib/printFontClient";
 
 /**
  * A real one-click PDF download, next to the existing "Print / PDF"
@@ -51,6 +52,9 @@ export function DownloadPdfButton({ printPath, filename }: { printPath: string; 
       // that ships its own web font (the GST invoice) must have it loaded
       // before it is redrawn, or the text lands in a fallback font.
       await iframe.contentDocument?.fonts?.ready;
+      // html2canvas draws on a canvas made in THIS page, which cannot see the iframe's @font-face: load the
+      // print font here too, or words run together in the PDF.
+      await ensurePrintFontLoaded();
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       const body = iframe.contentDocument?.body;
