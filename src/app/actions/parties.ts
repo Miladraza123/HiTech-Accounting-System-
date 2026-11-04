@@ -5,6 +5,8 @@ import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 import { isValidShortCode, normalizeShortCode } from "@/lib/docRef";
+import { canEditParty } from "@/lib/partyAccess";
+import { isPlausibleEmail, normalizePartyDetails, type PartyContactInput, type PartyDetails } from "@/lib/partyDetails";
 
 export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string };
 
@@ -46,6 +48,13 @@ export async function createPartyAction(
   if (shortCode && !isValidShortCode(shortCode)) return { error: "Client code must be 2 to 10 letters or digits, like TPFL." };
   if (!shortCode && (party_type === "client" || party_type === "both")) return { error: "Client code is required (e.g. TPFL)." };
 
+  // Optional first contact (primary). If any of its fields is filled, the person's name is needed too.
+  const contactName = String(formData.get("contact_name") ?? "").trim();
+  const contactPhone = String(formData.get("contact_phone") ?? "").trim();
+  const contactEmail = String(formData.get("contact_email") ?? "").trim();
+  if ((contactPhone || contactEmail) && !contactName) return { error: "Enter the contact person's name, or leave the contact fields empty." };
+  if (!isPlausibleEmail(contactEmail)) return { error: "The contact's email address does not look right." };
+
   const creditLimit = parseNonNegative(formData.get("credit_limit"), "Credit limit");
   if (creditLimit.error) return { error: creditLimit.error };
   const creditDays = parseNonNegative(formData.get("credit_days"), "Credit days", true);
@@ -82,6 +91,19 @@ export async function createPartyAction(
   const openingReceivable = Number(formData.get("opening_receivable") ?? 0);
   const openingPayable = Number(formData.get("opening_payable") ?? 0);
   const warnings: string[] = [];
+
+  if (contactName) {
+    const { error: contactError } = await supabase.rpc("fn_save_party_contact", {
+      p_contact_id: null as unknown as string,
+      p_party_id: party.id,
+      p_name: contactName,
+      p_designation: "",
+      p_phone: contactPhone,
+      p_email: contactEmail,
+      p_is_primary: true,
+    });
+    if (contactError) warnings.push(`The contact could not be saved: ${contactError.message} (add it from the client's page).`);
+  }
 
   if (openingReceivable > 0) {
     const { error: jeError } = await supabase.rpc("fn_post_journal_entry", {
@@ -202,5 +224,86 @@ export async function updateCreditTermsAction(
 
   revalidatePath(`/clients/${id}`);
   revalidatePath("/clients");
+  return { error: null, success: true };
+}
+
+const DETAIL_FIELDS = ["legal_name", "ntn", "strn", "cnic", "billing_address", "province"] as const;
+
+/**
+ * Edit a client/supplier's identity and address. Goes through Smart Merge like the credit terms: only the
+ * fields that changed are written, and a field somebody else changed meanwhile comes back as a conflict.
+ */
+export async function updatePartyDetailsAction(id: string, base: PartyDetails, next: PartyDetails): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canEditParty(user)) return { error: "You don't have permission to change this client/supplier." };
+
+  const nextClean = normalizePartyDetails(next);
+  if (!nextClean.legal_name) return { error: "Name is required." };
+  const baseClean = normalizePartyDetails(base);
+
+  const supabase = await createClient();
+  const changes = diffFields(
+    Object.fromEntries(DETAIL_FIELDS.map((f) => [f, baseClean[f]])),
+    Object.fromEntries(DETAIL_FIELDS.map((f) => [f, nextClean[f]]))
+  );
+  const { result, error } = await smartMergeUpdate(
+    supabase,
+    "parties",
+    id,
+    Object.fromEntries(DETAIL_FIELDS.map((f) => [f, baseClean[f]])),
+    changes
+  );
+  if (error) return { error: friendlyPartyError(error) };
+  if (result && result.conflicts.length > 0) {
+    return { error: null, conflicts: result.conflicts };
+  }
+
+  revalidatePath(`/clients/${id}`);
+  revalidatePath("/clients");
+  return { error: null, success: true };
+}
+
+/** Client / supplier / both. Dropping a role that already has documents is refused by the database with a reason. */
+export async function changePartyTypeAction(id: string, newType: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canEditParty(user)) return { error: "You don't have permission to change this client/supplier." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_change_party_type", { p_party_id: id, p_new_type: newType });
+  if (error) return { error: error.message };
+  revalidatePath(`/clients/${id}`);
+  revalidatePath("/clients");
+  return { error: null, success: true };
+}
+
+/** Add (contactId null) or change a contact person; marking one primary un-marks the others. */
+export async function savePartyContactAction(partyId: string, contactId: string | null, input: PartyContactInput): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canEditParty(user)) return { error: "You don't have permission to change this client/supplier." };
+  if (!input.name.trim()) return { error: "The contact's name is required." };
+  if (!isPlausibleEmail(input.email)) return { error: "That email address does not look right." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_save_party_contact", {
+    p_contact_id: contactId as string,
+    p_party_id: partyId,
+    p_name: input.name,
+    p_designation: input.designation,
+    p_phone: input.phone,
+    p_email: input.email,
+    p_is_primary: input.is_primary,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/clients/${partyId}`);
+  return { error: null, success: true };
+}
+
+/** Owner only (database policy). If the primary contact is removed, the next one becomes primary. */
+export async function deletePartyContactAction(partyId: string, contactId: string): Promise<ActionResult> {
+  if (!isOwner(await getCurrentUser())) return { error: "Only the Owner can remove a contact." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_delete_party_contact", { p_contact_id: contactId });
+  if (error) return { error: error.message };
+  revalidatePath(`/clients/${partyId}`);
   return { error: null, success: true };
 }

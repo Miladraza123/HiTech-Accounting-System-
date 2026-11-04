@@ -5,16 +5,16 @@ import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { diffFields, smartMergeUpdate, type SmartMergeConflict } from "@/lib/smartMerge";
 
-export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string };
+export type ActionResult = { error: string | null; success?: boolean; conflicts?: SmartMergeConflict[]; warning?: string; itemCode?: string };
 
 export async function createItemAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
 
-  const item_code = String(formData.get("item_code") ?? "").trim();
+  // The code is assigned by the database (the next number in the existing series) and is never typed.
   const description = String(formData.get("description") ?? "").trim();
   const base_unit = String(formData.get("base_unit") ?? "");
-  if (!item_code || !description || !base_unit) {
-    return { error: "Item code, description, and unit are required." };
+  if (!description || !base_unit) {
+    return { error: "Description and unit are required." };
   }
 
   const reorderLevelRaw = String(formData.get("reorder_level") ?? "").trim();
@@ -23,7 +23,7 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
   const { data: item, error } = await supabase
     .from("items")
     .insert({
-      item_code,
+      item_code: "", // blank on purpose: trg_items_auto_code fills in the next code
       description,
       base_unit,
       category: String(formData.get("category") ?? "").trim() || null,
@@ -34,10 +34,11 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
       standard_cost: standardCost,
       reorder_level: reorderLevelRaw ? Number(reorderLevelRaw) : null,
     })
-    .select("id")
+    .select("id, item_code")
     .single();
 
   if (error) return { error: error.message };
+  const item_code = item.item_code;
 
   // Optional Opening Stock at creation — the same fn_import_opening_stock
   // RPC the Import Wizard already uses (posts the stock_ledger row + its
@@ -51,7 +52,7 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
   if (openingQty > 0) {
     if (!openingWarehouseId) {
       revalidatePath("/items");
-      return { error: null, success: true, warning: "Opening Stock needs a warehouse — not posted. You can add it later from Setup → Import." };
+      return { error: null, success: true, itemCode: item_code, warning: "Opening Stock needs a warehouse — not posted. You can add it later from Setup → Import." };
     }
     const { data: warehouse } = await supabase.from("warehouses").select("code").eq("id", openingWarehouseId).maybeSingle();
     const openingRateRaw = String(formData.get("opening_stock_rate") ?? "").trim();
@@ -67,12 +68,12 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
     });
     if (stockError) {
       revalidatePath("/items");
-      return { error: null, success: true, warning: `Opening Stock could not be posted: ${stockError.message}` };
+      return { error: null, success: true, itemCode: item_code, warning: `Opening Stock could not be posted: ${stockError.message}` };
     }
   }
 
   revalidatePath("/items");
-  return { error: null, success: true };
+  return { error: null, success: true, itemCode: item_code };
 }
 
 // Minimal Item creation for the GRN "Add New Item" inline flow (Phase
@@ -80,27 +81,25 @@ export async function createItemAction(_prev: ActionResult, formData: FormData):
 // (category, spec, HS code, costing, opening stock) stays the Items page's
 // own job, editable there afterwards.
 export async function quickCreateItemAction(input: {
-  item_code: string;
   description: string;
   base_unit: string;
-}): Promise<{ error: string | null; id?: string }> {
+}): Promise<{ error: string | null; id?: string; item_code?: string }> {
   const supabase = await createClient();
 
-  const item_code = input.item_code.trim();
   const description = input.description.trim();
-  if (!item_code || !description || !input.base_unit) {
-    return { error: "Item code, description, and unit are required." };
+  if (!description || !input.base_unit) {
+    return { error: "Description and unit are required." };
   }
 
   const { data: item, error } = await supabase
     .from("items")
-    .insert({ item_code, description, base_unit: input.base_unit })
-    .select("id")
+    .insert({ item_code: "", description, base_unit: input.base_unit }) // code is assigned by the database
+    .select("id, item_code")
     .single();
 
   if (error) return { error: error.message };
   revalidatePath("/items");
-  return { error: null, id: item.id };
+  return { error: null, id: item.id, item_code: item.item_code };
 }
 
 export type ItemEditableFields = {
@@ -127,7 +126,8 @@ export async function updateItemAction(
   next: ItemEditableFields
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const changes = diffFields(base, next);
+  // An item's code is fixed once created: whatever the form sent, it is never part of the change.
+  const changes = diffFields(base, { ...next, item_code: base.item_code });
 
   // Once stock has moved, every stock_ledger row's qty/avg_cost is in the old
   // base_unit, and is_stocked decides whether the ledger applies at all —

@@ -9,6 +9,10 @@ import { agingBucket, dueDateFrom, emptyBuckets, bucketTotal } from "@/lib/aging
 import { TasksPanel } from "@/components/TasksPanel";
 import { canSeeFinance, canSeeInvoices, canSeeSupplierBills } from "@/lib/financeAccess";
 import { getPartyJournalBalanceAction } from "@/app/actions/parties";
+import { EditPartyDetailsForm } from "@/components/EditPartyDetailsForm";
+import { PartyContactsPanel } from "@/components/PartyContactsPanel";
+import { canEditParty } from "@/lib/partyAccess";
+import { toFormDetails } from "@/lib/partyDetails";
 
 const TYPE_LABEL: Record<string, string> = { client: "Client", supplier: "Supplier", both: "Client + Supplier" };
 
@@ -19,12 +23,14 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const canAdjustBalance = owner || hasRole(user, "accounts");
 
   const supabase = await createClient();
-  const [{ data: party }, { data: arSummary }, { data: apSummary }, { data: tasks }, { data: profiles }] = await Promise.all([
+  const [{ data: party }, { data: arSummary }, { data: apSummary }, { data: tasks }, { data: profiles }, { data: contacts }, { data: provinces }] = await Promise.all([
     supabase.from("parties").select("*").eq("id", id).maybeSingle(),
     supabase.from("party_ar_summary").select("*").eq("party_id", id).maybeSingle(),
     supabase.from("party_ap_summary").select("*").eq("supplier_id", id).maybeSingle(),
     supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "parties").eq("related_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
+    supabase.from("party_contacts").select("id, name, designation, phone, email, is_primary").eq("party_id", id).order("is_primary", { ascending: false }).order("name"),
+    supabase.from("provinces").select("code, name").order("name"),
   ]);
 
   if (!party) notFound();
@@ -102,7 +108,14 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
           {[party.ntn && `NTN: ${party.ntn}`, party.strn && `STRN: ${party.strn}`, party.cnic && `CNIC: ${party.cnic}`].filter(Boolean).join(" · ") || "—"}
         </p>
         {party.billing_address && <p className="text-xs text-ink-faint mt-0.5">{party.billing_address}</p>}
+        {canEditParty(user) && (
+          <div className="mt-2">
+            <EditPartyDetailsForm partyId={id} initial={toFormDetails(party)} partyType={party.party_type} provinces={provinces ?? []} />
+          </div>
+        )}
       </div>
+
+      <PartyContactsPanel partyId={id} contacts={contacts ?? []} canEdit={canEditParty(user)} canDelete={owner} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {showAR && (
