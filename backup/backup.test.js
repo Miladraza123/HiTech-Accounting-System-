@@ -224,6 +224,11 @@ describe("fetchTable", () => {
     const db3 = fakeSupabase({ units: [] });
     await fetchTable(db3, "units");
     expect(db3.calls[0].order).toEqual(["code"]);
+
+    // sales_order_costs has no "id" column: its key is sales_order_id.
+    const db4 = fakeSupabase({ sales_order_costs: [] });
+    await fetchTable(db4, "sales_order_costs");
+    expect(db4.calls[0].order).toEqual(["sales_order_id"]);
   });
 
   it("stops after one page when the table is exactly empty", async () => {
