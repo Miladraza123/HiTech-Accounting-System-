@@ -133,6 +133,7 @@ const PRIMARY_KEY = {
   role_permissions: ["permission_key"],
   unit_conversions: ["from_unit", "to_unit"],
   user_roles: ["user_id", "role_id"],
+  sales_order_costs: ["sales_order_id"],
 };
 
 async function fetchTable(supabase, table) {

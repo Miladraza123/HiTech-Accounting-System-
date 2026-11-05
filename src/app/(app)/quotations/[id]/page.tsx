@@ -72,9 +72,16 @@ export default async function QuotationDetailPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={query ? `/queries/${quotation.query_id}` : "/queries"} className="text-xs text-ink-faint hover:text-ink">
-            ← {query?.query_no ?? "Query"}
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-3 text-xs text-ink-faint">
+            <Link href="/quotations" className="hover:text-ink">
+              ← Quotations
+            </Link>
+            {query && (
+              <Link href={`/queries/${quotation.query_id}`} className="hover:text-ink">
+                Query {query.query_no}
+              </Link>
+            )}
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-lg font-semibold text-ink font-mono">{quotation.quotation_no}</h1>
             <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[quotation.status] ?? ""}`}>{quotation.status}</span>
