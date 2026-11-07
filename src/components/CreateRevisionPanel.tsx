@@ -19,6 +19,7 @@ function toEditable(lines: Tables<"quotation_lines">[]): EditableLine[] {
     rate: String(l.rate),
     tax_pct: String(l.tax_pct),
     line_type: asLineType(l.line_type),
+    source_line_id: l.id,
   }));
 }
 
@@ -33,6 +34,7 @@ function serialize(lines: EditableLine[]): QuotationLineInput[] {
       rate: Number(l.rate) || 0,
       tax_pct: Number(l.tax_pct) || 0,
       line_type: asLineType(l.line_type),
+      source_line_id: l.source_line_id,
     }));
 }
 

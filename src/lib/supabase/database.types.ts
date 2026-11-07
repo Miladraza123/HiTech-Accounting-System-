@@ -4016,6 +4016,7 @@ export type Database = {
           tax_pct: number
           unit: string | null
           line_type: string | null
+          source_line_id: string | null
         }
         Insert: {
           amount?: number | null
@@ -4029,6 +4030,7 @@ export type Database = {
           tax_pct?: number
           unit?: string | null
           line_type?: string | null
+          source_line_id?: string | null
         }
         Update: {
           amount?: number | null
@@ -4042,6 +4044,7 @@ export type Database = {
           tax_pct?: number
           unit?: string | null
           line_type?: string | null
+          source_line_id?: string | null
         }
         Relationships: [
           {

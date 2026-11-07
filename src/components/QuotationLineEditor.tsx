@@ -10,6 +10,8 @@ export type EditableLine = {
   key: string;
   /** Only used where the editor shows the Type column (quotations); everywhere else it is ignored. */
   line_type?: LineType;
+  /** A revision only: the id of the earlier revision's line this one continues. */
+  source_line_id?: string;
   item_id: string;
   description: string;
   qty: string;

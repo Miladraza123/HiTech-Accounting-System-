@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { convertedLineIds } from "@/lib/poFromQuotation";
+import { convertedLineIds, isLineOrdered } from "@/lib/poFromQuotation";
 import { NewPoFromQuotationForm } from "@/components/NewPoFromQuotationForm";
 
 export default async function PoFromQuotationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +29,13 @@ export default async function PoFromQuotationPage({ params }: { params: Promise<
     ? await supabase.from("sales_order_lines").select("quotation_line_id").in("sales_order_id", orderIds).not("quotation_line_id", "is", null)
     : { data: [] };
   const done = convertedLineIds(soLines ?? [], jobs ?? []);
+
+  // Lines of every revision, so a line continued from an earlier revision still counts as ordered.
+  const { data: revs } = await supabase.from("quotation_revisions").select("id").eq("quotation_id", id);
+  const { data: allLines } = (revs ?? []).length
+    ? await supabase.from("quotation_lines").select("id, source_line_id").in("revision_id", (revs ?? []).map((r) => r.id))
+    : { data: [] };
+  const sourceOf = new Map((allLines ?? []).map((l) => [l.id, l.source_line_id] as [string, string | null]));
 
   let creditWarning: string | null = null;
   const party = quotation.parties as unknown as { legal_name: string; credit_limit: number } | null;
@@ -62,7 +69,7 @@ export default async function PoFromQuotationPage({ params }: { params: Promise<
           rate: Number(l.rate),
           tax_pct: Number(l.tax_pct),
           line_type: l.line_type,
-          alreadyDone: done.has(l.id),
+          alreadyDone: isLineOrdered(l.id, sourceOf, done),
         }))}
         defaultPaymentTerms={revision.payment_terms ?? null}
         creditWarning={creditWarning}

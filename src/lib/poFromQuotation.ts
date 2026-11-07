@@ -20,3 +20,18 @@ export function convertedLineIds(
   }
   return ids;
 }
+
+/**
+ * A line counts as already ordered when it, or any earlier-revision line it continues
+ * (source_line_id, followed back through every revision), was turned into an order line.
+ */
+export function isLineOrdered(lineId: string, sourceOf: Map<string, string | null>, converted: Set<string>): boolean {
+  const seen = new Set<string>();
+  let cur: string | null | undefined = lineId;
+  while (cur && !seen.has(cur)) {
+    if (converted.has(cur)) return true;
+    seen.add(cur);
+    cur = sourceOf.get(cur);
+  }
+  return false;
+}

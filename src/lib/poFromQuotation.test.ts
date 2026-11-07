@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { asLineType, LINE_TYPE_LABELS } from "./lineType";
-import { convertedLineIds, poPlan } from "./poFromQuotation";
+import { convertedLineIds, isLineOrdered, poPlan } from "./poFromQuotation";
 
 describe("asLineType", () => {
   it("keeps the three types and reads anything else (old lines) as material", () => {
@@ -39,5 +39,22 @@ describe("convertedLineIds", () => {
       [{ quoted_lines: [{ quotation_line_id: "b" }, {}] }, { quoted_lines: null }, { quoted_lines: "x" }]
     );
     expect([...ids].sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("isLineOrdered", () => {
+  // Rev-2 line c continues Rev-1 line b, which continued Rev-0 line a.
+  const sourceOf = new Map<string, string | null>([["a", null], ["b", "a"], ["c", "b"], ["d", null]]);
+  it("follows the line back through every revision", () => {
+    expect(isLineOrdered("c", sourceOf, new Set(["a"]))).toBe(true);
+    expect(isLineOrdered("c", sourceOf, new Set(["b"]))).toBe(true);
+    expect(isLineOrdered("b", sourceOf, new Set(["c"]))).toBe(false);
+  });
+  it("a new line, or one that continues an unordered line, is not ordered", () => {
+    expect(isLineOrdered("d", sourceOf, new Set(["a"]))).toBe(false);
+    expect(isLineOrdered("c", sourceOf, new Set())).toBe(false);
+  });
+  it("survives a loop in the data", () => {
+    expect(isLineOrdered("x", new Map([["x", "y"], ["y", "x"]]), new Set())).toBe(false);
   });
 });
