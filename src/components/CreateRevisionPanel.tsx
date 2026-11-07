@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createQuotationRevisionAction, type QuotationLineInput } from "@/app/actions/quotations";
 import { QuotationLineEditor, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { asLineType } from "@/lib/lineType";
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { buttonClass } from "@/components/ui/Button";
@@ -17,6 +18,8 @@ function toEditable(lines: Tables<"quotation_lines">[]): EditableLine[] {
     unit: l.unit ?? "",
     rate: String(l.rate),
     tax_pct: String(l.tax_pct),
+    line_type: asLineType(l.line_type),
+    source_line_id: l.id,
   }));
 }
 
@@ -30,6 +33,8 @@ function serialize(lines: EditableLine[]): QuotationLineInput[] {
       unit: l.unit || undefined,
       rate: Number(l.rate) || 0,
       tax_pct: Number(l.tax_pct) || 0,
+      line_type: asLineType(l.line_type),
+      source_line_id: l.source_line_id,
     }));
 }
 
@@ -109,7 +114,7 @@ export function CreateRevisionPanel({
         <input value={reason} onChange={(e) => setReason(e.target.value)} className="input" placeholder="e.g. Client increased the quantity" />
       </label>
 
-      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} showType />
 
       <div className="grid grid-cols-2 gap-4">
         <label className="block space-y-1.5">

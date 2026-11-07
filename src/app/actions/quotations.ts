@@ -15,6 +15,10 @@ export type QuotationLineInput = {
   unit?: string;
   rate: number;
   tax_pct: number;
+  /** material / fabrication / service: what a client PO turns this line into. */
+  line_type?: "material" | "fabrication" | "service";
+  /** A revision only: the earlier revision's line this one continues. */
+  source_line_id?: string;
 };
 
 export type ActionResult = { error: string | null };

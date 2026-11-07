@@ -36,7 +36,7 @@ export default async function QuotationDetailPage({
   const canEdit = await hasPermission(user, "quotation.manage");
 
   const supabase = await createClient();
-  const [{ data: quotation }, { data: revisions }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }] =
+  const [{ data: quotation }, { data: revisions }, { data: units }, { data: attachments }, { data: salesOrders }, { data: company }, { data: serviceJobs }] =
     await Promise.all([
       supabase.from("quotations").select("*, parties(legal_name, short_code), queries(query_no)").eq("id", id).maybeSingle(),
       supabase.from("quotation_revisions").select("*").eq("quotation_id", id).order("rev_no", { ascending: false }),
@@ -44,6 +44,7 @@ export default async function QuotationDetailPage({
       supabase.from("attachments").select("*").eq("owner_table", "quotations").eq("owner_id", id).order("uploaded_at", { ascending: false }),
       supabase.from("sales_orders").select("id, so_no, status").eq("quotation_id", id).order("created_at", { ascending: false }),
       supabase.from("company").select("signature_path, stamp_path, phone, email, short_code").maybeSingle(),
+      supabase.from("service_jobs").select("id, job_no, status, client_po_no").eq("quotation_id", id).order("created_at", { ascending: false }),
     ]);
 
   if (!quotation || !revisions?.length) notFound();
@@ -162,8 +163,23 @@ export default async function QuotationDetailPage({
                   <span className="text-xs text-ink-faint">{so.status}</span>
                 </Link>
               ))}
-              <Link href={`/sales-orders/new?quotation_id=${id}`} className={`block text-center ${buttonClass()}`}>
-                + Client PO Received — New Sales Order
+              {(serviceJobs ?? []).map((j) => (
+                <Link
+                  key={j.id}
+                  href={`/service-jobs/${j.id}`}
+                  className="flex items-center justify-between rounded-md border border-line px-3 py-2 text-sm hover:bg-surface-2 transition"
+                >
+                  <span className="text-xs">
+                    <span className="font-mono text-accent-ink">{j.job_no}</span> <span className="text-ink-faint">Service Job</span>
+                  </span>
+                  <span className="text-xs text-ink-faint">{j.status}</span>
+                </Link>
+              ))}
+              <Link href={`/quotations/${id}/po`} className={`block text-center ${buttonClass()}`}>
+                + Client PO Received (Material / Fabrication / Service)
+              </Link>
+              <Link href={`/sales-orders/new?quotation_id=${id}`} className="block text-center text-xs text-ink-soft underline underline-offset-2">
+                Only one Sales Order (old way)
               </Link>
             </div>
           )}

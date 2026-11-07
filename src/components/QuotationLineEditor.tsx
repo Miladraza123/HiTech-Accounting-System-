@@ -4,9 +4,14 @@ import { useEffect } from "react";
 import { SearchablePicker, ITEM_SOURCE, ACTIVE_ONLY, type PickerOption } from "@/components/SearchablePicker";
 import { LastPurchasedHint } from "@/components/LastPurchasedHint";
 import type { Tables } from "@/lib/supabase/database.types";
+import { asLineType, LINE_TYPE_LABELS, type LineType } from "@/lib/lineType";
 
 export type EditableLine = {
   key: string;
+  /** Only used where the editor shows the Type column (quotations); everywhere else it is ignored. */
+  line_type?: LineType;
+  /** A revision only: the id of the earlier revision's line this one continues. */
+  source_line_id?: string;
   item_id: string;
   description: string;
   qty: string;
@@ -54,6 +59,7 @@ export function QuotationLineEditor({
   defaultTaxPct = 18,
   altUnitsByItem,
   showPurchaseHistory = false,
+  showType = false,
 }: {
   /**
    * A first page of items PLUS every item already referenced by `lines`.
@@ -82,6 +88,8 @@ export function QuotationLineEditor({
    * doesn't need re-sourcing. Omitted (Quotation/SO usage) renders nothing.
    */
   showPurchaseHistory?: boolean;
+  /** Quotation usage only: adds a Type column (Material / Fabrication / Service) to every line. */
+  showType?: boolean;
 }) {
   useEffect(() => {
     if (lines.length === 0) onChange([blankLine(defaultTaxPct)]);
@@ -140,6 +148,7 @@ export function QuotationLineEditor({
             <tr>
               <th className="text-left px-3 py-2 w-64 min-w-[16rem]">Item (optional)</th>
               <th className="text-left px-3 py-2 min-w-[14rem]">Description</th>
+              {showType && <th className="text-left px-3 py-2 w-32 min-w-[8rem]">Type</th>}
               <th className="text-right px-3 py-2 w-24 min-w-[6rem]">Qty</th>
               <th className="text-left px-3 py-2 w-28 min-w-[7rem]">Unit</th>
               <th className="text-right px-3 py-2 w-32 min-w-[8rem]">Rate</th>
@@ -182,6 +191,22 @@ export function QuotationLineEditor({
                       placeholder="Item / service (Enter for extra lines: type, make, ...)"
                     />
                   </td>
+                  {showType && (
+                    <td className="px-2 py-1.5">
+                      <select
+                        value={asLineType(l.line_type)}
+                        onChange={(e) => update(l.key, { line_type: asLineType(e.target.value) })}
+                        className="input !py-1 text-xs"
+                        aria-label="Line type"
+                      >
+                        {(Object.keys(LINE_TYPE_LABELS) as LineType[]).map((t) => (
+                          <option key={t} value={t}>
+                            {LINE_TYPE_LABELS[t]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  )}
                   <td className="px-2 py-1.5">
                     <input
                       type="number"

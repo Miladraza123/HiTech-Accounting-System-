@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createQuotationAction, type ActionResult } from "@/app/actions/quotations";
 import { QuotationLineEditor, blankLine, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { asLineType } from "@/lib/lineType";
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
@@ -20,6 +21,7 @@ function serializeLines(lines: EditableLine[]) {
       unit: l.unit || undefined,
       rate: Number(l.rate) || 0,
       tax_pct: Number(l.tax_pct) || 0,
+      line_type: asLineType(l.line_type),
     }));
 }
 
@@ -122,6 +124,7 @@ export function NewQuotationForm({
               unit: l.unit || undefined,
               rate: Number(l.rate) || 0,
               tax_pct: Number(l.tax_pct) || 0,
+      line_type: asLineType(l.line_type),
             }))
         )}
         readOnly
@@ -152,7 +155,7 @@ export function NewQuotationForm({
         )}
       </div>
 
-      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} defaultTaxPct={defaultTaxPct} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} defaultTaxPct={defaultTaxPct} showType />
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
         <div className="grid grid-cols-2 gap-4">
