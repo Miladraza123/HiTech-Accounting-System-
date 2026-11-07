@@ -40,6 +40,17 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
 
   if (!job) notFound();
 
+  // A job raised from a client PO on a quotation: which quotation, and the service lines that were quoted.
+  const { data: fromQuotation } = job.quotation_id
+    ? await supabase.from("quotations").select("id, quotation_no").eq("id", job.quotation_id).maybeSingle()
+    : { data: null };
+  const quotedLines = (Array.isArray(job.quoted_lines) ? job.quoted_lines : []) as {
+    description?: string;
+    qty?: number;
+    unit?: string | null;
+    rate?: number;
+  }[];
+
   const party = job.parties as unknown as { legal_name: string; billing_address: string | null } | null;
   const canComplete = canManageJob && job.status === "Received";
   const canCancelJob = isOwner(user) && job.status !== "Cancelled" && !deliveries?.some((d) => d.status !== "Cancelled") && !invoices?.some((i) => i.status !== "Cancelled");
@@ -90,6 +101,23 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                 {job.customer_dc_date && <p className="text-xs text-ink-faint mt-0.5">({job.customer_dc_date})</p>}
               </div>
             </div>
+            {fromQuotation && (
+              <div>
+                <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">From Quotation</p>
+                <Link href={`/quotations/${fromQuotation.id}`} className="mt-0.5 inline-block font-mono text-xs text-accent-ink underline underline-offset-2">
+                  {fromQuotation.quotation_no}
+                </Link>
+                {quotedLines.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 text-xs text-ink-soft">
+                    {quotedLines.map((l, i) => (
+                      <li key={i} className="whitespace-pre-line">
+                        {l.description} — {l.qty} {l.unit ?? ""} @ {Number(l.rate ?? 0).toLocaleString()}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             {job.received_condition_notes && (
               <div>
                 <p className="text-xs text-ink-faint uppercase tracking-wide font-mono">Condition on Receipt</p>

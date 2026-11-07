@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/supabase/database.types";
+import { asLineType, LINE_TYPE_LABELS } from "@/lib/lineType";
 
 export function QuotationRevisionView({
   revision,
@@ -15,6 +16,7 @@ export function QuotationRevisionView({
             <thead className="bg-surface-2 text-xs font-mono uppercase tracking-wide text-ink-faint">
               <tr>
                 <th className="text-left px-3 py-2">Description</th>
+                <th className="text-left px-3 py-2">Type</th>
                 <th className="text-right px-3 py-2">Qty</th>
                 <th className="text-left px-3 py-2">Unit</th>
                 <th className="text-right px-3 py-2">Rate</th>
@@ -26,6 +28,7 @@ export function QuotationRevisionView({
               {lines.map((l) => (
                 <tr key={l.id} className="border-t border-line">
                   <td className="px-3 py-2 text-ink whitespace-pre-line">{l.description}</td>
+                  <td className="px-3 py-2 text-xs text-ink-soft">{l.line_type ? LINE_TYPE_LABELS[asLineType(l.line_type)] : "—"}</td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{l.qty}</td>
                   <td className="px-3 py-2 text-ink-soft">{l.unit ?? "—"}</td>
                   <td className="px-3 py-2 text-right tabular text-ink-soft">{l.rate}</td>

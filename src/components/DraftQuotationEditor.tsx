@@ -8,6 +8,7 @@ import {
   type QuotationLineInput,
 } from "@/app/actions/quotations";
 import { QuotationLineEditor, type EditableLine , type LineItem} from "@/components/QuotationLineEditor";
+import { asLineType } from "@/lib/lineType";
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -20,6 +21,7 @@ function toEditable(lines: Tables<"quotation_lines">[]): EditableLine[] {
     unit: l.unit ?? "",
     rate: String(l.rate),
     tax_pct: String(l.tax_pct),
+    line_type: asLineType(l.line_type),
   }));
 }
 
@@ -33,6 +35,7 @@ function serialize(lines: EditableLine[]): QuotationLineInput[] {
       unit: l.unit || undefined,
       rate: Number(l.rate) || 0,
       tax_pct: Number(l.tax_pct) || 0,
+      line_type: asLineType(l.line_type),
     }));
 }
 
@@ -109,7 +112,7 @@ export function DraftQuotationEditor({
 
   return (
     <div className="space-y-4">
-      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} />
+      <QuotationLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} showType />
 
       <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
         <div className="grid grid-cols-2 gap-4">
