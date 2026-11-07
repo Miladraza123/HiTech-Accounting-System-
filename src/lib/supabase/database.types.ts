@@ -4015,6 +4015,7 @@ export type Database = {
           sort_order: number
           tax_pct: number
           unit: string | null
+          line_type: string | null
         }
         Insert: {
           amount?: number | null
@@ -4027,6 +4028,7 @@ export type Database = {
           sort_order?: number
           tax_pct?: number
           unit?: string | null
+          line_type?: string | null
         }
         Update: {
           amount?: number | null
@@ -4039,6 +4041,7 @@ export type Database = {
           sort_order?: number
           tax_pct?: number
           unit?: string | null
+          line_type?: string | null
         }
         Relationships: [
           {
@@ -4275,6 +4278,7 @@ export type Database = {
           sort_order: number
           tax_pct: number
           unit: string | null
+          quotation_line_id: string | null
         }
         Insert: {
           amount?: number | null
@@ -4289,6 +4293,7 @@ export type Database = {
           sort_order?: number
           tax_pct?: number
           unit?: string | null
+          quotation_line_id?: string | null
         }
         Update: {
           amount?: number | null
@@ -4303,6 +4308,7 @@ export type Database = {
           sort_order?: number
           tax_pct?: number
           unit?: string | null
+          quotation_line_id?: string | null
         }
         Relationships: [
           {
@@ -4837,6 +4843,8 @@ export type Database = {
           status: string
           updated_at: string
           updated_by: string | null
+          quoted_lines: Json
+          quotation_id: string | null
         }
         Insert: {
           asset_description: string
@@ -4855,6 +4863,8 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          quoted_lines?: Json
+          quotation_id?: string | null
         }
         Update: {
           asset_description?: string
@@ -4873,6 +4883,8 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          quoted_lines?: Json
+          quotation_id?: string | null
         }
         Relationships: [
           {
@@ -6803,6 +6815,18 @@ export type Database = {
           p_validity_date: string
         }
         Returns: string
+      }
+      fn_create_po_from_quotation: {
+        Args: {
+          p_client_po_number: string
+          p_confirm_duplicate?: boolean
+          p_delivery_schedule: string
+          p_lines: Json
+          p_payment_terms: string
+          p_po_date: string
+          p_quotation_id: string
+        }
+        Returns: Json
       }
       fn_create_sales_order: {
         Args: {
