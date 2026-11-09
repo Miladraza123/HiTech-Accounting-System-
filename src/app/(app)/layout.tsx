@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, isOwner, ROLE_LABELS } from "@/lib/auth";
 import { INCOMING_DOCUMENTS_ENABLED } from "@/lib/features";
-import { signOutAction, dismissWeakPasswordWarningAction } from "@/app/actions/auth";
+import { signOutAction, idleSignOutAction, dismissWeakPasswordWarningAction } from "@/app/actions/auth";
+import { IdleLogout } from "@/components/IdleLogout";
 import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "@/components/MobileNav";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -310,6 +311,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       buildVersion={process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)}
     >
       <div className="min-h-screen bg-bg">
+        <IdleLogout idleSignOutAction={idleSignOutAction} />
         <MobileNav
           categories={navCategories}
           userFullName={user.fullName}
