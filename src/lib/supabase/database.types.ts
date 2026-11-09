@@ -4639,6 +4639,144 @@ export type Database = {
           },
         ]
       }
+      service_job_cost_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          doc_id: string | null
+          id: string
+          item_id: string | null
+          memo: string | null
+          qty: number | null
+          service_job_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          doc_id?: string | null
+          id?: string
+          item_id?: string | null
+          memo?: string | null
+          qty?: number | null
+          service_job_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          doc_id?: string | null
+          id?: string
+          item_id?: string | null
+          memo?: string | null
+          qty?: number | null
+          service_job_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "service_job_cost_ledger_doc_id_fkey", columns: ["doc_id"], isOneToOne: false, referencedRelation: "service_material_docs", referencedColumns: ["id"] },
+          { foreignKeyName: "service_job_cost_ledger_item_id_fkey", columns: ["item_id"], isOneToOne: false, referencedRelation: "items", referencedColumns: ["id"] },
+          { foreignKeyName: "service_job_cost_ledger_service_job_id_fkey", columns: ["service_job_id"], isOneToOne: false, referencedRelation: "service_jobs", referencedColumns: ["id"] },
+        ]
+      }
+      service_material_docs: {
+        Row: {
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          doc_date: string
+          doc_no: string
+          driver_name: string | null
+          id: string
+          journal_entry_id: string | null
+          kind: string
+          party_id: string
+          remarks: string | null
+          service_job_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          vehicle_no: string | null
+          warehouse_id: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string
+          doc_no: string
+          driver_name?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          kind: string
+          party_id: string
+          remarks?: string | null
+          service_job_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string | null
+          warehouse_id: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_date?: string
+          doc_no?: string
+          driver_name?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          kind?: string
+          party_id?: string
+          remarks?: string | null
+          service_job_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_no?: string | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          { foreignKeyName: "service_material_docs_journal_entry_id_fkey", columns: ["journal_entry_id"], isOneToOne: false, referencedRelation: "journal_entries", referencedColumns: ["id"] },
+          { foreignKeyName: "service_material_docs_party_id_fkey", columns: ["party_id"], isOneToOne: false, referencedRelation: "parties", referencedColumns: ["id"] },
+          { foreignKeyName: "service_material_docs_service_job_id_fkey", columns: ["service_job_id"], isOneToOne: false, referencedRelation: "service_jobs", referencedColumns: ["id"] },
+          { foreignKeyName: "service_material_docs_warehouse_id_fkey", columns: ["warehouse_id"], isOneToOne: false, referencedRelation: "warehouses", referencedColumns: ["id"] },
+        ]
+      }
+      service_material_lines: {
+        Row: {
+          description: string
+          doc_id: string
+          id: string
+          item_id: string
+          qty: number
+          sort_order: number
+          unit: string | null
+        }
+        Insert: {
+          description: string
+          doc_id: string
+          id?: string
+          item_id: string
+          qty: number
+          sort_order?: number
+          unit?: string | null
+        }
+        Update: {
+          description?: string
+          doc_id?: string
+          id?: string
+          item_id?: string
+          qty?: number
+          sort_order?: number
+          unit?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "service_material_lines_doc_id_fkey", columns: ["doc_id"], isOneToOne: false, referencedRelation: "service_material_docs", referencedColumns: ["id"] },
+          { foreignKeyName: "service_material_lines_item_id_fkey", columns: ["item_id"], isOneToOne: false, referencedRelation: "items", referencedColumns: ["id"] },
+        ]
+      }
       service_deliveries: {
         Row: {
           cancel_reason: string | null
@@ -6830,6 +6968,23 @@ export type Database = {
           p_quotation_id: string
         }
         Returns: Json
+      }
+      fn_cancel_service_material_doc: {
+        Args: { p_doc_id: string; p_reason: string }
+        Returns: undefined
+      }
+      fn_create_service_material_doc: {
+        Args: {
+          p_doc_date: string
+          p_driver_name: string
+          p_kind: string
+          p_lines: Json
+          p_remarks: string
+          p_service_job_id: string
+          p_vehicle_no: string
+          p_warehouse_id: string
+        }
+        Returns: string
       }
       fn_create_sales_order: {
         Args: {
