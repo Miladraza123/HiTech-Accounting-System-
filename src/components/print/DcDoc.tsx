@@ -12,6 +12,8 @@ export type DcDocProps = {
   project: string | null;
   lines: DcDocLine[];
   remarks: string | null;
+  /** Raw Material DC: extra header fields (Vehicle No., Driver Name) shown on one row with Ref/PO Number, even when empty. Not passed: the ordinary Delivery Challan header. */
+  extraFields?: { label: string; value: string }[];
   company: LetterheadCompany;
   logoUrl: string | null;
   tagline: string | null;
@@ -99,6 +101,40 @@ export function DcDoc(p: DcDocProps) {
           </div>
         </div>
 
+        {p.extraFields?.length ? (
+          <>
+            <div className="fields2">
+              <div className="f" style={{ gridColumn: 1, gridRow: 1 }}>
+                <span className="k">M/s:</span>
+                <span className="v">{p.partyName}</span>
+              </div>
+              <div className="f mid" style={{ gridColumn: 1, gridRow: 2 }}>
+                <span className="k">Project:</span>
+                <span className="v">{p.project ?? ""}</span>
+              </div>
+              <div className="f" style={{ gridColumn: 2, gridRow: 1 }}>
+                <span className="k">D.C. No.</span>
+                <span className="v">{p.dcNo}</span>
+              </div>
+              <div className="f mid" style={{ gridColumn: 2, gridRow: 2 }}>
+                <span className="k">Date:</span>
+                <span className="v">{p.date}</span>
+              </div>
+            </div>
+            <div className="fields3">
+              <div className="f">
+                <span className="k">Ref/PO Number:</span>
+                <span className="v">{p.refNo ?? ""}</span>
+              </div>
+              {p.extraFields.map((f) => (
+                <div className="f" key={f.label}>
+                  <span className="k">{f.label}</span>
+                  <span className="v">{f.value}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
         <div className="fields">
           <div className="left-col">
             <div className="f">
@@ -125,6 +161,7 @@ export function DcDoc(p: DcDocProps) {
             </div>
           </div>
         </div>
+        )}
 
         <div className="grid-head">
           <div>Qty.</div>

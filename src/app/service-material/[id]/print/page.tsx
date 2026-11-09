@@ -27,11 +27,7 @@ export default async function ServiceMaterialPrintPage({
   const supabase = await createClient();
 
   const [{ data: doc }, { data: company }, { data: lines }] = await Promise.all([
-    supabase
-      .from("service_material_docs")
-      .select("*, parties(legal_name), service_jobs(job_no, client_po_no, asset_description)")
-      .eq("id", id)
-      .maybeSingle(),
+    supabase.from("service_material_docs").select("*, parties(legal_name)").eq("id", id).maybeSingle(),
     supabase.from("company").select("*").maybeSingle(),
     supabase.from("service_material_lines").select("*").eq("doc_id", id).order("sort_order"),
   ]);
@@ -43,20 +39,22 @@ export default async function ServiceMaterialPrintPage({
   });
 
   const party = doc.parties as unknown as { legal_name: string } | null;
-  const job = doc.service_jobs as unknown as { job_no: string; client_po_no: string | null; asset_description: string } | null;
-  const extra = [doc.vehicle_no && `Vehicle: ${doc.vehicle_no}`, doc.driver_name && `Driver: ${doc.driver_name}`, doc.remarks].filter(Boolean).join(" · ");
 
   return (
     <>
-      {autoprint !== "0" && <PrintBackLink href={`/service-jobs/${doc.service_job_id}`} />}
+      {autoprint !== "0" && <PrintBackLink href={doc.job_id ? `/jobs/${doc.job_id}` : `/service-jobs/${doc.service_job_id}`} />}
       <DcDoc
         dcNo={doc.doc_no}
         date={formatDcDate(doc.doc_date)}
         partyName={party?.legal_name ?? ""}
-        refNo={job?.client_po_no ?? null}
-        project={job ? `Raw material for site work — ${job.job_no}` : null}
-        lines={(lines ?? []).map((l) => ({ qty: Number(l.qty), unit: l.unit, description: l.description, remarks: null }))}
-        remarks={extra || null}
+        refNo={doc.reference}
+        project={doc.dc_description}
+        lines={(lines ?? []).map((l) => ({ qty: Number(l.qty), unit: l.unit, description: l.description, remarks: l.line_description }))}
+        remarks={null}
+        extraFields={[
+          { label: "Vehicle No.:", value: doc.vehicle_no ?? "" },
+          { label: "Driver Name:", value: doc.driver_name ?? "" },
+        ]}
         company={{
           name: company?.legal_name ?? "Company",
           phone: company?.phone ?? null,

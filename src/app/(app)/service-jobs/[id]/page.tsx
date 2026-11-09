@@ -9,15 +9,15 @@ import { NewServiceDeliveryForm } from "@/components/NewServiceDeliveryForm";
 import { NewServiceInvoiceForm } from "@/components/NewServiceInvoiceForm";
 import { PrintPdfActions } from "@/components/PrintPdfActions";
 import { InlineFieldEdit } from "@/components/InlineFieldEdit";
-import { ServiceMaterialForm } from "@/components/ServiceMaterialForm";
+import { SiteMaterialForm } from "@/components/SiteMaterialForm";
 import { costHeading, summarizeMaterial } from "@/lib/serviceMaterial";
 import {
   cancelServiceJobAction,
   cancelServiceDeliveryAction,
   cancelServiceInvoiceAction,
-  cancelServiceMaterialDocAction,
   updateServiceJobDcNoAction,
 } from "@/app/actions/serviceJobs";
+import { cancelSiteMaterialDocAction } from "@/app/actions/siteMaterial";
 
 const JOB_STATUS_STYLE: Record<string, string> = {
   Received: "bg-warn-soft text-warn",
@@ -44,10 +44,10 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
     supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
     supabase
       .from("service_material_docs")
-      .select("*, service_material_lines(item_id, description, qty, unit, sort_order)")
+      .select("*, service_material_lines(item_id, description, qty, unit, sort_order, is_stock, line_description)")
       .eq("service_job_id", id)
       .order("created_at", { ascending: false }),
-    canSeeCost ? supabase.from("service_job_cost_ledger").select("item_id, amount").eq("service_job_id", id) : Promise.resolve({ data: null }),
+    canSeeCost ? supabase.from("service_job_cost_ledger").select("item_id, label, amount").eq("service_job_id", id) : Promise.resolve({ data: null }),
     supabase.from("warehouses").select("id, name").eq("is_active", true).order("name"),
   ]);
 
@@ -149,7 +149,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
             {!!materialDocs?.length && (
               <div className="rounded-xl border border-line bg-surface overflow-hidden divide-y divide-line">
                 {materialDocs.map((d) => {
-                  const dl = [...(d.service_material_lines as unknown as { item_id: string; description: string; qty: number; unit: string | null; sort_order: number }[])].sort(
+                  const dl = [...(d.service_material_lines as unknown as { item_id: string | null; description: string; qty: number; unit: string | null; sort_order: number; is_stock: boolean; line_description: string | null }[])].sort(
                     (a, b) => a.sort_order - b.sort_order
                   );
                   return (
@@ -174,18 +174,21 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                         </div>
                       </div>
                       <p className="text-xs text-ink-faint">
-                        {d.doc_date} {d.vehicle_no && `· ${d.vehicle_no}`} {d.driver_name && `· ${d.driver_name}`} {d.remarks && `· ${d.remarks}`}
+                        {d.doc_date} {d.reference && `· Ref ${d.reference}`} {d.vehicle_no && `· ${d.vehicle_no}`} {d.driver_name && `· ${d.driver_name}`}
                       </p>
+                      {d.dc_description && <p className="text-xs text-ink-soft">{d.dc_description}</p>}
                       <ul className="text-xs text-ink-soft space-y-0.5">
                         {dl.map((l, i) => (
                           <li key={i}>
                             {l.description} — {Number(l.qty)} {l.unit ?? ""}
+                            {!l.is_stock && <span className="ml-1 text-ink-faint">(custom, no stock)</span>}
+                            {l.line_description && <span className="ml-1 text-ink-faint">· {l.line_description}</span>}
                           </li>
                         ))}
                       </ul>
                       {d.status === "Cancelled" && d.cancel_reason && <p className="text-xs text-bad">Reason: {d.cancel_reason}</p>}
                       {isOwner(user) && d.status !== "Cancelled" && (job.status === "Received" || job.status === "Completed") && (
-                        <CancelWithReasonButton label="Cancel this document" onCancel={cancelServiceMaterialDocAction.bind(null, d.id, id)} />
+                        <CancelWithReasonButton label="Cancel this document" onCancel={cancelSiteMaterialDocAction.bind(null, d.id, `/service-jobs/${id}`)} />
                       )}
                     </div>
                   );
@@ -193,7 +196,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
               </div>
             )}
             {!materialDocs?.length && <p className="text-xs text-ink-faint">No material issued to this job yet.</p>}
-            {canIssueMaterial && <ServiceMaterialForm serviceJobId={id} warehouses={warehouses ?? []} />}
+            {canIssueMaterial && <SiteMaterialForm serviceJobId={id} warehouses={warehouses ?? []} defaultReference={job.client_po_no ?? ""} />}
             {materialOut && <p className="text-xs text-warn">Material is still out on this job. Record what comes back before cancelling the job.</p>}
           </div>
 
@@ -213,8 +216,11 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                   </thead>
                   <tbody>
                     {material.rows.map((r) => (
-                      <tr key={r.item_id} className="border-t border-line">
-                        <td className="px-4 py-2">{r.description}</td>
+                      <tr key={r.key} className="border-t border-line">
+                        <td className="px-4 py-2">
+                          {r.description}
+                          {r.custom && <span className="ml-1 text-[11px] text-ink-faint">(custom, no stock)</span>}
+                        </td>
                         <td className="px-4 py-2 text-right tabular">{r.issued}</td>
                         <td className="px-4 py-2 text-right tabular">{r.returned || "—"}</td>
                         <td className="px-4 py-2 text-right tabular">{r.net}</td>

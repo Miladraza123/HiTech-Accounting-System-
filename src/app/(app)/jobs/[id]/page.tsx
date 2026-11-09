@@ -10,6 +10,9 @@ import type { JobCancelDispositionData } from "@/components/JobCancelDisposition
 import { ITEM_PAGE_SIZE } from "@/lib/itemOptions";
 import { AttachmentsPanel } from "@/components/AttachmentsPanel";
 import { TasksPanel } from "@/components/TasksPanel";
+import { SiteMaterialForm } from "@/components/SiteMaterialForm";
+import { SiteMaterialDocs, type SiteMaterialDoc } from "@/components/SiteMaterialDocs";
+import { summarizeMaterial } from "@/lib/serviceMaterial";
 
 const STATUS_STYLE: Record<string, string> = {
   MaterialPending: "bg-warn-soft text-warn",
@@ -47,6 +50,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     { data: attachments },
     { data: tasks },
     { data: profiles },
+    { data: materialDocs },
+    { data: customLedger },
+    { data: company },
   ] = await Promise.all([
     supabase
       .from("jobs")
@@ -60,6 +66,14 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     supabase.from("attachments").select("*").eq("owner_table", "jobs").eq("owner_id", id).order("uploaded_at", { ascending: false }),
     supabase.from("tasks").select("*, profiles(full_name)").eq("related_table", "jobs").eq("related_id", id).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id, full_name").eq("is_active", true).order("full_name"),
+    supabase
+      .from("service_material_docs")
+      .select("*, service_material_lines(description, qty, unit, sort_order, is_stock, line_description)")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false }),
+    // custom (outside-stock) material cost: finance-only in RLS, like job_cost_ledger
+    supabase.from("service_job_cost_ledger").select("item_id, label, amount").eq("job_id", id),
+    supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
   ]);
 
   if (!job) notFound();
@@ -77,6 +91,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   const responsible = job.profiles as unknown as { full_name: string } | null;
 
   const materialCost = (costLedger ?? []).filter((c) => c.cost_type === "material").reduce((s, c) => s + c.amount, 0);
+  const customSummary = summarizeMaterial((materialDocs ?? []) as unknown as Parameters<typeof summarizeMaterial>[0], customLedger ?? []);
+  const customRows = customSummary.rows.filter((r) => r.custom);
+  const customTotal = customRows.reduce((t, r) => t + (r.cost ?? 0), 0);
   const labourCost = (costLedger ?? []).filter((c) => c.cost_type === "labour").reduce((s, c) => s + c.amount, 0);
   const overheadCost = (costLedger ?? []).filter((c) => c.cost_type === "overhead").reduce((s, c) => s + c.amount, 0);
 
@@ -209,6 +226,20 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             canHandleMaterial={canHandleMaterial}
           />
 
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-ink">Raw Material DC (site)</h2>
+            <SiteMaterialDocs
+              docs={(materialDocs ?? []) as unknown as SiteMaterialDoc[]}
+              jobPath={`/jobs/${id}`}
+              canCancel={isOwner(user) && !["ReadyForDispatch", "Delivered", "Cancelled"].includes(job.status)}
+              hasSignature={!!company?.signature_path}
+              hasStamp={!!company?.stamp_path}
+            />
+            {canHandleMaterial && !["ReadyForDispatch", "Delivered", "Cancelled"].includes(job.status) && (
+              <SiteMaterialForm jobId={id} fixedWarehouseName={warehouse?.name} defaultReference={so?.client_po_number ?? ""} />
+            )}
+          </div>
+
           {/* job_cost_ledger is finance-only in RLS; others would just see 0s. */}
           {canSeeFinance(user) && (
           <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
@@ -227,6 +258,24 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 <p className="text-ink font-medium">{overheadCost.toLocaleString()}</p>
               </div>
             </div>
+            {customRows.length > 0 && (
+              <div className="border-t border-line pt-2 space-y-1">
+                <p className="text-xs text-ink-faint">
+                  Custom material (typed items, no stock): {customTotal.toLocaleString()}. Shown for information: it is not posted to the accounts
+                  (it is already booked through the purchase) and is not in Cost &amp; Profit.
+                </p>
+                <ul className="text-xs text-ink-soft space-y-0.5">
+                  {customRows.map((r) => (
+                    <li key={r.key} className="flex justify-between">
+                      <span>
+                        {r.description} ({r.issued} {r.unit ?? ""})
+                      </span>
+                      <span className="tabular">{(r.cost ?? 0).toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <p className="text-xs text-ink-faint">
               Only material cost is automated (from stock issue/return). Labour/overhead are not automated yet since there is no manual expense/payroll
               system — this is a deliberate scope deferral.

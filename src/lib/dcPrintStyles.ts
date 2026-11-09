@@ -27,6 +27,13 @@ export function dcPrintStyles(scope: string): string {
     .${scope} .f { align-self: start; display: flex; align-items: baseline; gap: 6px; border-bottom: 1px solid #000; min-height: 8mm; padding: 0 2px 1px; }
     .${scope} .f .k { font-weight: 700; white-space: nowrap; }
     .${scope} .f .v { flex: 1; font-size: 14px; }
+    /* Raw Material DC header: M/s | D.C. No., Project | Date in two columns, then Ref/PO, Vehicle, Driver across the full width. */
+    .${scope} .fields2 { display: grid; grid-template-columns: 1fr 38%; column-gap: 8mm; margin-top: 5mm; }
+    .${scope} .fields2 .f { align-self: stretch; }
+    /* Project and Date: the text sits midway between the line above and the line below. */
+    .${scope} .fields2 .f.mid { align-items: center; padding-top: 2mm; padding-bottom: 2mm; }
+    .${scope} .fields3 { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); column-gap: 8mm; margin-top: 2mm; }
+    .${scope} .fields3 .f { align-self: stretch; }
     .${scope} .left-col { display: flex; flex-direction: column; justify-content: space-between; }
     .${scope} .right-col { display: flex; flex-direction: column; gap: 2mm; }
     .${scope} .right-col .f, .${scope} .left-col .f { align-self: stretch; }

@@ -46,6 +46,32 @@ describe("summarizeMaterial", () => {
   });
 });
 
+describe("summarizeMaterial: custom items", () => {
+  const docs = [
+    {
+      kind: "issue",
+      status: "Issued",
+      service_material_lines: [
+        { item_id: "a", qty: 4, description: "Plate" },
+        { item_id: null, qty: 2, description: "Hydraulic hose", unit: "MTR" },
+      ],
+    },
+  ];
+  const ledger = [
+    { item_id: "a", amount: 400 },
+    { item_id: null, label: "Hydraulic hose", amount: 1000 },
+  ];
+  it("lists a custom item with its own cost and adds it to the total", () => {
+    const { rows, totalCost } = summarizeMaterial(docs, ledger);
+    const hose = rows.find((r) => r.custom)!;
+    expect([hose.description, hose.issued, hose.cost, hose.unit]).toEqual(["Hydraulic hose", 2, 1000, "MTR"]);
+    expect(totalCost).toBe(1400);
+  });
+  it("does not count a custom item as material still out on the job", () => {
+    expect(summarizeMaterial(docs, ledger).netQty).toBe(4);
+  });
+});
+
 describe("costHeading", () => {
   it("shows the final total once delivered", () => {
     expect(costHeading("Delivered")).toBe("Total Cost (final)");
