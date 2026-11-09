@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
+import { LAST_ACTIVE_COOKIE, REMEMBER_COOKIE, isIdleExpired, isSessionOnly, withoutLifetime } from "@/lib/sessionPolicy";
 
 // Next.js 16 renamed `middleware.ts` -> `proxy.ts` and the exported
 // `middleware()` function -> `proxy()`. This runs on the Node runtime
@@ -10,6 +11,8 @@ const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  // "Keep me signed in" not ticked: the sign-in cookies stay session cookies (see lib/sessionPolicy.ts).
+  const sessionOnly = isSessionOnly(request.cookies.get(REMEMBER_COOKIE)?.value);
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +28,7 @@ export async function proxy(request: NextRequest) {
           }
           response = NextResponse.next({ request });
           for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, sessionOnly ? withoutLifetime(options) : options);
           }
         },
       },
@@ -38,6 +41,21 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p)) || path.startsWith("/_next");
+
+  // Idle sign-out backstop: a user who did not tick "Keep me signed in" and has done nothing for over an hour
+  // (the page records real activity; see lib/sessionPolicy.ts) is signed out here, e.g. after the device slept.
+  if (user && !isPublic && isIdleExpired(request.cookies.get(REMEMBER_COOKIE)?.value, request.cookies.get(LAST_ACTIVE_COOKIE)?.value)) {
+    await supabase.auth.signOut();
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("reason", "idle");
+    const redirect = NextResponse.redirect(url);
+    for (const c of response.cookies.getAll()) redirect.cookies.set(c);
+    redirect.cookies.delete(LAST_ACTIVE_COOKIE);
+    redirect.cookies.delete(REMEMBER_COOKIE);
+    return redirect;
+  }
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

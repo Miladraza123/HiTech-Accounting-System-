@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { LAST_ACTIVE_COOKIE, REMEMBER_COOKIE, REMEMBER_MAX_AGE_S } from "@/lib/sessionPolicy";
 import {
   WEAK_PASSWORD_COOKIE,
   encodeWeakPasswordReasons,
@@ -25,7 +26,10 @@ export async function signInAction(
     return { error: "Enter both email and password." };
   }
 
-  const supabase = await createClient();
+  // "Keep me signed in": ticked keeps the session as before; not ticked makes it a session that ends when the
+  // browser or app is closed and after an hour without activity (see lib/sessionPolicy.ts).
+  const remember = formData.get("remember") === "on";
+  const supabase = await createClient({ sessionOnly: !remember });
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -38,6 +42,13 @@ export async function signInAction(
   // learns about it; the app layout turns this cookie into a banner. Written on
   // every sign-in, so it also clears itself once the password is fixed.
   const cookieStore = await cookies();
+  const choiceCookie = { sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/" };
+  cookieStore.set(REMEMBER_COOKIE, remember ? "1" : "0", remember ? { ...choiceCookie, maxAge: REMEMBER_MAX_AGE_S } : choiceCookie);
+  if (remember) {
+    cookieStore.delete(LAST_ACTIVE_COOKIE);
+  } else {
+    cookieStore.set(LAST_ACTIVE_COOKIE, String(Date.now()), choiceCookie);
+  }
   const weakReasons = data.weakPassword?.reasons ?? [];
   if (weakReasons.length) {
     cookieStore.set(WEAK_PASSWORD_COOKIE, encodeWeakPasswordReasons(weakReasons), {
@@ -136,7 +147,27 @@ export async function signOutAction() {
   }
 
   await supabase.auth.signOut();
+  cookieStore.delete(REMEMBER_COOKIE);
+  cookieStore.delete(LAST_ACTIVE_COOKIE);
   redirect("/login");
+}
+
+// Called by IdleLogout.tsx once a not-kept session has been idle for an hour: the same sign-out, then the login
+// page says why.
+export async function idleSignOutAction() {
+  const supabase = await createClient();
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+
+  if (sessionId) {
+    await supabase.rpc("fn_log_logout", { p_session_id: sessionId });
+    cookieStore.delete(SESSION_COOKIE);
+  }
+
+  await supabase.auth.signOut();
+  cookieStore.delete(REMEMBER_COOKIE);
+  cookieStore.delete(LAST_ACTIVE_COOKIE);
+  redirect("/login?reason=idle");
 }
 
 // Used with useActionState, which passes (prevState, formData) — neither is

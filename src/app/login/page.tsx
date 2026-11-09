@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { signInAction, type ActionState } from "@/app/actions/auth";
 
 const initialState: ActionState = { error: null };
@@ -17,6 +17,12 @@ export default function LoginPage() {
     const img = logoRef.current;
     if (img && img.complete && img.naturalWidth === 0) setLogoFailed(true);
   }, []);
+  // Sent here by the idle sign-out (IdleLogout / the proxy): say why, once.
+  const signedOutIdle = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("reason") === "idle",
+    () => false
+  );
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-bg px-4 py-12">
@@ -75,6 +81,16 @@ export default function LoginPage() {
             />
           </div>
 
+          <label htmlFor="remember" className="flex items-center gap-2 text-xs text-ink-soft">
+            <input id="remember" name="remember" type="checkbox" className="h-4 w-4 rounded border-line" />
+            Keep me signed in
+          </label>
+
+          {signedOutIdle && !state.error && (
+            <p className="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
+              You were signed out after an hour of inactivity. Please sign in again.
+            </p>
+          )}
           {state.error && (
             <p className="rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{state.error}</p>
           )}
