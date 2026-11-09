@@ -65,7 +65,7 @@ const TABLE_ORDER = [
   "activity_timeline", "attachments", "audit_log", "bank_accounts", "chart_of_accounts",
   "daily_snapshots", "import_batches", "journal_entries", "login_sessions", "numbering_sequences",
   "profiles", "provinces", "query_sources", "role_permissions", "roles", "units", "warehouses",
-  "company", "expense_heads", "items", "parties", "petty_cash_funds", "stock_transfers", "tasks",
+  "company", "expense_heads", "items", "parties", "petty_cash_funds", "stock_transfers", "recurring_tasks", "tasks",
   "unit_conversions", "user_roles", "vehicles", "contra_transfers", "item_alt_units", "journal_lines",
   "party_contacts", "payments", "product_templates", "queries", "stock_adjustments", "stock_ledger",
   "stock_transfer_lines", "product_template_lines", "quotations", "quotation_revisions", "sales_orders",

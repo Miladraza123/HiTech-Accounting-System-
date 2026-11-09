@@ -5513,6 +5513,69 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_tasks: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_time: string | null
+          end_date: string | null
+          frequency: string
+          id: string
+          is_active: boolean
+          last_generated_date: string | null
+          month: number | null
+          month_day: number | null
+          priority: string
+          start_date: string
+          title: string
+          updated_at: string
+          weekdays: number[]
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_time?: string | null
+          end_date?: string | null
+          frequency: string
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          month?: number | null
+          month_day?: number | null
+          priority?: string
+          start_date?: string
+          title: string
+          updated_at?: string
+          weekdays?: number[]
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_time?: string | null
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          month?: number | null
+          month_day?: number | null
+          priority?: string
+          start_date?: string
+          title?: string
+          updated_at?: string
+          weekdays?: number[]
+        }
+        Relationships: [
+          { foreignKeyName: "recurring_tasks_assigned_to_fkey", columns: ["assigned_to"], isOneToOne: false, referencedRelation: "profiles", referencedColumns: ["id"] },
+          { foreignKeyName: "recurring_tasks_created_by_fkey", columns: ["created_by"], isOneToOne: false, referencedRelation: "profiles", referencedColumns: ["id"] },
+        ]
+      }
       tasks: {
         Row: {
           accepted_at: string | null
@@ -5533,6 +5596,8 @@ export type Database = {
           title: string
           updated_at: string
           updated_by: string | null
+          due_time: string | null
+          recurring_task_id: string | null
         }
         Insert: {
           accepted_at?: string | null
@@ -5553,6 +5618,8 @@ export type Database = {
           title: string
           updated_at?: string
           updated_by?: string | null
+          due_time?: string | null
+          recurring_task_id?: string | null
         }
         Update: {
           accepted_at?: string | null
@@ -5573,8 +5640,11 @@ export type Database = {
           title?: string
           updated_at?: string
           updated_by?: string | null
+          due_time?: string | null
+          recurring_task_id?: string | null
         }
         Relationships: [
+          { foreignKeyName: "tasks_recurring_task_id_fkey", columns: ["recurring_task_id"], isOneToOne: false, referencedRelation: "recurring_tasks", referencedColumns: ["id"] },
           {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -7025,6 +7095,36 @@ export type Database = {
           p_warehouse_id: string
         }
         Returns: string
+      }
+      fn_delete_recurring_task: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      fn_generate_recurring_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      fn_save_recurring_task: {
+        Args: {
+          p_assigned_to: string
+          p_description: string
+          p_due_time: string
+          p_end_date: string
+          p_frequency: string
+          p_id: string
+          p_is_active: boolean
+          p_month: number
+          p_month_day: number
+          p_priority: string
+          p_start_date: string
+          p_title: string
+          p_weekdays: number[]
+        }
+        Returns: string
+      }
+      fn_set_recurring_task_active: {
+        Args: { p_active: boolean; p_id: string }
+        Returns: undefined
       }
       fn_create_sales_order: {
         Args: {

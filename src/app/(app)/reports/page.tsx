@@ -7,6 +7,7 @@ import { resolveRange, buildTimeBuckets, RANGE_LABEL } from "@/lib/dashboardHelp
 import { TrendLineChart, type TrendSeries } from "@/components/TrendLineChart";
 import { CompareBarChart, type CompareBar } from "@/components/CompareBarChart";
 import { Badge } from "@/components/ui/Badge";
+import { TodaysTasks } from "@/components/TodaysTasks";
 import {
   HelpCircle,
   FileText,
@@ -206,6 +207,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <GreetingBanner fullName={user.fullName} />
+
+      <TodaysTasks user={user} revalidateTo="/reports" />
 
       <div className="rounded-xl border border-line bg-surface p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
