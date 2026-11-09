@@ -4647,9 +4647,12 @@ export type Database = {
           doc_id: string | null
           id: string
           item_id: string | null
+          job_id: string | null
+          label: string | null
+          line_id: string | null
           memo: string | null
           qty: number | null
-          service_job_id: string
+          service_job_id: string | null
         }
         Insert: {
           amount: number
@@ -4658,9 +4661,12 @@ export type Database = {
           doc_id?: string | null
           id?: string
           item_id?: string | null
+          job_id?: string | null
+          label?: string | null
+          line_id?: string | null
           memo?: string | null
           qty?: number | null
-          service_job_id: string
+          service_job_id?: string | null
         }
         Update: {
           amount?: number
@@ -4669,13 +4675,18 @@ export type Database = {
           doc_id?: string | null
           id?: string
           item_id?: string | null
+          job_id?: string | null
+          label?: string | null
+          line_id?: string | null
           memo?: string | null
           qty?: number | null
-          service_job_id?: string
+          service_job_id?: string | null
         }
         Relationships: [
           { foreignKeyName: "service_job_cost_ledger_doc_id_fkey", columns: ["doc_id"], isOneToOne: false, referencedRelation: "service_material_docs", referencedColumns: ["id"] },
           { foreignKeyName: "service_job_cost_ledger_item_id_fkey", columns: ["item_id"], isOneToOne: false, referencedRelation: "items", referencedColumns: ["id"] },
+          { foreignKeyName: "service_job_cost_ledger_job_id_fkey", columns: ["job_id"], isOneToOne: false, referencedRelation: "jobs", referencedColumns: ["id"] },
+          { foreignKeyName: "service_job_cost_ledger_line_id_fkey", columns: ["line_id"], isOneToOne: false, referencedRelation: "service_material_lines", referencedColumns: ["id"] },
           { foreignKeyName: "service_job_cost_ledger_service_job_id_fkey", columns: ["service_job_id"], isOneToOne: false, referencedRelation: "service_jobs", referencedColumns: ["id"] },
         ]
       }
@@ -4684,25 +4695,29 @@ export type Database = {
           cancel_reason: string | null
           created_at: string
           created_by: string | null
+          dc_description: string | null
           doc_date: string
           doc_no: string
           driver_name: string | null
           id: string
           journal_entry_id: string | null
+          job_id: string | null
           kind: string
           party_id: string
+          reference: string | null
           remarks: string | null
-          service_job_id: string
+          service_job_id: string | null
           status: string
           updated_at: string
           updated_by: string | null
           vehicle_no: string | null
-          warehouse_id: string
+          warehouse_id: string | null
         }
         Insert: {
           cancel_reason?: string | null
           created_at?: string
           created_by?: string | null
+          dc_description?: string | null
           doc_date?: string
           doc_no: string
           driver_name?: string | null
@@ -4711,33 +4726,37 @@ export type Database = {
           kind: string
           party_id: string
           remarks?: string | null
-          service_job_id: string
+          service_job_id: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
           vehicle_no?: string | null
-          warehouse_id: string
+          warehouse_id?: string | null
         }
         Update: {
           cancel_reason?: string | null
           created_at?: string
           created_by?: string | null
+          dc_description?: string | null
           doc_date?: string
           doc_no?: string
           driver_name?: string | null
           id?: string
           journal_entry_id?: string | null
+          job_id?: string | null
           kind?: string
           party_id?: string
+          reference?: string | null
           remarks?: string | null
           service_job_id?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
           vehicle_no?: string | null
-          warehouse_id?: string
+          warehouse_id?: string | null
         }
         Relationships: [
+          { foreignKeyName: "service_material_docs_job_id_fkey", columns: ["job_id"], isOneToOne: false, referencedRelation: "jobs", referencedColumns: ["id"] },
           { foreignKeyName: "service_material_docs_journal_entry_id_fkey", columns: ["journal_entry_id"], isOneToOne: false, referencedRelation: "journal_entries", referencedColumns: ["id"] },
           { foreignKeyName: "service_material_docs_party_id_fkey", columns: ["party_id"], isOneToOne: false, referencedRelation: "parties", referencedColumns: ["id"] },
           { foreignKeyName: "service_material_docs_service_job_id_fkey", columns: ["service_job_id"], isOneToOne: false, referencedRelation: "service_jobs", referencedColumns: ["id"] },
@@ -4749,7 +4768,9 @@ export type Database = {
           description: string
           doc_id: string
           id: string
-          item_id: string
+          is_stock: boolean
+          item_id: string | null
+          line_description: string | null
           qty: number
           sort_order: number
           unit: string | null
@@ -4758,7 +4779,9 @@ export type Database = {
           description: string
           doc_id: string
           id?: string
-          item_id: string
+          is_stock?: boolean
+          item_id?: string | null
+          line_description?: string | null
           qty: number
           sort_order?: number
           unit?: string | null
@@ -4767,7 +4790,9 @@ export type Database = {
           description?: string
           doc_id?: string
           id?: string
-          item_id?: string
+          is_stock?: boolean
+          item_id?: string | null
+          line_description?: string | null
           qty?: number
           sort_order?: number
           unit?: string | null
@@ -6972,6 +6997,21 @@ export type Database = {
       fn_cancel_service_material_doc: {
         Args: { p_doc_id: string; p_reason: string }
         Returns: undefined
+      }
+      fn_create_site_material_doc: {
+        Args: {
+          p_dc_description: string
+          p_doc_date: string
+          p_driver_name: string
+          p_job_id: string
+          p_kind: string
+          p_lines: Json
+          p_reference: string
+          p_service_job_id: string
+          p_vehicle_no: string
+          p_warehouse_id: string
+        }
+        Returns: string
       }
       fn_create_service_material_doc: {
         Args: {

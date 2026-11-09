@@ -4,8 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOwner } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { smartMergeUpdate } from "@/lib/smartMerge";
-import { hasPermission } from "@/lib/permissions";
-import type { Json } from "@/lib/supabase/database.types";
 
 export type ActionResult = { error: string | null; id?: string; success?: boolean };
 
@@ -134,52 +132,6 @@ export async function cancelServiceInvoiceAction(serviceInvoiceId: string, servi
   if (!isOwner(await getCurrentUser())) return NO_PERMISSION;
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_cancel_service_invoice", { p_service_invoice_id: serviceInvoiceId, p_reason: reason });
-  if (error) return { error: error.message };
-  revalidatePath(`/service-jobs/${serviceJobId}`);
-  return { error: null, success: true };
-}
-
-// ---------------------------------------------------------------------------
-// Material issued to a Service Job (Site Material DC) and sent back
-// ---------------------------------------------------------------------------
-export async function createServiceMaterialDocAction(input: {
-  service_job_id: string;
-  kind: "issue" | "return";
-  warehouse_id: string;
-  doc_date: string;
-  vehicle_no: string;
-  driver_name: string;
-  remarks: string;
-  lines: { item_id: string; qty: number }[];
-}): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!(await hasPermission(user, "service_material.manage"))) return NO_PERMISSION;
-  if (!input.warehouse_id) return { error: "Choose a warehouse." };
-  if (!input.lines.length) return { error: "Add at least one item." };
-  for (const l of input.lines) {
-    if (!l.item_id) return { error: "Choose an item on every line." };
-    if (!Number.isFinite(l.qty) || l.qty <= 0) return { error: "Quantity must be more than zero." };
-  }
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("fn_create_service_material_doc", {
-    p_service_job_id: input.service_job_id,
-    p_kind: input.kind,
-    p_warehouse_id: input.warehouse_id,
-    p_doc_date: input.doc_date as string,
-    p_vehicle_no: input.vehicle_no as string,
-    p_driver_name: input.driver_name as string,
-    p_remarks: input.remarks as string,
-    p_lines: input.lines as unknown as Json,
-  });
-  if (error) return { error: error.message };
-  revalidatePath(`/service-jobs/${input.service_job_id}`);
-  return { error: null, id: data as string, success: true };
-}
-
-export async function cancelServiceMaterialDocAction(docId: string, serviceJobId: string, reason: string): Promise<ActionResult> {
-  if (!isOwner(await getCurrentUser())) return { error: "Only the Owner can cancel a material document." };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("fn_cancel_service_material_doc", { p_doc_id: docId, p_reason: reason });
   if (error) return { error: error.message };
   revalidatePath(`/service-jobs/${serviceJobId}`);
   return { error: null, success: true };
