@@ -77,6 +77,7 @@ const TABLE_ORDER = [
   // Phase 47: HR / Attendance (parents before children).
   "hr_settings", "hr_policy_groups", "hr_policy_versions", "hr_employees", "hr_employee_terms", "hr_holidays", "hr_leave_types",
   "hr_attendance", "hr_advances", "hr_salary_sheets", "hr_salary_lines", "hr_salary_days", "hr_advance_recoveries", "hr_fixed_charges", "hr_salary_line_charges",
+  "service_material_docs", "service_material_lines", "service_job_cost_ledger",
 ];
 
 // ---------- Timezone helpers ----------

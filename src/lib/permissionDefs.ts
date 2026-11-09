@@ -25,6 +25,7 @@ export type PermissionKey =
   | "stock_transfer.create"
   | "service_job.manage"
   | "service_delivery.manage"
+  | "service_material.manage"
   | "service_invoice.manage";
 
 export type PermissionDef = {
@@ -57,6 +58,7 @@ export const PERMISSION_DEFS: PermissionDef[] = [
   { key: "purchase_return.manage", label: "Create Purchase Return (debit note) — Cancel is Owner-only", module: "Accounts & Finance", dbAllowedRoles: ["accounts", "store"] },
   { key: "service_job.manage", label: "Intake/complete Service Job (Cancel is Owner-only)", module: "Service/Repair", dbAllowedRoles: ["sales", "store"] },
   { key: "service_delivery.manage", label: "Create Service Delivery (returning the repaired item) — Cancel is Owner-only", module: "Service/Repair", dbAllowedRoles: ["dispatch"] },
+  { key: "service_material.manage", label: "Issue/return Service Job material (Site Material DC) — Cancel is Owner-only", module: "Service/Repair", dbAllowedRoles: ["store", "dispatch"] },
   { key: "service_invoice.manage", label: "Create Service Invoice (Cancel is Owner-only)", module: "Service/Repair", dbAllowedRoles: ["accounts"] },
 ];
 
