@@ -34,3 +34,19 @@ describe("NavGroups", () => {
     expect(html).not.toContain(">5<");
   });
 });
+
+describe("NavGroups: the longest matching link is the active one", () => {
+  const cats: NavCategory[] = [
+    { label: "", items: [{ href: "/tasks", label: "Tasks & Follow-ups", show: true }, { href: "/tasks/recurring", label: "Recurring Tasks", show: true }] },
+  ];
+  const activeCount = (html: string) => (html.match(/bg-accent-soft/g) ?? []).length;
+  it("lights only Recurring Tasks on /tasks/recurring, not Tasks & Follow-ups too", () => {
+    const html = renderToStaticMarkup(<NavGroups categories={cats} pathname="/tasks/recurring" />);
+    expect(activeCount(html)).toBe(1);
+    expect(html.indexOf("bg-accent-soft")).toBeGreaterThan(html.indexOf("Tasks &amp; Follow-ups"));
+  });
+  it("lights Tasks & Follow-ups on /tasks and on a task page", () => {
+    expect(activeCount(renderToStaticMarkup(<NavGroups categories={cats} pathname="/tasks" />))).toBe(1);
+    expect(activeCount(renderToStaticMarkup(<NavGroups categories={cats} pathname="/tasks/abc" />))).toBe(1);
+  });
+});

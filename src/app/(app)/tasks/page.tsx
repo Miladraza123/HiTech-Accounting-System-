@@ -7,6 +7,8 @@ import { relatedEntityLink } from "@/lib/taskLinks";
 import { buttonClass } from "@/components/ui/Button";
 import { parsePage, pageRange, totalPages as computeTotalPages } from "@/lib/pagination";
 import { PaginationControls } from "@/components/PaginationControls";
+import { TodaysTasks } from "@/components/TodaysTasks";
+import { formatTime } from "@/lib/recurringTasks";
 
 type Filter = "mine" | "all" | "overdue" | "today" | "upcoming" | "done";
 
@@ -95,6 +97,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
     status: t.status,
     priority: t.priority,
     due_date: t.due_date,
+    due_time: t.due_time,
     assigned_to: t.assigned_to,
     created_by: t.created_by,
     assignee_name: (t.profiles as unknown as { full_name: string } | null)?.full_name ?? "—",
@@ -111,10 +114,17 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           <h1 className="text-lg font-semibold text-ink">Tasks &amp; Follow-ups</h1>
           <p className="mt-1 text-sm text-ink-soft">All tasks for every order/job/client in one place — plus General tasks.</p>
         </div>
-        <Link href="/tasks/new" className={buttonClass("primary", "sm")}>
-          + New Task
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/tasks/recurring" className={buttonClass("secondary", "sm")}>
+            Recurring Tasks
+          </Link>
+          <Link href="/tasks/new" className={buttonClass("primary", "sm")}>
+            + New Task
+          </Link>
+        </div>
       </div>
+
+      <TodaysTasks user={user} revalidateTo="/tasks" />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-line bg-surface p-4">
@@ -178,7 +188,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                     </td>
                     <td className="px-3 py-2 text-ink-soft">{t.assignee_name}</td>
                     <td className={`px-3 py-2 ${PRIORITY_STYLE[t.priority] ?? ""}`}>{t.priority}</td>
-                    <td className={`px-3 py-2 tabular text-xs ${t.isOverdue ? "text-bad font-medium" : "text-ink-faint"}`}>{t.due_date ?? "—"}</td>
+                    <td className={`px-3 py-2 tabular text-xs ${t.isOverdue ? "text-bad font-medium" : "text-ink-faint"}`}>{t.due_date ?? "—"}{t.due_time && ` ${formatTime(t.due_time)}`}</td>
                     <td className="px-3 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-mono ${STATUS_STYLE[t.status] ?? ""}`}>{t.status}</span>
                     </td>

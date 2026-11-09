@@ -29,6 +29,7 @@ import packageJson from "../../../package.json";
 import {
   LayoutDashboard,
   ListChecks,
+  Repeat,
   Users,
   HelpCircle,
   FileText,
@@ -86,6 +87,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hrReader = canReadHr(user);
 
   const supabase = await createClient();
+  // Make today's tasks from the user's Recurring Tasks first, so the sidebar count below includes them.
+  try {
+    await supabase.rpc("fn_generate_recurring_tasks");
+  } catch {
+    // a reminder problem must never stop a page from loading
+  }
   const [{ data: ownerExists }, { count: dueTaskCount }, notifications, { data: companyBranding }] = await Promise.all([
     // A plain count query here (`.from("user_roles")...`) is subject to
     // user_roles' own RLS select policy — `user_id = auth.uid() OR
@@ -128,6 +135,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           icon: <LayoutDashboard size={ICON_SIZE} />,
         },
         { href: "/tasks", label: "Tasks & Follow-ups", show: true, badge: dueTaskCount || undefined, icon: <ListChecks size={ICON_SIZE} /> },
+        { href: "/tasks/recurring", label: "Recurring Tasks", show: true, icon: <Repeat size={ICON_SIZE} /> },
       ],
     },
     {

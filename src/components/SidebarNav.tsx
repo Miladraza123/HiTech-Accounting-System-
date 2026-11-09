@@ -8,9 +8,16 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 export type NavItem = { href: string; label: string; show: boolean; badge?: number; icon?: ReactNode };
 export type NavCategory = { label: string; items: NavItem[] };
 
-function isActive(pathname: string, href: string) {
+function matches(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
+}
+
+/** The one item for this page: the longest matching link, so /tasks/recurring lights "Recurring Tasks", not "Tasks & Follow-ups" too. */
+function bestHref(categories: NavCategory[], pathname: string): string | null {
+  let best: string | null = null;
+  for (const c of categories) for (const n of c.items) if (n.show && matches(pathname, n.href) && (best === null || n.href.length > best.length)) best = n.href;
+  return best;
 }
 
 const STORAGE_KEY = "nav-open-groups";
@@ -60,7 +67,8 @@ function writeLabels(labels: string[]) {
  * group still shows the total of its items' badges so no alert is hidden.
  */
 export function NavGroups({ categories, pathname, onNavigate }: { categories: NavCategory[]; pathname: string; onNavigate?: () => void }) {
-  const activeLabel = categories.find((c) => c.label && c.items.some((n) => n.show && isActive(pathname, n.href)))?.label;
+  const activeHref = bestHref(categories, pathname);
+  const activeLabel = categories.find((c) => c.label && c.items.some((n) => n.show && n.href === activeHref))?.label;
   // The server snapshot is "[]" (only the active group open), so hydration matches;
   // the stored choices then apply on the client without a setState-in-effect.
   const openLabels = parseLabels(useSyncExternalStore(subscribe, readRaw, () => "[]"));
@@ -78,7 +86,7 @@ export function NavGroups({ categories, pathname, onNavigate }: { categories: Na
           return (
             <div key="_root">
               {visible.map((n) => (
-                <NavLink key={n.href} item={n} active={isActive(pathname, n.href)} onClick={onNavigate} />
+                <NavLink key={n.href} item={n} active={n.href === activeHref} onClick={onNavigate} />
               ))}
             </div>
           );
@@ -104,7 +112,7 @@ export function NavGroups({ categories, pathname, onNavigate }: { categories: Na
             {isOpen && (
               <div id={panelId} className="space-y-0.5">
                 {visible.map((n) => (
-                  <NavLink key={n.href} item={n} active={isActive(pathname, n.href)} onClick={onNavigate} />
+                  <NavLink key={n.href} item={n} active={n.href === activeHref} onClick={onNavigate} />
                 ))}
               </div>
             )}
