@@ -482,6 +482,7 @@ export type Database = {
       delivery_challan_lines: {
         Row: {
           remarks: string | null
+          print_description: string | null
           dc_id: string
           delivered_qty: number
           description: string
@@ -495,6 +496,7 @@ export type Database = {
         }
         Insert: {
           remarks?: string | null
+          print_description?: string | null
           dc_id: string
           delivered_qty: number
           description: string
@@ -508,6 +510,7 @@ export type Database = {
         }
         Update: {
           remarks?: string | null
+          print_description?: string | null
           dc_id?: string
           delivered_qty?: number
           description?: string

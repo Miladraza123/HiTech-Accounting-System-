@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { updateDcPrintDetailsAction } from "@/app/actions/deliveryChallans";
 import { buttonClass } from "@/components/ui/Button";
 
-type Line = { sales_order_line_id: string; description: string; remarks: string | null };
+type Line = {
+  sales_order_line_id: string;
+  description: string;
+  print_description: string | null;
+  remarks: string | null;
+};
 
 /** Ref/PO Number and the per-line Remarks printed on the Delivery Challan, editable after the challan is made. */
 export function DcPrintDetailsEditor({
@@ -29,7 +34,19 @@ export function DcPrintDetailsEditor({
   const [editing, setEditing] = useState(false);
   const [ref, setRef] = useState(refNo ?? "");
   const [projectValue, setProjectValue] = useState(project ?? "");
-  const [remarks, setRemarks] = useState<Record<string, string>>(() => Object.fromEntries(lines.map((l) => [l.sales_order_line_id, l.remarks ?? ""])));
+  const [remarks, setRemarks] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      lines.map((l) => [l.sales_order_line_id, l.remarks ?? ""]),
+    ),
+  );
+  const [descs, setDescs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      lines.map((l) => [
+        l.sales_order_line_id,
+        l.print_description ?? l.description,
+      ]),
+    ),
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -40,8 +57,12 @@ export function DcPrintDetailsEditor({
         const res = await updateDcPrintDetailsAction(
           dcId,
           ref,
-          lines.map((l) => ({ sales_order_line_id: l.sales_order_line_id, remarks: remarks[l.sales_order_line_id] ?? "" })),
-          projectValue
+          lines.map((l) => ({
+            sales_order_line_id: l.sales_order_line_id,
+            remarks: remarks[l.sales_order_line_id] ?? "",
+            description: descs[l.sales_order_line_id] ?? l.description,
+          })),
+          projectValue,
         );
         if (res.error) setError(res.error);
         else {
@@ -59,7 +80,11 @@ export function DcPrintDetailsEditor({
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink">Print Details</h2>
         {canEdit && !editing && (
-          <button type="button" onClick={() => setEditing(true)} className="text-xs text-accent-ink underline underline-offset-2">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-xs text-accent-ink underline underline-offset-2"
+          >
             Edit
           </button>
         )}
@@ -67,19 +92,25 @@ export function DcPrintDetailsEditor({
       {!editing ? (
         <>
           <p className="text-xs text-ink-soft">
-            Ref/PO Number: <span className="text-ink">{refNo || poNumber || "—"}</span>
-            {!refNo && poNumber && <span className="text-ink-faint"> (client PO)</span>}
+            Ref/PO Number:{" "}
+            <span className="text-ink">{refNo || poNumber || "—"}</span>
+            {!refNo && poNumber && (
+              <span className="text-ink-faint"> (client PO)</span>
+            )}
           </p>
           <p className="text-xs text-ink-soft">
             Project: <span className="text-ink">{project || "—"}</span>
           </p>
           {lines.some((l) => l.remarks) && (
             <ul className="text-xs text-ink-soft space-y-0.5">
-              {lines.filter((l) => l.remarks).map((l) => (
-                <li key={l.sales_order_line_id}>
-                  {l.description.split("\n")[0]}: <span className="text-ink">{l.remarks}</span>
-                </li>
-              ))}
+              {lines
+                .filter((l) => l.remarks)
+                .map((l) => (
+                  <li key={l.sales_order_line_id}>
+                    {(l.print_description ?? l.description).split("\n")[0]}:{" "}
+                    <span className="text-ink">{l.remarks}</span>
+                  </li>
+                ))}
             </ul>
           )}
         </>
@@ -87,11 +118,23 @@ export function DcPrintDetailsEditor({
         <div className="space-y-2">
           <label className="block space-y-1">
             <span className="text-[11px] text-ink-faint">Ref/PO Number</span>
-            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder={poNumber ?? ""} className="input !py-1 text-xs" />
+            <input
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+              placeholder={poNumber ?? ""}
+              className="input !py-1 text-xs"
+            />
           </label>
           <label className="block space-y-1">
-            <span className="text-[11px] text-ink-faint">Project (optional)</span>
-            <input value={projectValue} onChange={(e) => setProjectValue(e.target.value)} list={`dc-project-${dcId}`} className="input !py-1 text-xs" />
+            <span className="text-[11px] text-ink-faint">
+              Project (optional)
+            </span>
+            <input
+              value={projectValue}
+              onChange={(e) => setProjectValue(e.target.value)}
+              list={`dc-project-${dcId}`}
+              className="input !py-1 text-xs"
+            />
             <datalist id={`dc-project-${dcId}`}>
               {projectSuggestions.map((name) => (
                 <option key={name} value={name} />
@@ -99,21 +142,70 @@ export function DcPrintDetailsEditor({
             </datalist>
           </label>
           {lines.map((l) => (
-            <label key={l.sales_order_line_id} className="block space-y-1">
-              <span className="text-[11px] text-ink-faint">Remarks: {l.description.split("\n")[0]}</span>
-              <input
-                value={remarks[l.sales_order_line_id] ?? ""}
-                onChange={(e) => setRemarks((r) => ({ ...r, [l.sales_order_line_id]: e.target.value }))}
-                className="input !py-1 text-xs"
-              />
-            </label>
+            <div
+              key={l.sales_order_line_id}
+              className="space-y-1 rounded-lg border border-line p-2"
+            >
+              <label className="block space-y-1">
+                <span className="text-[11px] text-ink-faint">
+                  Description (printed only; the Sales Order is not changed)
+                </span>
+                <textarea
+                  rows={2}
+                  value={descs[l.sales_order_line_id] ?? ""}
+                  onChange={(e) =>
+                    setDescs((d) => ({
+                      ...d,
+                      [l.sales_order_line_id]: e.target.value,
+                    }))
+                  }
+                  className="input !py-1 text-xs"
+                />
+              </label>
+              {(descs[l.sales_order_line_id] ?? "") !== l.description && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDescs((d) => ({
+                      ...d,
+                      [l.sales_order_line_id]: l.description,
+                    }))
+                  }
+                  className="text-[11px] text-accent-ink underline underline-offset-2"
+                >
+                  Reset to original
+                </button>
+              )}
+              <label className="block space-y-1">
+                <span className="text-[11px] text-ink-faint">Remarks</span>
+                <input
+                  value={remarks[l.sales_order_line_id] ?? ""}
+                  onChange={(e) =>
+                    setRemarks((r) => ({
+                      ...r,
+                      [l.sales_order_line_id]: e.target.value,
+                    }))
+                  }
+                  className="input !py-1 text-xs"
+                />
+              </label>
+            </div>
           ))}
           {error && <p className="text-xs text-bad">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setEditing(false)} className={buttonClass("secondary", "sm")}>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className={buttonClass("secondary", "sm")}
+            >
               Cancel
             </button>
-            <button type="button" onClick={save} disabled={pending} className={buttonClass("primary", "sm", "disabled:opacity-60")}>
+            <button
+              type="button"
+              onClick={save}
+              disabled={pending}
+              className={buttonClass("primary", "sm", "disabled:opacity-60")}
+            >
               {pending ? "Saving…" : "Save"}
             </button>
           </div>

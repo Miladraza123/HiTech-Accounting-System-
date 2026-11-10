@@ -149,7 +149,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
                 <tbody>
                   {(lines ?? []).map((l) => (
                     <tr key={l.id} className="border-t border-line">
-                      <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-3 py-2 text-ink">{l.print_description ?? l.description}</td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">
                         {l.delivered_qty} {l.unit}
                       </td>
@@ -177,7 +177,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
             poNumber={so?.client_po_number ?? null}
             project={dc.project}
             projectSuggestions={projectSuggestions}
-            lines={(lines ?? []).map((l) => ({ sales_order_line_id: l.sales_order_line_id, description: l.description, remarks: l.remarks }))}
+            lines={(lines ?? []).map((l) => ({ sales_order_line_id: l.sales_order_line_id, description: l.description, print_description: l.print_description, remarks: l.remarks }))}
             canEdit={canManage && dc.status === "Issued"}
           />
           {dc.status === "Issued" && dc.acceptance_status === "Pending" && canDispute && <PodPanel dcId={id} canDispute={canDispute} canAccept={canManage} />}
