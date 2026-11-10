@@ -63,6 +63,17 @@ describe("letterhead print documents", () => {
     }
   });
 
+  it("quotation prints the Terms & Conditions as typed, and nothing when they are empty", () => {
+    const withTerms = renderToStaticMarkup(<QuotationDoc {...quotation} terms={"1. Prices are ex-works.\n2. Delivery after advance."} />);
+    expect(withTerms).toContain("TERMS &amp; CONDITIONS:");
+    expect(withTerms).toContain("1. Prices are ex-works.");
+    expect(withTerms).toContain("2. Delivery after advance.");
+    for (const empty of [null, "", "   \n "]) {
+      expect(renderToStaticMarkup(<QuotationDoc {...quotation} terms={empty} />)).not.toContain("TERMS &amp; CONDITIONS");
+    }
+    expect(renderToStaticMarkup(<QuotationDoc {...quotation} />)).not.toContain("TERMS &amp; CONDITIONS");
+  });
+
   it("quotation hides Attn and the terms rows that are empty, and says GST without a rate when rates differ", () => {
     const html = renderToStaticMarkup(
       <QuotationDoc

@@ -41,6 +41,9 @@ export function letterheadPrintStyles(scope: string): string {
     .${scope} .desc-title { font-weight: 700; font-size: 15px; text-align: center; }
     .${scope} .desc-sub { font-size: 10.5px; text-align: center; }
     .${scope} .sum td { font-weight: 700; text-align: center; }
+    .${scope} .tc { margin-top: 6mm; font-size: 12px; break-inside: avoid; }
+    .${scope} .tc-title { font-weight: 700; text-decoration: underline; }
+    .${scope} .tc-body { margin-top: 1mm; white-space: pre-wrap; }
     .${scope} .terms { display: grid; grid-template-columns: auto 1fr; column-gap: 8mm; row-gap: 1px; margin-top: 7mm; font-weight: 700; font-size: 12.5px; }
     .${scope} .terms .full { grid-column: 1 / -1; }
     .${scope} .sign { margin-top: 3mm; width: 62mm; }
