@@ -23,7 +23,7 @@ export type DeliveryChallanLineInput = {
 };
 
 /** Ref. No. and per-line Remarks printed on the challan (see fn_set_dc_print_details). */
-export type DcLineRemark = { sales_order_line_id: string; remarks: string };
+export type DcLineRemark = { sales_order_line_id: string; remarks: string; description?: string };
 
 export async function createDeliveryChallanAction(input: {
   sales_order_id: string;

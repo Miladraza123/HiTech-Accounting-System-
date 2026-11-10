@@ -53,7 +53,7 @@ export default async function DeliveryChallanPrintPage({
         lines={(lines ?? []).map((l) => ({
           qty: Number(l.delivered_qty),
           unit: l.unit,
-          description: l.description,
+          description: l.print_description ?? l.description,
           remarks: l.remarks,
         }))}
         remarks={dc.remarks}
