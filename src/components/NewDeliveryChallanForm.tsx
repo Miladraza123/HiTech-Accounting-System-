@@ -52,6 +52,7 @@ export function NewDeliveryChallanForm({
   const [refNo, setRefNo] = useState("");
   const [project, setProject] = useState("");
   const [lineRemarks, setLineRemarks] = useState<Record<string, string>>({});
+  const [lineDescs, setLineDescs] = useState<Record<string, string>>({});
   const [qtys, setQtys] = useState<Record<string, string>>({});
   const [issueFlags, setIssueFlags] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
@@ -79,8 +80,16 @@ export function NewDeliveryChallanForm({
 
     const lines: DeliveryChallanLineInput[] = [];
     const lineRemarkList = candidateLines
-      .map((l) => ({ sales_order_line_id: l.id, remarks: (lineRemarks[l.id] ?? "").trim() }))
-      .filter((r) => r.remarks);
+      .map((l) => {
+        const edited = (lineDescs[l.id] ?? l.description).trim();
+        return {
+          sales_order_line_id: l.id,
+          remarks: (lineRemarks[l.id] ?? "").trim(),
+          // sent only when changed (print only; the Sales Order line is never touched)
+          ...(edited && edited !== l.description.trim() ? { description: edited } : {}),
+        };
+      })
+      .filter((r) => r.remarks || r.description);
     for (const l of candidateLines) {
       const deliveredQty = Number(qtys[l.id] ?? 0);
       const issue = !!issueFlags[l.id];
@@ -270,7 +279,20 @@ export function NewDeliveryChallanForm({
                   const conversionMissing = needsConversion && !alt;
                   return (
                     <tr key={l.id} className="border-t border-line">
-                      <td className="px-3 py-2 text-ink">{l.description}</td>
+                      <td className="px-3 py-2 text-ink">
+                        <textarea
+                          rows={2}
+                          value={lineDescs[l.id] ?? l.description}
+                          onChange={(e) => setLineDescs((d) => ({ ...d, [l.id]: e.target.value }))}
+                          aria-label="Description (printed only)"
+                          className="input !py-1 text-sm min-w-[14rem]"
+                        />
+                        {(lineDescs[l.id] ?? l.description) !== l.description && (
+                          <button type="button" onClick={() => setLineDescs((d) => ({ ...d, [l.id]: l.description }))} className="text-[11px] text-accent-ink underline underline-offset-2">
+                            Reset to original
+                          </button>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">{l.ordered_qty}</td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">{l.delivered_qty}</td>
                       <td className="px-3 py-2 text-right tabular text-ink-soft">{(l.ordered_qty - l.delivered_qty).toFixed(3)}</td>
