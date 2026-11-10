@@ -57,6 +57,10 @@ export default async function DeliveryChallanPrintPage({
           remarks: l.remarks,
         }))}
         remarks={dc.remarks}
+        extraFields={[
+          { label: "Vehicle No.:", value: dc.vehicle_no ?? "" },
+          { label: "Driver Name:", value: dc.driver_name ?? "" },
+        ]}
         company={{
           name: company?.legal_name ?? "Company",
           phone: company?.phone ?? null,
