@@ -10,6 +10,7 @@ export type ActionResult = { error: string | null; id?: string };
 const NO_PERMISSION: ActionResult = { error: "You don't have permission to perform this action." };
 
 export type MaterialLineInput = { item_id: string; required_qty: number; unit?: string };
+export type CustomMaterialInput = { name: string; required_qty: number; unit?: string };
 export type TemplateLineInput = { item_id: string; qty_per_unit: number; unit?: string };
 
 export async function createProductTemplateAction(input: {
@@ -47,11 +48,30 @@ export async function createJobAction(input: {
   start_date: string | null;
   required_delivery_date: string | null;
   material_lines: MaterialLineInput[];
+  /** Typed material that is not in the Item Master: listed on the job, no stock, no accounts. */
+  custom_lines?: CustomMaterialInput[];
 }): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!(await hasPermission(user, "job.manage"))) return NO_PERMISSION;
 
   const supabase = await createClient();
+  if (input.custom_lines?.length) {
+    const { data, error } = await supabase.rpc("fn_create_job_with_custom", {
+      p_sales_order_line_id: input.sales_order_line_id,
+      p_warehouse_id: input.warehouse_id,
+      p_product_template_id: input.product_template_id as string,
+      p_description: input.description,
+      p_job_qty: input.job_qty,
+      p_responsible_user_id: input.responsible_user_id as string,
+      p_start_date: input.start_date as string,
+      p_required_delivery_date: input.required_delivery_date as string,
+      p_material_lines: input.material_lines,
+      p_custom_lines: input.custom_lines,
+    });
+    if (error) return { error: error.message };
+    revalidatePath("/jobs");
+    return { error: null, id: data as string };
+  }
   const { data, error } = await supabase.rpc("fn_create_job", {
     p_sales_order_line_id: input.sales_order_line_id,
     p_warehouse_id: input.warehouse_id,

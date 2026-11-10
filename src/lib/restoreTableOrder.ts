@@ -15,7 +15,7 @@ export const RESTORE_TABLE_ORDER = [
   "stock_transfer_lines", "product_template_lines", "quotations", "quotation_revisions", "sales_orders",
   "delivery_challans", "invoices", "purchase_orders", "quotation_lines", "sales_order_lines", "sales_order_costs",
   "sales_order_revisions", "delivery_challan_lines", "grns", "invoice_lines", "jobs",
-  "purchase_order_lines", "purchase_order_revisions", "sales_returns", "expenses", "grn_lines", "job_cost_ledger",
+  "purchase_order_lines", "purchase_order_revisions", "sales_returns", "expenses", "grn_lines", "job_cost_ledger", "job_custom_materials",
   "job_material_requirements", "sales_return_lines", "stock_reservations", "supplier_bills",
   "payment_allocations", "purchase_returns", "supplier_bill_lines", "purchase_return_lines",
   // Phase 47: HR / Attendance (parents before children).
