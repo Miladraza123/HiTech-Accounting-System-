@@ -53,6 +53,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     { data: materialDocs },
     { data: customLedger },
     { data: company },
+    { data: customMaterials },
   ] = await Promise.all([
     supabase
       .from("jobs")
@@ -74,6 +75,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
     // custom (outside-stock) material cost: finance-only in RLS, like job_cost_ledger
     supabase.from("service_job_cost_ledger").select("item_id, label, amount").eq("job_id", id),
     supabase.from("company").select("signature_path, stamp_path").maybeSingle(),
+    supabase.from("job_custom_materials").select("id, name, required_qty, unit, sort_order").eq("job_id", id).order("sort_order"),
   ]);
 
   if (!job) notFound();
@@ -225,6 +227,23 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
             }))}
             canHandleMaterial={canHandleMaterial}
           />
+
+          {!!customMaterials?.length && (
+            <div className="rounded-xl border border-line bg-surface p-4 space-y-2">
+              <h2 className="text-sm font-semibold text-ink">Custom material (not in stock)</h2>
+              <ul className="text-sm text-ink-soft space-y-0.5">
+                {customMaterials.map((m) => (
+                  <li key={m.id} className="flex justify-between gap-3">
+                    <span>{m.name}</span>
+                    <span className="tabular">
+                      {Number(m.required_qty)} {m.unit ?? ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-ink-faint">Listed for the job only: no stock is reserved. Send it to site with a Raw Material DC (custom item).</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-ink">Raw Material DC (site)</h2>

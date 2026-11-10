@@ -2582,6 +2582,41 @@ export type Database = {
           },
         ]
       }
+      job_custom_materials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          name: string
+          required_qty: number
+          sort_order: number
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          name: string
+          required_qty: number
+          sort_order?: number
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          name?: string
+          required_qty?: number
+          sort_order?: number
+          unit?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "job_custom_materials_job_id_fkey", columns: ["job_id"], isOneToOne: false, referencedRelation: "jobs", referencedColumns: ["id"] },
+        ]
+      }
       job_material_requirements: {
         Row: {
           id: string
@@ -7125,6 +7160,21 @@ export type Database = {
       fn_set_recurring_task_active: {
         Args: { p_active: boolean; p_id: string }
         Returns: undefined
+      }
+      fn_create_job_with_custom: {
+        Args: {
+          p_custom_lines: Json
+          p_description: string
+          p_job_qty: number
+          p_material_lines: Json
+          p_product_template_id: string
+          p_required_delivery_date: string
+          p_responsible_user_id: string
+          p_sales_order_line_id: string
+          p_start_date: string
+          p_warehouse_id: string
+        }
+        Returns: string
       }
       fn_create_sales_order: {
         Args: {

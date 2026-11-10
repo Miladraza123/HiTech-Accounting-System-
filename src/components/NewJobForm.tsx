@@ -4,9 +4,13 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createJobAction, type MaterialLineInput } from "@/app/actions/jobs";
 import { MaterialLineEditor, blankMaterialLine, type EditableMaterialLine , type LineItem} from "@/components/MaterialLineEditor";
+import { serializeCustomMaterials, type CustomMaterialRow } from "@/lib/jobCustomMaterial";
 import { useItemCatalog } from "@/lib/useItemCatalog";
 import type { Tables } from "@/lib/supabase/database.types";
 import { useOfflineQueue } from "@/components/OfflineQueueProvider";
+
+let customSeq = 0;
+const blankCustom = (): CustomMaterialRow => ({ key: `c${++customSeq}`, name: "", qty: "1", unit: "" });
 
 type SoLineOption = {
   id: string;
@@ -88,6 +92,7 @@ export function NewJobForm({
   const [startDate, setStartDate] = useState("");
   const [requiredDeliveryDate, setRequiredDeliveryDate] = useState("");
   const [lines, setLines] = useState<EditableMaterialLine[]>([blankMaterialLine("init-0")]);
+  const [customRows, setCustomRows] = useState<CustomMaterialRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { isOnline, enqueue } = useOfflineQueue();
@@ -121,6 +126,11 @@ export function NewJobForm({
       setError("Job qty must be greater than zero.");
       return;
     }
+    const custom = serializeCustomMaterials(customRows);
+    if (custom.error) {
+      setError(custom.error);
+      return;
+    }
     let materialLines: MaterialLineInput[] = [];
     if (!templateId) {
       const { result, error: convErr } = serialize(lines, items);
@@ -129,8 +139,8 @@ export function NewJobForm({
         return;
       }
       materialLines = result ?? [];
-      if (!materialLines.length) {
-        setError("Select a Template or enter the material requirement manually.");
+      if (!materialLines.length && !custom.lines.length) {
+        setError("Select a Template, pick material from the list (click an item in the list, typing a name is not enough), or add it under Custom material.");
         return;
       }
     }
@@ -139,6 +149,11 @@ export function NewJobForm({
     // stock atomically, exactly like the online path (see this form's own
     // RPC entry in offlineQueue.ts) — re-validated against LIVE free stock
     // at sync time, never a stale offline snapshot.
+    if (!isOnline && custom.lines.length) {
+      setError("Custom material needs an internet connection. Connect and try again, or remove the custom material rows.");
+      return;
+    }
+
     if (!isOnline) {
       startTransition(async () => {
         await enqueue({
@@ -174,6 +189,7 @@ export function NewJobForm({
         start_date: startDate || null,
         required_delivery_date: requiredDeliveryDate || null,
         material_lines: materialLines,
+        custom_lines: custom.lines,
       });
       if (res.error) setError(res.error);
       else router.push(`/jobs/${res.id}`);
@@ -299,6 +315,61 @@ export function NewJobForm({
         ) : (
           <MaterialLineEditor items={items} onItemPicked={addItem} units={units} lines={lines} onChange={setLines} qtyLabel="Required Qty" altUnitsByItem={altUnitsByItem} />
         )}
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-5 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-ink">Custom material (not in stock)</h3>
+          <p className="text-xs text-ink-soft">
+            For material that is not in the Items list: type its name, quantity and unit. It is listed on the Job only. No stock is reserved or issued, and
+            nothing is posted to the accounts.
+          </p>
+        </div>
+        {customRows.map((r) => (
+          <div key={r.key} className="flex flex-wrap items-center gap-2">
+            <input
+              value={r.name}
+              onChange={(e) => setCustomRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, name: e.target.value } : x)))}
+              placeholder="Material name"
+              maxLength={200}
+              className="input flex-1 min-w-[12rem]"
+              aria-label="Custom material name"
+            />
+            <input
+              type="number"
+              step="0.001"
+              min="0.001"
+              value={r.qty}
+              onChange={(e) => setCustomRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, qty: e.target.value } : x)))}
+              className="input w-24 text-right tabular"
+              aria-label="Custom material quantity"
+            />
+            <select
+              value={r.unit}
+              onChange={(e) => setCustomRows((rs) => rs.map((x) => (x.key === r.key ? { ...x, unit: e.target.value } : x)))}
+              className="input w-28"
+              aria-label="Custom material unit"
+            >
+              <option value="">Unit</option>
+              {units.map((u) => (
+                <option key={u.code} value={u.code}>
+                  {u.code}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setCustomRows((rs) => rs.filter((x) => x.key !== r.key))}
+              className="text-ink-faint hover:text-bad"
+              aria-label="Remove custom material"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <button type="button" onClick={() => setCustomRows((rs) => [...rs, blankCustom()])} className="text-xs text-accent-ink underline underline-offset-2">
+          + Add custom material
+        </button>
       </div>
 
       {!isOnline && (
