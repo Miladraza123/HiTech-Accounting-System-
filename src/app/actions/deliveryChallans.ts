@@ -55,7 +55,7 @@ export async function createDeliveryChallanAction(input: {
     await supabase.rpc("fn_set_dc_project", { p_dc_id: data as string, p_project: input.project });
   }
   // The challan exists now; Ref. No. and line remarks are print details on top of it.
-  if (input.ref_no?.trim() || input.line_remarks?.some((r) => r.remarks.trim())) {
+  if (input.ref_no?.trim() || input.line_remarks?.some((r) => r.remarks.trim() || r.description)) {
     await supabase.rpc("fn_set_dc_print_details", {
       p_dc_id: data as string,
       p_ref_no: (input.ref_no ?? "") as string,
