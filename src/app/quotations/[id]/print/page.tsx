@@ -73,6 +73,7 @@ export default async function QuotationPrintPage({
         taxTotal={Number(revision.tax_total)}
         grandTotal={Number(revision.grand_total)}
         currency={company?.base_currency ?? "PKR"}
+        terms={revision.terms}
         completionTime={revision.delivery_terms}
         validityText={days === null ? null : `${days} ${days === 1 ? "DAY" : "DAYS"}`}
         signatoryName={company?.signatory_name ?? null}

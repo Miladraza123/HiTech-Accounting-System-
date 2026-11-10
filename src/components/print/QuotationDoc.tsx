@@ -18,6 +18,8 @@ export type QuotationDocProps = {
   currency: string;
   completionTime: string | null;
   validityText: string | null;
+  /** The quotation's Terms & Conditions as typed (line breaks kept); the block is left out when empty. */
+  terms?: string | null;
   signatoryName: string | null;
   headerCompany: LetterheadCompany;
   logoUrl: string | null;
@@ -124,6 +126,13 @@ export function QuotationDoc(p: QuotationDocProps) {
           </tr>
         </tbody>
       </table>
+
+      {p.terms && p.terms.trim() && (
+        <div className="tc">
+          <div className="tc-title">TERMS &amp; CONDITIONS:</div>
+          <div className="tc-body">{p.terms.trim()}</div>
+        </div>
+      )}
 
       <div className="terms">
         {p.completionTime && (
