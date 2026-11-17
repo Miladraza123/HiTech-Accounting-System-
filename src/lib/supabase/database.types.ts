@@ -7240,6 +7240,7 @@ export type Database = {
       fn_create_service_invoice: {
         Args: {
           p_invoice_date: string
+          p_invoice_no?: string
           p_lines: Json
           p_service_job_id: string
         }
@@ -7445,6 +7446,13 @@ export type Database = {
         }[]
       }
       fn_generate_daily_snapshot: { Args: { p_date?: string }; Returns: string }
+      fn_get_available_service_invoice_numbers: {
+        Args: never
+        Returns: {
+          invoice_no: string
+          kind: string
+        }[]
+      }
       fn_get_available_invoice_numbers: {
         Args: never
         Returns: {

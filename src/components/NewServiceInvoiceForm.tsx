@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createServiceInvoiceAction, type ServiceInvoiceLineInput } from "@/app/actions/serviceJobs";
+import { createServiceInvoiceAction, getAvailableServiceInvoiceNumbersAction, type ServiceInvoiceLineInput, type ServiceInvoiceNumberOption } from "@/app/actions/serviceJobs";
 import { karachiToday } from "@/lib/karachiTime";
 
 type Line = ServiceInvoiceLineInput & { key: number };
@@ -21,6 +21,22 @@ export function NewServiceInvoiceForm({ serviceJobId, jobPoNo = null }: { servic
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [numberOptions, setNumberOptions] = useState<ServiceInvoiceNumberOption[] | null>(null);
+  const [invoiceNo, setInvoiceNo] = useState("");
+
+  // Which number to use: the next number, or a cancelled invoice's number (only fetched once the form is open).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getAvailableServiceInvoiceNumbersAction().then((opts) => {
+      if (cancelled) return;
+      setNumberOptions(opts);
+      setInvoiceNo(opts.find((o) => o.kind === "sequential")?.invoice_no ?? "");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const subtotal = lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.rate) || 0), 0);
   const taxTotal = lines.reduce((s, l) => s + ((Number(l.qty) || 0) * (Number(l.rate) || 0) * (Number(l.tax_pct) || 0)) / 100, 0);
@@ -53,7 +69,9 @@ export function NewServiceInvoiceForm({ serviceJobId, jobPoNo = null }: { servic
         serviceJobId,
         invoiceDate || null,
         validLines.map((l) => ({ description: l.description, qty: Number(l.qty) || 1, rate: Number(l.rate) || 0, tax_pct: Number(l.tax_pct) || 0 })),
-        clientPo
+        clientPo,
+        // the next number is sent as "nothing" so the normal counter moves on; only a reused cancelled number is explicit
+        numberOptions?.find((o) => o.invoice_no === invoiceNo)?.kind === "reclaimed" ? invoiceNo : null
       );
       if (res.error) setError(res.error);
       else {
@@ -84,6 +102,19 @@ export function NewServiceInvoiceForm({ serviceJobId, jobPoNo = null }: { servic
           </label>
         )}
       </div>
+
+      {!!numberOptions?.some((o) => o.kind === "reclaimed") && (
+        <div className="space-y-1.5 rounded-md border border-line p-2.5">
+          <span className="text-xs font-medium text-ink-soft">Invoice Number — a cancelled Invoice&apos;s number is available to reuse</span>
+          {numberOptions.map((o) => (
+            <label key={o.invoice_no} className="flex items-center gap-2 text-sm">
+              <input type="radio" name="svc-invoice-no" checked={invoiceNo === o.invoice_no} onChange={() => setInvoiceNo(o.invoice_no)} />
+              <span className="font-mono">{o.invoice_no}</span>
+              <span className="text-xs text-ink-faint">{o.kind === "sequential" ? "(next number)" : "(reuse — cancelled Invoice)"}</span>
+            </label>
+          ))}
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-md border border-line">
         <table className="w-full text-sm">

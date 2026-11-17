@@ -291,7 +291,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                   return (
                     <div key={inv.id} className="px-4 py-2.5 text-sm space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs text-ink">{inv.invoice_no}</span>
+                        <span className="font-mono text-xs text-ink">{inv.status === "Cancelled" && !inv.invoice_no.includes("(cancelled)") ? `${inv.invoice_no} (cancelled)` : inv.invoice_no}</span>
                         <div className="flex items-center gap-3">
                           {inv.status !== "Cancelled" && (
                             <PrintPdfActions
