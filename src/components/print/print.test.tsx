@@ -74,7 +74,7 @@ describe("letterhead print documents", () => {
     expect(renderToStaticMarkup(<QuotationDoc {...quotation} />)).not.toContain("TERMS &amp; CONDITIONS");
   });
 
-  it("quotation hides Attn and the terms rows that are empty, and says GST without a rate when rates differ", () => {
+  it("quotation hides Attn and the terms rows that are empty, and splits the GST by rate when rates differ", () => {
     const html = renderToStaticMarkup(
       <QuotationDoc
         {...quotation}
@@ -82,12 +82,16 @@ describe("letterhead print documents", () => {
         completionTime={null}
         validityText={null}
         lines={[...quotation.lines, { description: "Labour", rate: 100, qty: 1, unit: null, tax_pct: 5, amount: 100 }]}
+        subtotal={19300}
+        taxTotal={3461}
+        grandTotal={22761}
       />
     );
     expect(html).not.toContain("ATTN");
     expect(html).not.toContain("JOB COMPLETION TIME");
     expect(html).not.toContain("VALIDITY OF QUOTATION");
-    expect(html).toContain("ADD GST<");
+    expect(html).not.toContain("ADD GST<");
+    expect(html).toContain("ADD GST 5% (on 100)");
   });
 
   it("service invoice shows both parties, the PO number, the per-line tax and the totals", () => {
@@ -157,5 +161,40 @@ describe("letterhead print documents", () => {
     const html = renderToStaticMarkup(<DcDoc {...dc} lines={many} tagline={null} refNo={null} />);
     expect((html.match(/class="r"/g) ?? []).length).toBe(18);
     expect(html).not.toContain('class="wm-text"');
+  });
+});
+
+describe("Quotation GST split by rate", () => {
+  const L = (d: string, a: number, t: number) => ({ description: d, rate: a, qty: 1, unit: "NOS", tax_pct: t, amount: a });
+  const lines = [L("Item 1", 200000, 15), L("Item 2", 50000, 18), L("Item 3", 45000, 10), L("Item 4", 67000, 15)];
+  const mixed: QuotationDocProps = { ...quotation, lines, subtotal: 362000, taxTotal: 53550, grandTotal: 415550 };
+
+  it("shows each rate with its base and GST, lowest rate first, plus the total GST", () => {
+    const html = renderToStaticMarkup(<QuotationDoc {...mixed} />);
+    const i10 = html.indexOf("ADD GST 10% (on 45,000)");
+    const i15 = html.indexOf("ADD GST 15% (on 267,000)");
+    const i18 = html.indexOf("ADD GST 18% (on 50,000)");
+    expect(i10).toBeGreaterThan(-1);
+    expect(i15).toBeGreaterThan(i10);
+    expect(i18).toBeGreaterThan(i15);
+    expect(html).toContain("4,500");
+    expect(html).toContain("40,050");
+    expect(html).toContain("9,000");
+    expect(html).toContain("TOTAL GST");
+    expect(html).toContain("53,550");
+    expect(html).toContain("415,550");
+    expect(html).toContain("15%");
+  });
+  it("falls back to one GST row if the split does not add up to the saved GST total", () => {
+    const html = renderToStaticMarkup(<QuotationDoc {...mixed} taxTotal={50000} grandTotal={412000} />);
+    expect(html).not.toContain("(on ");
+    expect(html).toContain("ADD GST<");
+  });
+  it("keeps the single-line GST when every item has the same rate", () => {
+    const one = { ...quotation, lines: [L("A", 100000, 18), L("B", 50000, 18)], subtotal: 150000, taxTotal: 27000, grandTotal: 177000 };
+    const html = renderToStaticMarkup(<QuotationDoc {...one} />);
+    expect(html).toContain("ADD GST 18%");
+    expect(html).not.toContain("TOTAL GST");
+    expect(html).not.toContain("(on ");
   });
 });
