@@ -102,11 +102,22 @@ export async function cancelServiceDeliveryAction(serviceDeliveryId: string, ser
   return { error: null, success: true };
 }
 
+export type ServiceInvoiceNumberOption = { invoice_no: string; kind: "sequential" | "reclaimed" };
+
+// The numbers a new Service Invoice may take: the next number, plus the number of any cancelled Service Invoice
+// that no Posted one holds (same picker GST Invoices have).
+export async function getAvailableServiceInvoiceNumbersAction(): Promise<ServiceInvoiceNumberOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("fn_get_available_service_invoice_numbers");
+  return (data ?? []) as ServiceInvoiceNumberOption[];
+}
+
 export async function createServiceInvoiceAction(
   serviceJobId: string,
   invoiceDate: string | null,
   lines: ServiceInvoiceLineInput[],
-  clientPoNo: string | null = null
+  clientPoNo: string | null = null,
+  invoiceNo: string | null = null
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
@@ -120,6 +131,7 @@ export async function createServiceInvoiceAction(
     p_service_job_id: serviceJobId,
     p_invoice_date: invoiceDate as string,
     p_lines: lines,
+    ...(invoiceNo ? { p_invoice_no: invoiceNo } : {}),
   });
   if (error) return { error: error.message };
   await supabase.from("service_invoices").update({ client_po_no: poNo }).eq("id", data as string);
