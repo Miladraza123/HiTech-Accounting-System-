@@ -36,6 +36,26 @@ function taxLabel(lines: QuotationDocLine[]): string {
   return rates.length === 1 ? `ADD GST ${rates[0]}%` : "ADD GST";
 }
 
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/**
+ * GST split by rate, lowest rate first: the amount each rate applies to and the GST on it. A line's GST is
+ * rounded the same way the quotation total is (per line), so the parts add up to the total GST.
+ * Rate 0 has no GST to show and is left out.
+ */
+export function gstByRate(lines: QuotationDocLine[]): { rate: number; base: number; tax: number }[] {
+  const byRate = new Map<number, { base: number; tax: number }>();
+  for (const l of lines) {
+    const rate = Number(l.tax_pct) || 0;
+    if (rate === 0) continue;
+    const cur = byRate.get(rate) ?? { base: 0, tax: 0 };
+    cur.base += l.amount;
+    cur.tax += round2((l.amount * rate) / 100);
+    byRate.set(rate, cur);
+  }
+  return [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, v]) => ({ rate, base: round2(v.base), tax: round2(v.tax) }));
+}
+
 /**
  * Quotation in the HiTech letterhead layout: Ref # / date, M/S, Attn, subject,
  * one boxed table whose last rows carry Amount, GST and Total, the completion
@@ -43,6 +63,9 @@ function taxLabel(lines: QuotationDocLine[]): string {
  */
 export function QuotationDoc(p: QuotationDocProps) {
   const cur = p.currency || "PKR";
+  // Lines with different GST rates: a GST column per line, and the GST split by rate under the Amount.
+  const mixed = new Set(p.lines.map((l) => Number(l.tax_pct) || 0)).size > 1;
+  const splits = mixed ? gstByRate(p.lines) : [];
   return (
     <LetterheadFrame
       scope={QUOTATION_SCOPE}
@@ -75,10 +98,11 @@ export function QuotationDoc(p: QuotationDocProps) {
         <thead>
           <tr>
             <th className="noborder" />
-            <th style={{ width: "46%" }}>MATERIAL DESCRIPTION</th>
+            <th style={{ width: mixed ? "40%" : "46%" }}>MATERIAL DESCRIPTION</th>
             <th>RATE</th>
             <th>QTY</th>
             <th>UNIT</th>
+            {mixed && <th>GST</th>}
             <th>TOTAL</th>
           </tr>
         </thead>
@@ -99,27 +123,53 @@ export function QuotationDoc(p: QuotationDocProps) {
                 <td className="mid">{formatAmount(l.rate)}</td>
                 <td className="mid">{formatAmount(l.qty)}</td>
                 <td className="mid">{l.unit ?? ""}</td>
+                {mixed && <td className="mid">{Number(l.tax_pct) || 0}%</td>}
                 <td className="num">{formatAmount(l.amount)}</td>
               </tr>
             );
           })}
           <tr className="sum">
             <td className="noborder" />
-            <td colSpan={3}>AMOUNT</td>
+            <td colSpan={mixed ? 4 : 3}>AMOUNT</td>
             <td colSpan={2}>
               {cur} {formatAmount(p.subtotal)}
             </td>
           </tr>
+          {mixed && splits.length > 0 ? (
+            <>
+              {splits.map((g) => (
+                <tr className="sum" key={g.rate}>
+                  <td className="noborder" />
+                  <td colSpan={4}>
+                    ADD GST {g.rate}% (on {formatAmount(g.base)})
+                  </td>
+                  <td colSpan={2}>
+                    {cur}. {formatAmount(g.tax)}
+                  </td>
+                </tr>
+              ))}
+              {splits.length > 1 && (
+                <tr className="sum">
+                  <td className="noborder" />
+                  <td colSpan={4}>TOTAL GST</td>
+                  <td colSpan={2}>
+                    {cur}. {formatAmount(p.taxTotal)}
+                  </td>
+                </tr>
+              )}
+            </>
+          ) : (
+            <tr className="sum">
+              <td className="noborder" />
+              <td colSpan={mixed ? 4 : 3}>{taxLabel(p.lines)}</td>
+              <td colSpan={2}>
+                {cur}. {formatAmount(p.taxTotal)}
+              </td>
+            </tr>
+          )}
           <tr className="sum">
             <td className="noborder" />
-            <td colSpan={3}>{taxLabel(p.lines)}</td>
-            <td colSpan={2}>
-              {cur}. {formatAmount(p.taxTotal)}
-            </td>
-          </tr>
-          <tr className="sum">
-            <td className="noborder" />
-            <td colSpan={3}>TOTAL AMOUNT</td>
+            <td colSpan={mixed ? 4 : 3}>TOTAL AMOUNT</td>
             <td colSpan={2}>
               {cur}. {formatAmount(p.grandTotal)}
             </td>
