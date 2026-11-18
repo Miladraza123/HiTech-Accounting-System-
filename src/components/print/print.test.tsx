@@ -82,6 +82,9 @@ describe("letterhead print documents", () => {
         completionTime={null}
         validityText={null}
         lines={[...quotation.lines, { description: "Labour", rate: 100, qty: 1, unit: null, tax_pct: 5, amount: 100 }]}
+        subtotal={19300}
+        taxTotal={3461}
+        grandTotal={22761}
       />
     );
     expect(html).not.toContain("ATTN");
@@ -181,6 +184,11 @@ describe("Quotation GST split by rate", () => {
     expect(html).toContain("53,550");
     expect(html).toContain("415,550");
     expect(html).toContain("15%");
+  });
+  it("falls back to one GST row if the split does not add up to the saved GST total", () => {
+    const html = renderToStaticMarkup(<QuotationDoc {...mixed} taxTotal={50000} grandTotal={412000} />);
+    expect(html).not.toContain("(on ");
+    expect(html).toContain("ADD GST<");
   });
   it("keeps the single-line GST when every item has the same rate", () => {
     const one = { ...quotation, lines: [L("A", 100000, 18), L("B", 50000, 18)], subtotal: 150000, taxTotal: 27000, grandTotal: 177000 };

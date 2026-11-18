@@ -50,7 +50,7 @@ export function gstByRate(lines: QuotationDocLine[]): { rate: number; base: numb
     if (rate === 0) continue;
     const cur = byRate.get(rate) ?? { base: 0, tax: 0 };
     cur.base += l.amount;
-    cur.tax += round2((l.amount * rate) / 100);
+    cur.tax += round2((l.qty * l.rate * rate) / 100); // the same formula the quotation total uses
     byRate.set(rate, cur);
   }
   return [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, v]) => ({ rate, base: round2(v.base), tax: round2(v.tax) }));
@@ -65,7 +65,9 @@ export function QuotationDoc(p: QuotationDocProps) {
   const cur = p.currency || "PKR";
   // Lines with different GST rates: a GST column per line, and the GST split by rate under the Amount.
   const mixed = new Set(p.lines.map((l) => Number(l.tax_pct) || 0)).size > 1;
-  const splits = mixed ? gstByRate(p.lines) : [];
+  const rateSplits = mixed ? gstByRate(p.lines) : [];
+  // Only show the split when its parts add up to the quotation's own GST total; otherwise fall back to the single GST row.
+  const splits = Math.abs(rateSplits.reduce((t, g) => t + g.tax, 0) - p.taxTotal) <= 0.005 ? rateSplits : [];
   return (
     <LetterheadFrame
       scope={QUOTATION_SCOPE}
