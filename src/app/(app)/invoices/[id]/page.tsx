@@ -161,7 +161,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
         <PrintPdfActions
           printPath={`/invoices/${id}/print`}
-          filename={`${invoice.invoice_no}.pdf`}
+          filename={`GST Invoice No ${invoice.invoice_no}.pdf`}
           hasSignature={!!company?.signature_path}
           hasStamp={!!company?.stamp_path}
           hasPhone={!!company?.phone}

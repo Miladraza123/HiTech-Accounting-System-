@@ -26,7 +26,7 @@ export default async function ServiceJobsPage({ searchParams }: { searchParams: 
   const supabase = await createClient();
   const term = cleanSearchTerm(q);
   const partyIds = term ? await idsMatching(supabase, "parties", "legal_name", term) : [];
-  // An SRB invoice hangs off its Service Job, so searching "SRB 012" lands on the job that holds it.
+  // An SRB invoice hangs off its Service Job, so searching an invoice number such as "795" lands on the job that holds it.
   const srbJobIds = term
     ? ((await supabase.from("service_invoices").select("service_job_id").ilike("invoice_no", `%${term}%`).limit(300)).data ?? []).map((r) => r.service_job_id)
     : [];
@@ -59,7 +59,7 @@ export default async function ServiceJobsPage({ searchParams }: { searchParams: 
 
       {canManage && <NewServiceJobForm clientParties={clientParties ?? []} />}
 
-      <ListSearch basePath="/service-jobs" q={term} keep={{}} count={count} placeholder="Search job number, client, asset, PO or SRB invoice no…" />
+      <ListSearch basePath="/service-jobs" q={term} keep={{}} count={count} placeholder="Search job number, client, asset, PO or invoice no…" />
 
       <div className="rounded-xl border border-line bg-surface overflow-hidden">
         <div className="overflow-x-auto">

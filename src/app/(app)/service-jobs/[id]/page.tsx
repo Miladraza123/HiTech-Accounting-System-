@@ -296,7 +296,7 @@ export default async function ServiceJobDetailPage({ params }: { params: Promise
                           {inv.status !== "Cancelled" && (
                             <PrintPdfActions
                               printPath={`/service-invoices/${inv.id}/print`}
-                              filename={`${inv.invoice_no}.pdf`}
+                              filename={`SRB Invoice No ${inv.invoice_no}.pdf`}
                               hasSignature={!!company?.signature_path}
                               hasStamp={!!company?.stamp_path}
                               hasPhone={false}
