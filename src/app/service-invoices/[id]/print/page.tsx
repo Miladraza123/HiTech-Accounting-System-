@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const supabase = await createClient();
   const { data: invoice } = await supabase.from("service_invoices").select("invoice_no").eq("id", id).maybeSingle();
-  return { title: invoice?.invoice_no ?? "Service Invoice" };
+  return { title: invoice?.invoice_no ? `SRB Invoice No ${invoice.invoice_no}` : "Service Invoice" };
 }
 
 export default async function ServiceInvoicePrintPage({
